@@ -1,0 +1,12 @@
+﻿lib/queries/users.ts(49,5): error TS2322: Type '{ id: any; name: any; email: any; role: any; department_id: any; }[]' is not assignable to type 'User[]'.
+  Type '{ id: any; name: any; email: any; role: any; department_id: any; }' is missing the following properties from type 'User': is_active, must_change_password, created_at
+lib/queries/users.ts(61,5): error TS2322: Type '{ id: any; name: any; email: any; }[]' is not assignable to type 'User[]'.
+  Type '{ id: any; name: any; email: any; }' is missing the following properties from type 'User': role, is_active, must_change_password, created_at
+lib/queries/users.ts(73,5): error TS2322: Type '{ id: any; name: any; email: any; department: { name: any; }[]; }[]' is not assignable to type 'User[]'.
+  Type '{ id: any; name: any; email: any; department: { name: any; }[]; }' is missing the following properties from type 'User': role, is_active, must_change_password, created_at
+middleware.ts(13,26): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+middleware.ts(14,45): error TS7031: Binding element 'name' implicitly has an 'any' type.
+middleware.ts(14,51): error TS7031: Binding element 'value' implicitly has an 'any' type.
+middleware.ts(16,45): error TS7031: Binding element 'name' implicitly has an 'any' type.
+middleware.ts(16,51): error TS7031: Binding element 'value' implicitly has an 'any' type.
+middleware.ts(16,58): error TS7031: Binding element 'options' implicitly has an 'any' type.
