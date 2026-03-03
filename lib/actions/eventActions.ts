@@ -258,3 +258,26 @@ export async function addParticipantAfterCloseAction(data: {
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
+
+export async function autoClosePastEventsAction(): Promise<{ success: boolean; closedCount?: number; error?: string }> {
+    try {
+        const admin = createAdminClient();
+        const now = new Date().toISOString();
+        // Update events where registration_deadline is before now and status is 'open'
+        const { data: updated, error } = await admin
+            .from('events')
+            .update({ status: 'closed' })
+            .lt('registration_deadline', now)
+            .eq('status', 'open')
+            .eq('is_active', true)
+            .select('id');
+        if (error) return { success: false, error: error.message };
+        // Revalidate paths for affected events list pages
+        revalidatePath('/student/events');
+        revalidatePath('/admin/events');
+        revalidatePath('/teacher/events');
+        return { success: true, closedCount: updated?.length };
+    } catch (e) {
+        return { success: false, error: (e as Error).message };
+    }
+}

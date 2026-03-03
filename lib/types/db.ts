@@ -25,10 +25,7 @@ export interface User {
     id: string
     name: string
     email: string
-<<<<<<< HEAD
     phone_number?: string
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     role: UserRole
     student_type?: StudentType
     department_id?: string

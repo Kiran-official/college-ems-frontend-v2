@@ -6,10 +6,7 @@ import { revalidatePath } from 'next/cache'
 export async function createUserAction(data: {
     name: string
     email: string
-<<<<<<< HEAD
     phone_number?: string
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     role: 'admin' | 'teacher' | 'student'
     department_id?: string
     programme?: string
@@ -48,10 +45,7 @@ export async function createUserAction(data: {
             id: authData.user.id,
             name: data.name,
             email: data.email,
-<<<<<<< HEAD
             phone_number: data.phone_number || null,
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             role: data.role,
             department_id: data.department_id || null,
             programme: data.programme || null,
@@ -77,10 +71,7 @@ export async function bulkCreateUsersAction(
     users: Array<{
         name: string
         email: string
-<<<<<<< HEAD
         phone_number?: string
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         role?: 'teacher' | 'student'
         department?: string
         programme?: string
@@ -136,10 +127,7 @@ export async function bulkCreateUsersAction(
                 id: authData.user.id,
                 name: u.name,
                 email: u.email,
-<<<<<<< HEAD
                 phone_number: u.phone_number || null,
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                 role: role,
                 department_id: departmentId || null,
                 programme: role === 'student' ? (u.programme || null) : null,

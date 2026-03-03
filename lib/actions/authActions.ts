@@ -2,24 +2,11 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 
-<<<<<<< HEAD
 export async function registerStudentAction(data: {
     name: string
     email: string
     phone_number?: string
-=======
-export async function updatePasswordFlag(userId: string) {
-    const admin = createAdminClient()
-    const { error } = await admin.from('users').update({ must_change_password: false }).eq('id', userId)
-    return { error }
-}
-
-export async function registerStudentAction(data: {
-    name: string
-    email: string
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     password: string
-    date_of_birth?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const admin = createAdminClient()
@@ -32,7 +19,8 @@ export async function registerStudentAction(data: {
         })
 
         if (authError) {
-            if (authError.message.includes('already been registered') || authError.message.includes('already exists')) {
+            const msg = authError.message.toLowerCase()
+            if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('email address is already')) {
                 return { success: false, error: 'An account with this email already exists. Sign in instead.' }
             }
             return { success: false, error: authError.message }
@@ -42,21 +30,17 @@ export async function registerStudentAction(data: {
             return { success: false, error: 'Failed to create user' }
         }
 
-        // Insert into users table
-        const { error: insertError } = await admin.from('users').insert({
+        // Upsert into users table (handles cases where auth user already exists)
+        const { error: insertError } = await admin.from('users').upsert({
             id: authData.user.id,
             name: data.name,
             email: data.email,
-<<<<<<< HEAD
             phone_number: data.phone_number || null,
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             role: 'student',
             student_type: 'external',
             must_change_password: false,
             is_active: true,
-            date_of_birth: data.date_of_birth || null,
-        })
+        }, { onConflict: 'id' })
 
         if (insertError) {
             // Rollback: delete auth user

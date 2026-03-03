@@ -7,15 +7,9 @@ export async function getRegistrationsByEvent(eventId: string): Promise<Individu
         .from('individual_registrations')
         .select(`
             *,
-<<<<<<< HEAD
             student:users!individual_registrations_student_id_fkey(id, name, email, phone_number, department_id, department:departments(name)),
             category:event_categories(*),
             team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email, phone_number, department_id, department:departments(name))))
-=======
-            student:users!individual_registrations_student_id_fkey(id, name, email, department_id, department:departments(name)),
-            category:event_categories(*),
-            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email, department_id, department:departments(name))))
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         `)
         .eq('event_id', eventId)
         .order('registered_at', { ascending: false })
@@ -99,11 +93,7 @@ export async function getStudentUpcomingCount(studentId: string): Promise<number
         .from('individual_registrations')
         .select('event:events!inner(status)')
         .eq('student_id', studentId)
-<<<<<<< HEAD
     return data?.filter(r => {
-=======
-    return data?.filter((r: any) => {
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         const event = r.event as unknown as { status: string }
         return event?.status === 'open'
     }).length ?? 0

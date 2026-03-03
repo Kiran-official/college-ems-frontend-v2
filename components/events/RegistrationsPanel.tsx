@@ -17,10 +17,7 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
                 <thead>
                     <tr>
                         <th>Name</th>
-<<<<<<< HEAD
                         <th>Phone</th>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                         <th>Department</th>
                         <th>Registered At</th>
                         <th>Attendance</th>
@@ -30,10 +27,7 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
                     {rows.map(r => (
                         <tr key={r.id}>
                             <td>{r.student?.name ?? '—'}</td>
-<<<<<<< HEAD
                             <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                             <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
                             <td>{format(new Date(r.registered_at), 'dd MMM yyyy')}</td>
                             <td><Badge variant={r.attendance_status === 'not_marked' ? 'not-marked' : r.attendance_status}>{r.attendance_status.replace('_', ' ')}</Badge></td>
@@ -53,10 +47,7 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                 <thead>
                     <tr>
                         <th>Name</th>
-<<<<<<< HEAD
                         <th>Phone</th>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                         <th>Department</th>
                         <th>Registered At</th>
                         <th>Attendance</th>
@@ -66,25 +57,15 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                     {entries.map(([teamId, team], idx) => (
                         <tbody key={teamId}>
                             {idx > 0 && (
-<<<<<<< HEAD
                                 <tr className="team-group-gap"><td colSpan={5} /></tr>
                             )}
                             <tr className="team-group-header">
                                 <td colSpan={5}>🏆 {team.name}</td>
-=======
-                                <tr className="team-group-gap"><td colSpan={4} /></tr>
-                            )}
-                            <tr className="team-group-header">
-                                <td colSpan={4}>🏆 {team.name}</td>
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                             </tr>
                             {team.members.map(r => (
                                 <tr key={r.id}>
                                     <td>{r.student?.name ?? '—'}</td>
-<<<<<<< HEAD
                                     <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                     <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
                                     <td>{format(new Date(r.registered_at), 'dd MMM yyyy')}</td>
                                     <td><Badge variant={r.attendance_status === 'not_marked' ? 'not-marked' : r.attendance_status}>{r.attendance_status.replace('_', ' ')}</Badge></td>

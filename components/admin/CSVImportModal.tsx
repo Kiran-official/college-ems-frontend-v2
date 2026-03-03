@@ -53,19 +53,11 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
 
     function downloadSample() {
         const headers = role === 'student'
-<<<<<<< HEAD
             ? 'name,email,phone_number,department,programme,date_of_birth'
             : 'name,email,phone_number,department,date_of_birth'
         const sample = role === 'student'
             ? '\nJohn Doe,john@example.com,9876543210,Commerce,BCom,15-08-2002'
             : '\nJane Smith,jane@example.com,9876543210,Computer Science,20-05-1990'
-=======
-            ? 'name,email,department,programme,date_of_birth'
-            : 'name,email,department,date_of_birth'
-        const sample = role === 'student'
-            ? '\nJohn Doe,john@example.com,Commerce,BCom,15-08-2002'
-            : '\nJane Smith,jane@example.com,Computer Science,20-05-1990'
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         const blob = new Blob([headers + sample], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -143,13 +135,8 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                     <div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
                             {role === 'student'
-<<<<<<< HEAD
                                 ? 'Headers: name, email, phone_number, department, programme, date_of_birth'
                                 : 'Headers: name, email, phone_number, department, date_of_birth'}
-=======
-                                ? 'Headers: name, email, department, programme, date_of_birth'
-                                : 'Headers: name, email, department, date_of_birth'}
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--warning)' }}>
                             Date format: DD-MM-YYYY (e.g. 15-08-2002)
@@ -209,10 +196,7 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                                         <th>#</th>
                                         <th>Name</th>
                                         <th>Email</th>
-<<<<<<< HEAD
                                         <th>Phone</th>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                         <th>Dept</th>
                                         {role === 'student' && <th>Programme</th>}
                                         <th>DOB</th>
@@ -225,10 +209,7 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                                             <td>{i + 1}</td>
                                             <td>{v.row.name}</td>
                                             <td>{v.row.email}</td>
-<<<<<<< HEAD
                                             <td>{v.row.phone_number ?? '—'}</td>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                             <td>{v.row.department}</td>
                                             {role === 'student' && <td>{v.row.programme}</td>}
                                             <td>{v.row.date_of_birth}</td>

@@ -61,16 +61,12 @@ function RegistrationAction({
     const [pending, startTransition] = useTransition()
     const [teamName, setTeamName] = useState('')
     const [showCreateTeam, setShowCreateTeam] = useState(false)
-<<<<<<< HEAD
     const [error, setError] = useState<string | null>(null)
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 
     const canRegister = event.status === 'open' && !isDeadlinePassed
     const isRegistered = !!existingReg
 
     function register() {
-<<<<<<< HEAD
         setError(null)
         startTransition(async () => {
             const result = await registerForEventAction({ event_id: event.id, category_id: categoryId })
@@ -78,17 +74,12 @@ function RegistrationAction({
                 setError(result.error ?? 'Registration failed')
                 return
             }
-=======
-        startTransition(async () => {
-            await registerForEventAction({ event_id: event.id, category_id: categoryId })
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             window.location.reload()
         })
     }
 
     function cancel() {
         if (!existingReg) return
-<<<<<<< HEAD
         setError(null)
         startTransition(async () => {
             const result = await cancelRegistrationAction(existingReg.id)
@@ -96,42 +87,29 @@ function RegistrationAction({
                 setError(result.error ?? 'Cancellation failed')
                 return
             }
-=======
-        startTransition(async () => {
-            await cancelRegistrationAction(existingReg.id)
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             window.location.reload()
         })
     }
 
     function handleCreateTeam() {
         if (!teamName.trim()) return
-<<<<<<< HEAD
         setError(null)
         startTransition(async () => {
             const result = await createTeamAction({
-=======
-        startTransition(async () => {
-            await createTeamAction({
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                 event_id: event.id,
                 category_id: categoryId,
                 team_name: teamName.trim(),
                 member_ids: [],
             })
-<<<<<<< HEAD
             if (!result.success) {
                 setError(result.error ?? 'Failed to create team')
                 return
             }
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             window.location.reload()
         })
     }
 
     function handleJoinTeam(teamId: string) {
-<<<<<<< HEAD
         setError(null)
         startTransition(async () => {
             const result = await joinTeamAction({ team_id: teamId, event_id: event.id, category_id: categoryId })
@@ -139,10 +117,6 @@ function RegistrationAction({
                 setError(result.error ?? 'Failed to join team')
                 return
             }
-=======
-        startTransition(async () => {
-            await joinTeamAction({ team_id: teamId, event_id: event.id, category_id: categoryId })
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             window.location.reload()
         })
     }
@@ -153,7 +127,6 @@ function RegistrationAction({
 
     return (
         <div className="glass" style={{ padding: 20 }}>
-<<<<<<< HEAD
             {error && (
                 <div style={{
                     padding: '10px 14px', marginBottom: 12, borderRadius: 'var(--r-md)',
@@ -164,8 +137,6 @@ function RegistrationAction({
                     ⚠ {error}
                 </div>
             )}
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             {categoryName && (
                 <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 12, color: 'var(--accent)' }}>
                     {categoryName}

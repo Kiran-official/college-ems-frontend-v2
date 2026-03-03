@@ -1,10 +1,6 @@
 'use client'
 
-<<<<<<< HEAD
-import { useState, useTransition, useEffect } from 'react'
-=======
 import { useState, useTransition, useEffect, Suspense } from 'react'
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -21,11 +17,7 @@ import type { User, Department } from '@/lib/types/db'
 
 type Tab = 'students' | 'teachers' | 'admins'
 
-<<<<<<< HEAD
-export default function UsersPage() {
-=======
 function UsersContent() {
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     const searchParams = useSearchParams()
     const router = useRouter()
     const tab = (searchParams.get('tab') as Tab) || 'students'
@@ -41,11 +33,7 @@ function UsersContent() {
 
     // Create form
     const [formData, setFormData] = useState({
-<<<<<<< HEAD
         name: '', email: '', phone_number: '', role: tab === 'admins' ? 'admin' : tab === 'teachers' ? 'teacher' : 'student',
-=======
-        name: '', email: '', role: tab === 'admins' ? 'admin' : tab === 'teachers' ? 'teacher' : 'student',
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         department_id: '', programme: '', student_type: 'internal' as 'internal' | 'external',
         date_of_birth: '',
     })
@@ -92,10 +80,7 @@ function UsersContent() {
                 name: formData.name,
                 email: formData.email,
                 role: role as 'admin' | 'teacher' | 'student',
-<<<<<<< HEAD
                 phone_number: formData.phone_number || undefined,
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                 department_id: formData.department_id || undefined,
                 programme: formData.programme || undefined,
                 student_type: role === 'student' ? formData.student_type : undefined,
@@ -103,11 +88,7 @@ function UsersContent() {
             })
             if (result.success) {
                 setShowCreate(false)
-<<<<<<< HEAD
                 setFormData({ name: '', email: '', phone_number: '', role, department_id: '', programme: '', student_type: 'internal', date_of_birth: '' })
-=======
-                setFormData({ name: '', email: '', role, department_id: '', programme: '', student_type: 'internal', date_of_birth: '' })
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                 loadData()
             } else {
                 setCreateError(result.error ?? 'Failed to create user')
@@ -174,10 +155,7 @@ function UsersContent() {
                             <tr>
                                 <th>Name</th>
                                 <th>Email</th>
-<<<<<<< HEAD
                                 <th>Phone</th>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                 {tab !== 'admins' && <th>Department</th>}
                                 {tab === 'students' && <th>Programme</th>}
                                 {tab === 'students' && <th>Type</th>}
@@ -191,10 +169,7 @@ function UsersContent() {
                                 <tr key={u.id}>
                                     <td>{u.name}</td>
                                     <td>{u.email}</td>
-<<<<<<< HEAD
                                     <td>{u.phone_number ?? '—'}</td>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                     {tab !== 'admins' && <td>{u.department?.name ?? '—'}</td>}
                                     {tab === 'students' && <td>{u.programme ?? '—'}</td>}
                                     {tab === 'students' && (
@@ -233,12 +208,9 @@ function UsersContent() {
                     <FormGroup label="Email" required>
                         <input className="form-input" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                     </FormGroup>
-<<<<<<< HEAD
                     <FormGroup label="Phone Number">
                         <input className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value })} placeholder="e.g. 9876543210" />
                     </FormGroup>
-=======
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                     <FormGroup label="Department">
                         <select className="form-select" value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })}>
                             <option value="">Select…</option>
@@ -284,14 +256,13 @@ function UsersContent() {
         </div>
     )
 }
-<<<<<<< HEAD
-=======
 
 export default function UsersPage() {
     return (
-        <Suspense fallback={<div className="page" style={{ display: 'grid', placeItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading users...</div>}>
+        <Suspense fallback={<div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 24 }}>
+            {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 48, borderRadius: 'var(--r-md)' }} />)}
+        </div>}>
             <UsersContent />
         </Suspense>
     )
 }
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229

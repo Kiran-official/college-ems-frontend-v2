@@ -28,11 +28,7 @@ export async function getAttendanceStats(eventId: string) {
         .select('attendance_status')
         .eq('event_id', eventId)
 
-<<<<<<< HEAD
     const rows = data ?? []
-=======
-    const rows = data as Array<{ attendance_status: 'present' | 'absent' | 'not_marked' }> ?? []
->>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     return {
         present: rows.filter(r => r.attendance_status === 'present').length,
         absent: rows.filter(r => r.attendance_status === 'absent').length,
