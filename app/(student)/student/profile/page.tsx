@@ -57,14 +57,7 @@ export default async function StudentProfilePage() {
                             </div>
                             <Badge variant={user.student_type ?? 'internal'}>{user.student_type ?? 'internal'}</Badge>
                         </div>
-                        {user.date_of_birth && (
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Date of Birth
-                                </div>
-                                <div style={{ fontSize: '1rem' }}>{format(new Date(user.date_of_birth), 'dd MMM yyyy')}</div>
-                            </div>
-                        )}
+
                         <div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
                                 Member Since

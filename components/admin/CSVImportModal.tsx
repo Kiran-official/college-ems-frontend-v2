@@ -1,37 +1,24 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useCallback } from 'react'
 import Papa from 'papaparse'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { bulkCreateUsersAction } from '@/lib/actions/userActions'
-import { Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Download, Upload, CheckCircle2, Trash2 } from 'lucide-react'
 
 const VALID_DEPTS = ['Commerce', 'Computer Science']
 const VALID_PROGS = ['BCom', 'BCom (A&F)', 'BCom (BDA)', 'BCom (CA)', 'BBA', 'BCA', 'BCA (AI & ML)']
-const DOB_REGEX = /^(\d{2})-(\d{2})-(\d{4})$/
 
-function parseDOB(val: string): { valid: boolean; iso?: string; error?: string } {
-    const m = val.match(DOB_REGEX)
-    if (!m) return { valid: false, error: 'Date must be DD-MM-YYYY' }
-    const [, dd, mm, yyyy] = m
-    const date = new Date(`${yyyy}-${mm}-${dd}`)
-    if (isNaN(date.getTime())) return { valid: false, error: 'Invalid calendar date' }
-    return { valid: true, iso: `${yyyy}-${mm}-${dd}` }
-}
-
-function validateRow(row: Record<string, string>, role: 'student' | 'teacher') {
-    const errors: string[] = []
-    if (!row.name?.trim()) errors.push('Name required')
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email ?? '')) errors.push('Invalid email')
-    if (!VALID_DEPTS.includes(row.department?.trim())) errors.push('Invalid department')
-    if (role === 'student' && !VALID_PROGS.includes(row.programme?.trim())) errors.push('Invalid programme')
-    if (row.date_of_birth?.trim()) {
-        const r = parseDOB(row.date_of_birth.trim())
-        if (!r.valid) errors.push(r.error!)
-    }
-    return errors
+/** Returns a map of field → error message for a single row */
+function validateRowFields(row: Record<string, string>, role: 'student' | 'teacher') {
+    const fieldErrors: Record<string, string> = {}
+    if (!row.name?.trim()) fieldErrors.name = 'Name required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email ?? '')) fieldErrors.email = 'Invalid email'
+    if (!VALID_DEPTS.includes(row.department?.trim())) fieldErrors.department = 'Invalid department'
+    if (role === 'student' && !VALID_PROGS.includes(row.programme?.trim())) fieldErrors.programme = 'Invalid programme'
+    return fieldErrors
 }
 
 interface CSVImportModalProps {
@@ -42,22 +29,48 @@ interface CSVImportModalProps {
 
 type ValidatedRow = {
     row: Record<string, string>
-    errors: string[]
+    fieldErrors: Record<string, string>
+    rowErrors: string[] // e.g. duplicate email
+}
+
+const FIELDS_STUDENT = ['name', 'email', 'phone_number', 'department', 'programme'] as const
+const FIELDS_TEACHER = ['name', 'email', 'phone_number', 'department'] as const
+const FIELD_LABELS: Record<string, string> = {
+    name: 'Name', email: 'Email', phone_number: 'Phone',
+    department: 'Dept', programme: 'Programme',
 }
 
 export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
     const [validated, setValidated] = useState<ValidatedRow[]>([])
     const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null)
-    const [pending, startTransition] = useTransition()
+    const [, startTransition] = useTransition()
+
+    const fields = role === 'student' ? FIELDS_STUDENT : FIELDS_TEACHER
+
+    function revalidateAll(rows: ValidatedRow[]): ValidatedRow[] {
+        // Build email-count map for duplicate check
+        const emailCount = new Map<string, number>()
+        rows.forEach(r => {
+            const e = r.row.email?.trim().toLowerCase() ?? ''
+            emailCount.set(e, (emailCount.get(e) ?? 0) + 1)
+        })
+        return rows.map(r => {
+            const fieldErrors = validateRowFields(r.row, role)
+            const rowErrors: string[] = []
+            const email = r.row.email?.trim().toLowerCase() ?? ''
+            if (emailCount.get(email)! > 1) rowErrors.push('Duplicate email in CSV')
+            return { row: r.row, fieldErrors, rowErrors }
+        })
+    }
 
     function downloadSample() {
         const headers = role === 'student'
-            ? 'name,email,phone_number,department,programme,date_of_birth'
-            : 'name,email,phone_number,department,date_of_birth'
+            ? 'name,email,phone_number,department,programme'
+            : 'name,email,phone_number,department'
         const sample = role === 'student'
-            ? '\nJohn Doe,john@example.com,9876543210,Commerce,BCom,15-08-2002'
-            : '\nJane Smith,jane@example.com,9876543210,Computer Science,20-05-1990'
+            ? '\nJohn Doe,john@example.com,9876543210,Commerce,BCom'
+            : '\nJane Smith,jane@example.com,9876543210,Computer Science'
         const blob = new Blob([headers + sample], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -73,36 +86,37 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
             skipEmptyLines: true,
             complete: (results) => {
                 const rows = results.data as Record<string, string>[]
-                // Check for duplicate emails within CSV
-                const emailCount = new Map<string, number>()
-                rows.forEach(r => {
-                    const e = r.email?.trim().toLowerCase() ?? ''
-                    emailCount.set(e, (emailCount.get(e) ?? 0) + 1)
-                })
-
-                const validatedRows: ValidatedRow[] = rows.map(row => {
-                    const errors = validateRow(row, role)
-                    const email = row.email?.trim().toLowerCase() ?? ''
-                    if (emailCount.get(email)! > 1) errors.push('Duplicate email in CSV')
-                    return { row, errors }
-                })
-
-                setValidated(validatedRows)
+                const initial: ValidatedRow[] = rows.map(row => ({
+                    row, fieldErrors: {}, rowErrors: [],
+                }))
+                setValidated(revalidateAll(initial))
                 setStep(2)
             },
         })
     }
 
+    /** Update a single cell, then re-validate everything */
+    const updateCell = useCallback((rowIndex: number, field: string, value: string) => {
+        setValidated(prev => {
+            const next = prev.map((v, i) => {
+                if (i !== rowIndex) return v
+                return { ...v, row: { ...v.row, [field]: value } }
+            })
+            return revalidateAll(next)
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [role])
+
+    /** Remove a row entirely */
+    function deleteRow(rowIndex: number) {
+        setValidated(prev => revalidateAll(prev.filter((_, i) => i !== rowIndex)))
+    }
+
     function confirmImport() {
         setStep(3)
         const importReady = validated
-            .filter(r => r.errors.length === 0)
-            .map(r => ({
-                ...r.row,
-                date_of_birth: r.row.date_of_birth?.trim()
-                    ? parseDOB(r.row.date_of_birth.trim()).iso
-                    : undefined,
-            }))
+            .filter(r => Object.keys(r.fieldErrors).length === 0 && r.rowErrors.length === 0)
+            .map(r => ({ ...r.row }))
 
         startTransition(async () => {
             const res = await bulkCreateUsersAction(importReady as Parameters<typeof bulkCreateUsersAction>[0], role)
@@ -111,8 +125,8 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
         })
     }
 
-    const hasErrors = validated.some(r => r.errors.length > 0)
-    const validCount = validated.filter(r => r.errors.length === 0).length
+    const validCount = validated.filter(r => Object.keys(r.fieldErrors).length === 0 && r.rowErrors.length === 0).length
+    const errorCount = validated.length - validCount
 
     function handleClose() {
         setStep(1)
@@ -127,6 +141,7 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
             onClose={step === 3 ? () => { } : handleClose}
             title={`Import ${role === 'student' ? 'Students' : 'Teachers'} via CSV`}
             subtitle={step === 1 ? 'Upload a CSV file to bulk import users' : undefined}
+            xlarge={step === 2}
             large
         >
             {/* Step 1 — Instructions */}
@@ -135,11 +150,8 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                     <div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
                             {role === 'student'
-                                ? 'Headers: name, email, phone_number, department, programme, date_of_birth'
-                                : 'Headers: name, email, phone_number, department, date_of_birth'}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--warning)' }}>
-                            Date format: DD-MM-YYYY (e.g. 15-08-2002)
+                                ? 'Headers: name, email, phone_number, department, programme'
+                                : 'Headers: name, email, phone_number, department'}
                         </div>
                     </div>
 
@@ -181,49 +193,106 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                 </div>
             )}
 
-            {/* Step 2 — Preview */}
+            {/* Step 2 — Editable Preview */}
             {step === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                        {validCount} valid · {validated.length - validCount} with errors · {validated.length} total
+                        {validCount} valid · {errorCount} with errors · {validated.length} total
+                        {errorCount > 0 && (
+                            <span style={{ color: 'var(--warning)', marginLeft: 8, fontSize: '0.75rem' }}>
+                                — Edit fields below to fix errors
+                            </span>
+                        )}
                     </div>
 
-                    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    <div style={{ maxHeight: 340, overflowY: 'auto', overflowX: 'auto' }}>
                         <div className="table-wrap">
                             <table className="data-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Phone</th>
-                                        <th>Dept</th>
-                                        {role === 'student' && <th>Programme</th>}
-                                        <th>DOB</th>
+                                        {fields.map(f => <th key={f}>{FIELD_LABELS[f]}</th>)}
                                         <th>Status</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {validated.map((v, i) => (
-                                        <tr key={i}>
-                                            <td>{i + 1}</td>
-                                            <td>{v.row.name}</td>
-                                            <td>{v.row.email}</td>
-                                            <td>{v.row.phone_number ?? '—'}</td>
-                                            <td>{v.row.department}</td>
-                                            {role === 'student' && <td>{v.row.programme}</td>}
-                                            <td>{v.row.date_of_birth}</td>
-                                            <td>
-                                                {v.errors.length === 0 ? (
-                                                    <Badge variant="generated">✓ Valid</Badge>
-                                                ) : (
-                                                    <span style={{ color: 'var(--error)', fontSize: '0.75rem' }}>
-                                                        ✗ {v.errors.join(', ')}
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {validated.map((v, i) => {
+                                        const hasFieldErr = Object.keys(v.fieldErrors).length > 0
+                                        const hasRowErr = v.rowErrors.length > 0
+                                        const hasErr = hasFieldErr || hasRowErr
+                                        return (
+                                            <tr key={i} style={hasErr ? { background: 'var(--error-bg)' } : undefined}>
+                                                <td style={{ fontWeight: 600 }}>{i + 1}</td>
+                                                {fields.map(field => {
+                                                    const err = v.fieldErrors[field]
+                                                    return (
+                                                        <td key={field} style={{ padding: '6px 8px' }}>
+                                                            <input
+                                                                type="text"
+                                                                value={v.row[field] ?? ''}
+                                                                onChange={e => updateCell(i, field, e.target.value)}
+                                                                title={err ?? undefined}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    minWidth: field === 'email' ? 140 : field === 'name' ? 100 : 80,
+                                                                    padding: '6px 10px',
+                                                                    fontSize: '0.8125rem',
+                                                                    fontFamily: 'inherit',
+                                                                    background: 'var(--bg-input)',
+                                                                    color: 'var(--text-primary)',
+                                                                    border: `1.5px solid ${err ? 'var(--error)' : 'var(--border)'}`,
+                                                                    borderRadius: 'var(--r-sm)',
+                                                                    outline: 'none',
+                                                                    transition: 'border-color 0.15s',
+                                                                }}
+                                                                onFocus={e => {
+                                                                    if (!err) e.currentTarget.style.borderColor = 'var(--accent)'
+                                                                }}
+                                                                onBlur={e => {
+                                                                    if (!err) e.currentTarget.style.borderColor = 'var(--border)'
+                                                                }}
+                                                            />
+                                                            {err && (
+                                                                <div style={{ fontSize: '0.625rem', color: 'var(--error)', marginTop: 2 }}>
+                                                                    {err}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    )
+                                                })}
+                                                <td>
+                                                    {!hasErr ? (
+                                                        <Badge variant="generated">✓ Valid</Badge>
+                                                    ) : (
+                                                        <Badge variant="failed">
+                                                            ✗ {Object.keys(v.fieldErrors).length + v.rowErrors.length} error{Object.keys(v.fieldErrors).length + v.rowErrors.length > 1 ? 's' : ''}
+                                                        </Badge>
+                                                    )}
+                                                    {v.rowErrors.map((e, j) => (
+                                                        <div key={j} style={{ fontSize: '0.625rem', color: 'var(--error)', marginTop: 2 }}>
+                                                            {e}
+                                                        </div>
+                                                    ))}
+                                                </td>
+                                                <td style={{ padding: '6px 4px' }}>
+                                                    <button
+                                                        onClick={() => deleteRow(i)}
+                                                        title="Remove row"
+                                                        style={{
+                                                            background: 'none', border: 'none', cursor: 'pointer',
+                                                            color: 'var(--text-tertiary)', padding: 4, borderRadius: 'var(--r-sm)',
+                                                            transition: 'color 0.15s',
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.color = 'var(--error)'}
+                                                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -231,8 +300,8 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                         <Button variant="ghost" onClick={() => { setStep(1); setValidated([]) }}>Back</Button>
-                        <Button onClick={confirmImport} disabled={hasErrors || validCount === 0}>
-                            Confirm Import ({validCount} users)
+                        <Button onClick={confirmImport} disabled={validCount === 0}>
+                            Confirm Import ({validCount} user{validCount !== 1 ? 's' : ''})
                         </Button>
                     </div>
                 </div>

@@ -30,7 +30,7 @@ export interface User {
     student_type?: StudentType
     department_id?: string
     programme?: string
-    date_of_birth?: string  // YYYY-MM-DD
+
     is_active: boolean
     must_change_password: boolean
     created_at: string

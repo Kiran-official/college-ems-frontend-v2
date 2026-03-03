@@ -11,7 +11,11 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
             <button onClick={onMenuClick} aria-label="Open menu">
                 <Menu size={22} />
             </button>
-            <span className="mobile-header__wordmark">SICM EMS</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/sicm-logo.png" alt="SICM Logo" width={28} height={28} style={{ objectFit: 'contain' }} />
+                <span className="mobile-header__wordmark">SICM EMS</span>
+            </div>
             <div style={{ width: 22 }} /> {/* spacer for centering */}
         </header>
     )

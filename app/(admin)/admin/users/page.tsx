@@ -35,7 +35,6 @@ function UsersContent() {
     const [formData, setFormData] = useState({
         name: '', email: '', phone_number: '', role: tab === 'admins' ? 'admin' : tab === 'teachers' ? 'teacher' : 'student',
         department_id: '', programme: '', student_type: 'internal' as 'internal' | 'external',
-        date_of_birth: '',
     })
     const [createPending, startCreate] = useTransition()
     const [createError, setCreateError] = useState('')
@@ -84,11 +83,10 @@ function UsersContent() {
                 department_id: formData.department_id || undefined,
                 programme: formData.programme || undefined,
                 student_type: role === 'student' ? formData.student_type : undefined,
-                date_of_birth: formData.date_of_birth || undefined,
             })
             if (result.success) {
                 setShowCreate(false)
-                setFormData({ name: '', email: '', phone_number: '', role, department_id: '', programme: '', student_type: 'internal', date_of_birth: '' })
+                setFormData({ name: '', email: '', phone_number: '', role, department_id: '', programme: '', student_type: 'internal' })
                 loadData()
             } else {
                 setCreateError(result.error ?? 'Failed to create user')
@@ -235,9 +233,7 @@ function UsersContent() {
                             </FormGroup>
                         </>
                     )}
-                    <FormGroup label="Date of Birth" helper="DD-MM-YYYY format (optional)">
-                        <input className="form-input" value={formData.date_of_birth} onChange={e => setFormData({ ...formData, date_of_birth: e.target.value })} placeholder="DD-MM-YYYY" />
-                    </FormGroup>
+
                 </div>
                 <div className="modal-footer">
                     <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>

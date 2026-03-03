@@ -98,7 +98,12 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
 
                 {/* Header */}
                 <div className="sidebar__header">
-                    <div className="sidebar__avatar">{initials.slice(0, 1)}</div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/sicm-logo.png"
+                        alt="SICM Logo"
+                        className="sidebar__logo"
+                    />
                     {open && (
                         <div>
                             <div className="sidebar__brand-name">SICM EMS</div>

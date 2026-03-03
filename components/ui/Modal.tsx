@@ -7,11 +7,12 @@ interface ModalProps {
     title: string
     subtitle?: string
     large?: boolean
+    xlarge?: boolean
     children: ReactNode
     footer?: ReactNode
 }
 
-export function Modal({ open, onClose, title, subtitle, large, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, subtitle, large, xlarge, children, footer }: ModalProps) {
     useEffect(() => {
         if (!open) return
         const handleKey = (e: KeyboardEvent) => {
@@ -29,7 +30,7 @@ export function Modal({ open, onClose, title, subtitle, large, children, footer 
 
     return (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <div className={`modal-box glass ${large ? 'modal-box--lg' : ''}`}>
+            <div className={`modal-box glass ${xlarge ? 'modal-box--xl' : large ? 'modal-box--lg' : ''}`}>
                 <div className="modal-title">{title}</div>
                 {subtitle && <div className="modal-sub">{subtitle}</div>}
                 <div className="modal-body">{children}</div>

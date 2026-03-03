@@ -11,7 +11,6 @@ export async function createUserAction(data: {
     department_id?: string
     programme?: string
     student_type?: 'internal' | 'external'
-    date_of_birth?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         // Auth check
@@ -50,7 +49,6 @@ export async function createUserAction(data: {
             department_id: data.department_id || null,
             programme: data.programme || null,
             student_type: data.role === 'student' ? (data.student_type ?? 'internal') : undefined,
-            date_of_birth: data.date_of_birth || null,
             must_change_password: true,
             is_active: true,
         })
@@ -76,7 +74,6 @@ export async function bulkCreateUsersAction(
         department?: string
         programme?: string
         student_type?: 'internal' | 'external'
-        date_of_birth?: string
     }>,
     role: 'teacher' | 'student' = 'student'
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
@@ -132,7 +129,6 @@ export async function bulkCreateUsersAction(
                 department_id: departmentId || null,
                 programme: role === 'student' ? (u.programme || null) : null,
                 student_type: role === 'student' ? 'internal' : undefined,
-                date_of_birth: u.date_of_birth || null,
                 must_change_password: true,
                 is_active: true,
             })

@@ -73,12 +73,12 @@ function LoginContent() {
         <div className="login-page">
             {/* Left brand panel */}
             <div className="login-brand">
-                <div className="login-logo" style={{
-                    background: 'linear-gradient(135deg, var(--accent), var(--info))',
-                    borderRadius: '50%',
-                    display: 'grid', placeItems: 'center',
-                    fontSize: '2.5rem', fontWeight: 700, color: 'white'
-                }}>S</div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src="/sicm-logo.png"
+                    alt="SICM Logo"
+                    className="login-logo"
+                />
                 <div className="login-college">Seshadripuram Institute of<br />Commerce and Management</div>
                 <div className="login-system">Event Management System</div>
                 <div className="login-tagline">MANAGE · ORGANIZE · EXCEL</div>
