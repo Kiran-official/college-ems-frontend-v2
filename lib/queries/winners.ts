@@ -38,7 +38,7 @@ export async function getStudentPendingResults(studentId: string): Promise<numbe
         .from('individual_registrations')
         .select('event:events!inner(status, results_published)')
         .eq('student_id', studentId)
-    return data?.filter(r => {
+    return data?.filter((r: any) => {
         const event = r.event as unknown as { status: string; results_published: boolean }
         return event?.status === 'completed' && !event?.results_published
     }).length ?? 0

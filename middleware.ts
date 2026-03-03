@@ -10,19 +10,30 @@ export async function middleware(request: NextRequest) {
         {
             cookies: {
                 getAll: () => request.cookies.getAll(),
-                setAll: (cookiesToSet) => {
-                    cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+                setAll: (cookiesToSet: { name: string; value: string; options?: any }[]) => {
+                    cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options?: any }) => response.cookies.set(name, value, options));
                 },
             },
+            global: {
+                fetch: (url: RequestInfo | URL, options?: RequestInit) => {
+                    return fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
+                }
+            }
         }
     );
 
     let user = null;
     try {
-        const { data } = await supabase.auth.getUser();
-        user = data.user;
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+            console.error('Middleware Supabase getUser auth error:', error.message);
+        } else {
+            user = data.user;
+        }
     } catch (error) {
-        console.error('Middleware Supabase getUser error:', error);
+        console.error('Middleware fetch failed (network down or edge timeout):', error);
+        // Fallback gracefully instead of throwing a 500
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
     const { pathname } = request.nextUrl;
@@ -30,8 +41,15 @@ export async function middleware(request: NextRequest) {
     const PUBLIC_PATHS = ['/login', '/register'];
     const isPublic = PUBLIC_PATHS.includes(pathname);
 
-    // 1. Public routes — skip auth checks
+    // 1. Public routes
     if (isPublic) {
+        if (user) {
+            // Fetch profile to know role
+            const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (profile?.role) {
+                return NextResponse.redirect(new URL(`/${profile.role}`, request.url));
+            }
+        }
         return response;
     }
 
@@ -49,19 +67,19 @@ export async function middleware(request: NextRequest) {
     }
 
     // Inactive → login with error
-    if (!profile.is_active) {
+    if (!profile?.is_active) {
         const url = new URL('/login', request.url);
         url.searchParams.set('error', 'inactive');
         return NextResponse.redirect(url);
     }
 
     // Must change password → /change-password
-    if (profile.must_change_password && pathname !== '/change-password') {
+    if (profile?.must_change_password && pathname !== '/change-password') {
         return NextResponse.redirect(new URL('/change-password', request.url));
     }
 
     // Role-based route protection
-    const role = profile.role;
+    const role = profile?.role;
     if ((pathname.startsWith('/admin') || pathname === '/dashboard') && role !== 'admin') {
         return NextResponse.redirect(new URL(`/${role}`, request.url));
     }

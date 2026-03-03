@@ -93,7 +93,7 @@ export async function getStudentUpcomingCount(studentId: string): Promise<number
         .from('individual_registrations')
         .select('event:events!inner(status)')
         .eq('student_id', studentId)
-    return data?.filter(r => {
+    return data?.filter((r: any) => {
         const event = r.event as unknown as { status: string }
         return event?.status === 'open'
     }).length ?? 0

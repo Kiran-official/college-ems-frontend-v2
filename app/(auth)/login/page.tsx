@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
@@ -42,7 +42,7 @@ export default function LoginPage() {
             }
 
             const { data: profile } = await supabase
-                .from('users').select('role, is_active, must_change_password').eq('id', user.id).single()
+                .from('users').select('role, is_active, must_change_password').eq('id', user.id).single() as any
 
             if (!profile) {
                 setError('Profile not found')
@@ -154,5 +154,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading...</div>}>
+            <LoginContent />
+        </Suspense>
     )
 }

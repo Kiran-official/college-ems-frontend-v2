@@ -15,13 +15,13 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={font.variable}>
+    <html lang="en" className={font.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{
           __html: `
             try {
-              var t = localStorage.getItem('sicm_theme') || 'dark';
-              document.documentElement.setAttribute('data-theme', t);
+              var theme = localStorage.getItem('sicm_theme') || 'dark';
+              document.documentElement.setAttribute('data-theme', theme);
             } catch(e) {}
           `
         }} />

@@ -2,6 +2,12 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 
+export async function updatePasswordFlag(userId: string) {
+    const admin = createAdminClient()
+    const { error } = await admin.from('users').update({ must_change_password: false }).eq('id', userId)
+    return { error }
+}
+
 export async function registerStudentAction(data: {
     name: string
     email: string

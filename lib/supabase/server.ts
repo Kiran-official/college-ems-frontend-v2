@@ -6,7 +6,7 @@ import type { Database } from '@/lib/types/db'
 // SSR client — uses anon key + cookie session — for Server Components and Server Actions (reads)
 export async function createSSRClient() {
     const cookieStore = await cookies()
-    return createServerClient<Database>(
+    return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -29,7 +29,7 @@ export async function createSSRClient() {
 // Admin client — uses service role key — for Server Actions (mutations) ONLY
 // NEVER use this in a Server Component
 export function createAdminClient() {
-    return createSupabaseClient<Database>(
+    return createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         { auth: { autoRefreshToken: false, persistSession: false } }

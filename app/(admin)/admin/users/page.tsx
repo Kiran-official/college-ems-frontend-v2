@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -17,7 +17,7 @@ import type { User, Department } from '@/lib/types/db'
 
 type Tab = 'students' | 'teachers' | 'admins'
 
-export default function UsersPage() {
+function UsersContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const tab = (searchParams.get('tab') as Tab) || 'students'
@@ -248,5 +248,13 @@ export default function UsersPage() {
                 role={tab === 'teachers' ? 'teacher' : 'student'}
             />
         </div>
+    )
+}
+
+export default function UsersPage() {
+    return (
+        <Suspense fallback={<div className="page" style={{ display: 'grid', placeItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading users...</div>}>
+            <UsersContent />
+        </Suspense>
     )
 }

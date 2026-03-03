@@ -42,7 +42,7 @@ export async function getActiveTeachers(): Promise<User[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
-        .select('id, name, email, role, department_id')
+        .select('id, name, email, role, department_id, is_active, must_change_password, created_at')
         .eq('role', 'teacher')
         .eq('is_active', true)
         .order('name')
@@ -53,7 +53,7 @@ export async function searchTeachers(query: string): Promise<User[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
-        .select('id, name, email')
+        .select('id, name, email, role, is_active, must_change_password, created_at')
         .eq('role', 'teacher')
         .eq('is_active', true)
         .ilike('name', `%${query}%`)
@@ -65,12 +65,12 @@ export async function searchStudents(query: string): Promise<User[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
-        .select('id, name, email, department:departments(name)')
+        .select('id, name, email, role, is_active, must_change_password, created_at, department:departments(name)')
         .eq('role', 'student')
         .eq('is_active', true)
         .ilike('name', `%${query}%`)
         .limit(10)
-    return data ?? []
+    return (data as any) ?? []
 }
 
 export async function getUserStats() {

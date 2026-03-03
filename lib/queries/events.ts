@@ -57,7 +57,7 @@ export async function getTeacherEvents(teacherId: string): Promise<Event[]> {
         .select('event_id')
         .eq('teacher_id', teacherId)
 
-    const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
+    const eventIds = [...new Set((ficRows as Array<{ event_id: string }>)?.map(r => r.event_id) ?? [])]
     if (eventIds.length === 0) return []
 
     const { data } = await supabase
@@ -127,7 +127,7 @@ export async function getTeacherEventStats(teacherId: string) {
         .from('faculty_in_charge')
         .select('event_id')
         .eq('teacher_id', teacherId)
-    const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
+    const eventIds = [...new Set((ficRows as Array<{ event_id: string }>)?.map(r => r.event_id) ?? [])]
     if (eventIds.length === 0) return { myEvents: 0, activeEvents: 0, completedEvents: 0 }
 
     const { count: myEvents } = await supabase

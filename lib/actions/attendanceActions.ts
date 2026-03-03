@@ -24,8 +24,8 @@ export async function updateAttendanceAction(data: {
         const { data: event } = await ssr
             .from('events')
             .select('status')
-            .eq('id', reg.event_id)
-            .single()
+            .eq('id', (reg as any).event_id)
+            .single() as any
         if (!event) return { success: false, error: 'Event not found' }
 
         if (event.status === 'open') {
@@ -36,14 +36,14 @@ export async function updateAttendanceAction(data: {
         }
 
         const admin = createAdminClient()
-        const { error } = await admin
+        const { error } = await (admin
             .from('individual_registrations')
-            .update({ attendance_status: data.status })
-            .eq('id', data.registration_id)
+            .update({ attendance_status: data.status } as any)
+            .eq('id', data.registration_id) as any)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${reg.event_id}`)
-        revalidatePath(`/teacher/events/${reg.event_id}`)
+        revalidatePath(`/admin/events/${(reg as any).event_id}`)
+        revalidatePath(`/teacher/events/${(reg as any).event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -60,7 +60,7 @@ export async function bulkUpdateAttendanceAction(data: {
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
 
-        const { data: event } = await ssr.from('events').select('status').eq('id', data.event_id).single()
+        const { data: event } = await ssr.from('events').select('status').eq('id', data.event_id).single() as any
         if (!event) return { success: false, error: 'Event not found' }
         if (event.status !== 'closed') {
             return { success: false, error: 'Attendance can only be modified when event is closed.' }
@@ -69,14 +69,17 @@ export async function bulkUpdateAttendanceAction(data: {
         const admin = createAdminClient()
         let query = admin
             .from('individual_registrations')
-            .update({ attendance_status: data.status })
+            .update({ attendance_status: data.status } as any)
             .eq('event_id', data.event_id)
 
         if (data.category_id) {
             query = query.eq('category_id', data.category_id)
         }
 
-        const { error } = await query
+        const { error } = await (admin
+            .from('individual_registrations')
+            .update({ attendance_status: data.status })
+            .eq('event_id', data.event_id) as any)
         if (error) return { success: false, error: error.message }
 
         revalidatePath(`/admin/events/${data.event_id}`)

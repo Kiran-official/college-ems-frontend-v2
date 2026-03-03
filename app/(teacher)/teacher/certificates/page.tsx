@@ -16,7 +16,7 @@ export default async function TeacherCertificatesPage() {
         .from('faculty_in_charge')
         .select('event_id')
         .eq('teacher_id', user.id)
-    const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
+    const eventIds = [...new Set((ficRows as any)?.map((r: any) => r.event_id) ?? [])]
 
     let certificates: any[] = []
     if (eventIds.length > 0) {
