@@ -1,11 +1,19 @@
 'use client'
+<<<<<<< HEAD
 import { useState, useEffect } from 'react'
+=======
+import { useState, useEffect, Suspense } from 'react'
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 
+<<<<<<< HEAD
 export default function LoginPage() {
+=======
+function LoginContent() {
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     const router = useRouter()
     const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
@@ -42,7 +50,11 @@ export default function LoginPage() {
             }
 
             const { data: profile } = await supabase
+<<<<<<< HEAD
                 .from('users').select('role, is_active, must_change_password').eq('id', user.id).single()
+=======
+                .from('users').select('role, is_active, must_change_password').eq('id', user.id).single() as any
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 
             if (!profile) {
                 setError('Profile not found')
@@ -156,3 +168,14 @@ export default function LoginPage() {
         </div>
     )
 }
+<<<<<<< HEAD
+=======
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading...</div>}>
+            <LoginContent />
+        </Suspense>
+    )
+}
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229

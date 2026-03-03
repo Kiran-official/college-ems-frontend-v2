@@ -57,7 +57,11 @@ export async function getTeacherEvents(teacherId: string): Promise<Event[]> {
         .select('event_id')
         .eq('teacher_id', teacherId)
 
+<<<<<<< HEAD
     const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
+=======
+    const eventIds = [...new Set((ficRows as Array<{ event_id: string }>)?.map(r => r.event_id) ?? [])]
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     if (eventIds.length === 0) return []
 
     const { data } = await supabase
@@ -72,11 +76,19 @@ export async function getTeacherEvents(teacherId: string): Promise<Event[]> {
 // Student-facing queries
 export async function getUpcomingEvents(): Promise<Event[]> {
     const supabase = await createSSRClient()
+<<<<<<< HEAD
+=======
+    const now = new Date().toISOString()
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     const { data } = await supabase
         .from('events')
         .select(EVENT_SELECT)
         .eq('status', 'open')
         .eq('is_active', true)
+<<<<<<< HEAD
+=======
+        .gt('registration_deadline', now)
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         .order('event_date', { ascending: true })
     return data ?? []
 }
@@ -125,7 +137,11 @@ export async function getTeacherEventStats(teacherId: string) {
         .from('faculty_in_charge')
         .select('event_id')
         .eq('teacher_id', teacherId)
+<<<<<<< HEAD
     const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
+=======
+    const eventIds = [...new Set((ficRows as Array<{ event_id: string }>)?.map(r => r.event_id) ?? [])]
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     if (eventIds.length === 0) return { myEvents: 0, activeEvents: 0, completedEvents: 0 }
 
     const { count: myEvents } = await supabase

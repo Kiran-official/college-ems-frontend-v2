@@ -53,7 +53,11 @@ export async function getCertificateStats() {
         .from('certificates')
         .select('status')
 
+<<<<<<< HEAD
     const rows = data ?? []
+=======
+    const rows = data as Array<{ status: 'pending' | 'processing' | 'generated' | 'failed' }> ?? []
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     return {
         pending: rows.filter(r => r.status === 'pending').length,
         processing: rows.filter(r => r.status === 'processing').length,
@@ -70,7 +74,11 @@ export async function getCertificateStatsByEvent(eventId: string) {
         .select('status')
         .eq('event_id', eventId)
 
+<<<<<<< HEAD
     const rows = data ?? []
+=======
+    const rows = data as Array<{ status: 'pending' | 'processing' | 'generated' | 'failed' }> ?? []
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     return {
         pending: rows.filter(r => r.status === 'pending').length,
         processing: rows.filter(r => r.status === 'processing').length,

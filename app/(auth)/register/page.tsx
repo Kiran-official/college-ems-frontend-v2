@@ -23,7 +23,10 @@ export default function RegisterPage() {
     const router = useRouter()
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
+<<<<<<< HEAD
     const [phoneNumber, setPhoneNumber] = useState('')
+=======
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [dob, setDob] = useState('')
@@ -52,7 +55,10 @@ export default function RegisterPage() {
             const result = await registerStudentAction({
                 name: name.trim(),
                 email: email.trim(),
+<<<<<<< HEAD
                 phone_number: phoneNumber.trim() || undefined,
+=======
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                 password,
                 date_of_birth: dob || undefined,
             })
@@ -122,6 +128,7 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="form-group">
+<<<<<<< HEAD
                         <label className="form-label" htmlFor="phone">Phone Number (optional)</label>
                         <input
                             id="phone"
@@ -134,6 +141,8 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="form-group">
+=======
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                         <label className="form-label form-label--required" htmlFor="reg-password">Password</label>
                         <div className="password-wrap">
                             <input

@@ -33,12 +33,15 @@ export default async function StudentProfilePage() {
                         </div>
                         <div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+<<<<<<< HEAD
                                 Phone Number
                             </div>
                             <div style={{ fontSize: '1rem' }}>{user.phone_number ?? '—'}</div>
                         </div>
                         <div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+=======
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
                                 Department
                             </div>
                             <div style={{ fontSize: '1rem' }}>{user.department?.name ?? '—'}</div>

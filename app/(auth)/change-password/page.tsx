@@ -2,6 +2,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+<<<<<<< HEAD
+=======
+import { updatePasswordFlag } from '@/lib/actions/authActions'
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 import { Eye, EyeOff, AlertTriangle } from 'lucide-react'
 
 function getPasswordStrength(pw: string): 'weak' | 'fair' | 'strong' {
@@ -49,12 +53,23 @@ export default function ChangePasswordPage() {
             // Update must_change_password flag
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+<<<<<<< HEAD
                 await supabase.from('users').update({ must_change_password: false }).eq('id', user.id)
+=======
+                const { error } = await updatePasswordFlag(user.id)
+                if (error) {
+                    console.error('Error updating password flag:', error)
+                }
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             }
 
             // Get role and redirect
             const { data: profile } = await supabase
+<<<<<<< HEAD
                 .from('users').select('role').eq('id', user!.id).single()
+=======
+                .from('users').select('role').eq('id', user!.id).single() as any
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 
             router.push(`/${profile?.role ?? 'student'}`)
         } catch {

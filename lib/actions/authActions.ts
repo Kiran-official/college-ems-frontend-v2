@@ -2,10 +2,22 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 
+<<<<<<< HEAD
 export async function registerStudentAction(data: {
     name: string
     email: string
     phone_number?: string
+=======
+export async function updatePasswordFlag(userId: string) {
+    const admin = createAdminClient()
+    const { error } = await admin.from('users').update({ must_change_password: false }).eq('id', userId)
+    return { error }
+}
+
+export async function registerStudentAction(data: {
+    name: string
+    email: string
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
     password: string
     date_of_birth?: string
 }): Promise<{ success: boolean; error?: string }> {
@@ -35,7 +47,10 @@ export async function registerStudentAction(data: {
             id: authData.user.id,
             name: data.name,
             email: data.email,
+<<<<<<< HEAD
             phone_number: data.phone_number || null,
+=======
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
             role: 'student',
             student_type: 'external',
             must_change_password: false,

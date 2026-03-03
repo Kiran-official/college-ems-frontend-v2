@@ -38,22 +38,38 @@ export async function getTeachers(): Promise<User[]> {
     return getUsersByRole('teacher')
 }
 
+<<<<<<< HEAD
 export async function getActiveTeachers(): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'department_id'>[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
         .select('id, name, email, role, department_id')
+=======
+export async function getActiveTeachers(): Promise<User[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('users')
+        .select('id, name, email, role, department_id, is_active, must_change_password, created_at')
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         .eq('role', 'teacher')
         .eq('is_active', true)
         .order('name')
     return data ?? []
 }
 
+<<<<<<< HEAD
 export async function searchTeachers(query: string): Promise<Pick<User, 'id' | 'name' | 'email'>[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
         .select('id, name, email')
+=======
+export async function searchTeachers(query: string): Promise<User[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('users')
+        .select('id, name, email, role, is_active, must_change_password, created_at')
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         .eq('role', 'teacher')
         .eq('is_active', true)
         .ilike('name', `%${query}%`)
@@ -61,16 +77,28 @@ export async function searchTeachers(query: string): Promise<Pick<User, 'id' | '
     return data ?? []
 }
 
+<<<<<<< HEAD
 export async function searchStudents(query: string): Promise<(Pick<User, 'id' | 'name' | 'email'> & { department: { name: string }[] })[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
         .select('id, name, email, department:departments(name)')
+=======
+export async function searchStudents(query: string): Promise<User[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('users')
+        .select('id, name, email, role, is_active, must_change_password, created_at, department:departments(name)')
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
         .eq('role', 'student')
         .eq('is_active', true)
         .ilike('name', `%${query}%`)
         .limit(10)
+<<<<<<< HEAD
     return data ?? []
+=======
+    return (data as any) ?? []
+>>>>>>> f3a7296793f0bfbe32432215f4c41ffc0412d229
 }
 
 export async function getUserStats() {
