@@ -1,0 +1,46 @@
+import { createSSRClient } from '@/lib/supabase/server'
+import type { CertificateTemplate } from '@/lib/types/db'
+
+export async function getAllTemplates(): Promise<CertificateTemplate[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('certificate_templates')
+        .select(`
+            *,
+            event:events(id, title),
+            category:event_categories(id, category_name),
+            creator:users!certificate_templates_created_by_fkey(id, name, email)
+        `)
+        .order('created_at', { ascending: false })
+    return data ?? []
+}
+
+export async function getTemplatesByCreator(userId: string): Promise<CertificateTemplate[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('certificate_templates')
+        .select(`
+            *,
+            event:events(id, title),
+            category:event_categories(id, category_name),
+            creator:users!certificate_templates_created_by_fkey(id, name, email)
+        `)
+        .eq('created_by', userId)
+        .order('created_at', { ascending: false })
+    return data ?? []
+}
+
+export async function getTemplateById(id: string): Promise<CertificateTemplate | null> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('certificate_templates')
+        .select(`
+            *,
+            event:events(id, title, categories:event_categories(id, category_name)),
+            category:event_categories(id, category_name),
+            creator:users!certificate_templates_created_by_fkey(id, name, email)
+        `)
+        .eq('id', id)
+        .single()
+    return data
+}
