@@ -39,8 +39,8 @@ export async function createUserAction(data: {
         }
         if (!authData.user) return { success: false, error: 'Failed to create user' }
 
-        // Insert user row
-        const { error: insertError } = await admin.from('users').insert({
+        // Insert/Update user row
+        const { error: insertError } = await admin.from('users').upsert({
             id: authData.user.id,
             name: data.name,
             email: data.email,
@@ -120,7 +120,7 @@ export async function bulkCreateUsersAction(
 
             const departmentId = u.department ? deptMap.get(u.department) : undefined
 
-            const { error: insertError } = await admin.from('users').insert({
+            const { error: insertError } = await admin.from('users').upsert({
                 id: authData.user.id,
                 name: u.name,
                 email: u.email,
