@@ -51,6 +51,14 @@ export default async function StudentProfilePage() {
                                 <div style={{ fontSize: '1rem' }}>{user.programme}</div>
                             </div>
                         )}
+                        {user.semester && (
+                            <div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                                    Semester
+                                </div>
+                                <div style={{ fontSize: '1rem' }}>{user.semester}</div>
+                            </div>
+                        )}
                         <div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
                                 Student Type
@@ -62,7 +70,7 @@ export default async function StudentProfilePage() {
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
                                 Member Since
                             </div>
-                            <div style={{ fontSize: '1rem' }}>{format(new Date(user.created_at), 'dd MMM yyyy')}</div>
+                            <div style={{ fontSize: '1rem' }}>{format(new Date(user.created_at), 'dd/MM/yyyy')}</div>
                         </div>
                     </div>
                 </div>

@@ -40,7 +40,7 @@ export default async function TeacherEventDetailPage({ params }: Props) {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
                 <Badge variant={event.status}>{event.status}</Badge>
-                <Badge variant="info">📅 {format(new Date(event.event_date), 'dd MMM yyyy')}</Badge>
+                <Badge variant="info">📅 {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}</Badge>
                 <Badge variant="processing">{registrations.length} Registrations</Badge>
             </div>
 

@@ -894,6 +894,27 @@ img {
   color: var(--text-tertiary);
 }
 
+/* Dark mode (default) calendar support */
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* Light mode overrides */
+[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+[data-theme="light"] ::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+}
+
 .form-error {
   font-size: 0.75rem;
   color: var(--error);

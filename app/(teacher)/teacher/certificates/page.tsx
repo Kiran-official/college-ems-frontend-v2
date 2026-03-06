@@ -63,7 +63,7 @@ export default async function TeacherCertificatesPage() {
                                     <td>{cert.category?.category_name ?? '—'}</td>
                                     <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
                                     <td><Badge variant={cert.status}>{cert.status}</Badge></td>
-                                    <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd MMM yyyy') : '—'}</td>
+                                    <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
                                 </tr>
                             ))}
                         </tbody>

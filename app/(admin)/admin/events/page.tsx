@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getAllEvents } from '@/lib/queries/events'
+import { getAllEvents, getActiveEvents } from '@/lib/queries/events'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Calendar, Plus, Archive, RotateCcw } from 'lucide-react'
@@ -7,8 +7,8 @@ import { format } from 'date-fns'
 import { ArchiveRestoreButtons } from './ArchiveRestoreButtons'
 
 export default async function AdminEventsPage() {
+    const active = await getActiveEvents()
     const events = await getAllEvents()
-    const active = events.filter(e => e.is_active)
     const archived = events.filter(e => !e.is_active)
 
     return (
@@ -47,7 +47,7 @@ export default async function AdminEventsPage() {
                                             {e.title}
                                         </Link>
                                     </td>
-                                    <td>{format(new Date(e.event_date), 'dd MMM yyyy')}</td>
+                                    <td>{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
                                     <td><Badge variant={e.status}>{e.status}</Badge></td>
                                     <td>{e.categories?.length ?? 0}</td>
                                     <td><Badge variant={e.participant_type === 'single' ? 'individual' : 'team'}>{e.participant_type}</Badge></td>
@@ -95,7 +95,7 @@ export default async function AdminEventsPage() {
                                 {archived.map(e => (
                                     <tr key={e.id}>
                                         <td>{e.title}</td>
-                                        <td>{format(new Date(e.event_date), 'dd MMM yyyy')}</td>
+                                        <td>{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
                                         <td><Badge variant={e.status}>{e.status}</Badge></td>
                                         <td><ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} /></td>
                                     </tr>

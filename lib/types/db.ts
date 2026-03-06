@@ -30,6 +30,7 @@ export interface User {
     student_type?: StudentType
     department_id?: string
     programme?: string
+    semester?: number
 
     is_active: boolean
     must_change_password: boolean

@@ -42,7 +42,7 @@ export default async function AdminEventDetailPage({ params }: Props) {
             {/* Meta strip */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
                 <Badge variant={event.status}>{event.status}</Badge>
-                <Badge variant="info">📅 {format(new Date(event.event_date), 'dd MMM yyyy')}</Badge>
+                <Badge variant="info">📅 {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}</Badge>
                 <Badge variant={event.visibility === 'public_all' ? 'info' : event.visibility === 'internal_only' ? 'internal' : 'external'}>
                     {event.visibility === 'public_all' ? 'Open to All' : event.visibility === 'internal_only' ? 'Internal Only' : 'External Only'}
                 </Badge>

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { clearMustChangePasswordAction } from '@/lib/actions/authActions'
 import { Eye, EyeOff, AlertTriangle } from 'lucide-react'
 
 function getPasswordStrength(pw: string): 'weak' | 'fair' | 'strong' {
@@ -46,17 +47,17 @@ export default function ChangePasswordPage() {
                 return
             }
 
-            // Update must_change_password flag
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                await supabase.from('users').update({ must_change_password: false }).eq('id', user.id)
+            // Clear must_change_password flag via server action (bypasses RLS)
+            const flagResult = await clearMustChangePasswordAction()
+            if (!flagResult.success) {
+                setError(flagResult.error ?? 'Failed to update password flag')
+                setLoading(false)
+                return
             }
 
-            // Get role and redirect
-            const { data: profile } = await supabase
-                .from('users').select('role').eq('id', user!.id).single()
-
-            router.push(`/${profile?.role ?? 'student'}`)
+            // Sign out and redirect to login page
+            await supabase.auth.signOut()
+            router.push('/login')
         } catch {
             setError('An unexpected error occurred')
             setLoading(false)

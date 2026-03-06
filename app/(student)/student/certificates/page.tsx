@@ -41,7 +41,7 @@ export default async function StudentCertificatesPage() {
                             </div>
                             {cert.generated_at && (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                    Generated on {format(new Date(cert.generated_at), 'dd MMM yyyy')}
+                                    Generated on {format(new Date(cert.generated_at), 'dd/MM/yyyy')}
                                 </div>
                             )}
                             {cert.file_path && (

@@ -35,7 +35,7 @@ export default async function AdminTemplatesPage() {
                                 {t.event?.title ?? '—'} {t.category ? `→ ${t.category.category_name}` : ''}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 6 }}>
-                                Created {format(new Date(t.created_at), 'dd MMM yyyy')}
+                                Created {format(new Date(t.created_at), 'dd/MM/yyyy')}
                             </div>
                         </Link>
                     ))}

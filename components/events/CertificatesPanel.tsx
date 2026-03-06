@@ -56,7 +56,7 @@ export function CertificatesPanel({ certificates, stats }: CertificatesPanelProp
                                     <td>{(cert.category as { category_name?: string } | undefined)?.category_name ?? '—'}</td>
                                     <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
                                     <td><Badge variant={cert.status}>{cert.status}</Badge></td>
-                                    <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd MMM yyyy') : '—'}</td>
+                                    <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
                                     <td>
                                         {cert.status === 'failed' && (
                                             <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending}>

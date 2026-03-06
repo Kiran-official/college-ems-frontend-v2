@@ -24,11 +24,13 @@ export async function createUserAction(data: {
         const admin = createAdminClient()
 
         // Create auth user with temp password
-        const tempPassword = `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        // Use phone number as password if provided, otherwise generate a temporary password
+        const tempPassword = data.phone_number?.trim() || `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
         const { data: authData, error: authError } = await admin.auth.admin.createUser({
             email: data.email,
             password: tempPassword,
             email_confirm: true,
+            user_metadata: { display_name: data.name },
         })
 
         if (authError) {
@@ -39,8 +41,8 @@ export async function createUserAction(data: {
         }
         if (!authData.user) return { success: false, error: 'Failed to create user' }
 
-        // Insert user row
-        const { error: insertError } = await admin.from('users').insert({
+        // Upsert user row (a DB trigger may have already inserted a bare-bones row)
+        const { error: insertError } = await admin.from('users').upsert({
             id: authData.user.id,
             name: data.name,
             email: data.email,
@@ -48,10 +50,10 @@ export async function createUserAction(data: {
             role: data.role,
             department_id: data.department_id || null,
             programme: data.programme || null,
-            student_type: data.role === 'student' ? (data.student_type ?? 'internal') : undefined,
+            student_type: data.role === 'student' ? (data.student_type ?? 'internal') : null,
             must_change_password: true,
             is_active: true,
-        })
+        }, { onConflict: 'id' })
 
         if (insertError) {
             await admin.auth.admin.deleteUser(authData.user.id)
@@ -89,7 +91,20 @@ export async function bulkCreateUsersAction(
 
     // Resolve department names to IDs
     const { data: departments } = await admin.from('departments').select('id, name')
-    const deptMap = new Map((departments ?? []).map(d => [d.name, d.id]))
+    const deptMap = new Map((departments ?? []).map(d => [d.name.trim().toLowerCase(), d.id]))
+
+    // Pre-fetch all auth users so we can find orphaned ones by email
+    const authEmailToId = new Map<string, string>()
+    let page = 1
+    while (true) {
+        const { data: listData, error: listError } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
+        if (listError || !listData?.users?.length) break
+        for (const au of listData.users) {
+            if (au.email) authEmailToId.set(au.email.toLowerCase(), au.id)
+        }
+        if (listData.users.length < 1000) break
+        page++
+    }
 
     let created = 0
     let skipped = 0
@@ -97,18 +112,58 @@ export async function bulkCreateUsersAction(
 
     for (const u of users) {
         try {
-            const tempPassword = `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+            const departmentId = u.department ? deptMap.get(u.department.trim().toLowerCase()) : undefined
+            const emailLower = u.email.trim().toLowerCase()
+
+            // Use phone number as password if provided, otherwise generate a random temporary password
+            const tempPassword = u.phone_number?.trim() || `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+            // The user data to write into the public.users table
+            const userData = {
+                name: u.name,
+                email: u.email.trim(),
+                phone_number: u.phone_number || null,
+                role: role,
+                department_id: departmentId || null,
+                programme: role === 'student' ? (u.programme || null) : null,
+                student_type: role === 'student' ? 'internal' : null,
+                must_change_password: true,
+                is_active: true,
+            }
+
+            // Check if auth user already exists (from the pre-fetched map)
+            const existingAuthId = authEmailToId.get(emailLower)
+
+            if (existingAuthId) {
+                // Auth user already exists — update their password and upsert the users row
+                await admin.auth.admin.updateUserById(existingAuthId, {
+                    password: tempPassword,
+                    user_metadata: { display_name: u.name },
+                })
+
+                const { error: upsertError } = await admin.from('users').upsert(
+                    { id: existingAuthId, ...userData },
+                    { onConflict: 'id' }
+                )
+
+                if (upsertError) {
+                    errors.push(`${u.email}: ${upsertError.message}`)
+                    continue
+                }
+
+                created++
+                continue
+            }
+
+            // No auth user exists — create a fresh one
             const { data: authData, error: authError } = await admin.auth.admin.createUser({
-                email: u.email,
+                email: u.email.trim(),
                 password: tempPassword,
                 email_confirm: true,
+                user_metadata: { display_name: u.name },
             })
 
             if (authError) {
-                if (authError.message.includes('already') || authError.message.includes('exists')) {
-                    skipped++
-                    continue
-                }
                 errors.push(`${u.email}: ${authError.message}`)
                 continue
             }
@@ -118,20 +173,11 @@ export async function bulkCreateUsersAction(
                 continue
             }
 
-            const departmentId = u.department ? deptMap.get(u.department) : undefined
-
-            const { error: insertError } = await admin.from('users').insert({
-                id: authData.user.id,
-                name: u.name,
-                email: u.email,
-                phone_number: u.phone_number || null,
-                role: role,
-                department_id: departmentId || null,
-                programme: role === 'student' ? (u.programme || null) : null,
-                student_type: role === 'student' ? 'internal' : undefined,
-                must_change_password: true,
-                is_active: true,
-            })
+            // Upsert the users row (a DB trigger may have already inserted a bare-bones row)
+            const { error: insertError } = await admin.from('users').upsert(
+                { id: authData.user.id, ...userData },
+                { onConflict: 'id' }
+            )
 
             if (insertError) {
                 await admin.auth.admin.deleteUser(authData.user.id)

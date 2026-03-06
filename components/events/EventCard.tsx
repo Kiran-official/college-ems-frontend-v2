@@ -39,8 +39,8 @@ const VISIBILITY_LABEL: Record<string, string> = {
 }
 
 export function EventCard({ event, basePath }: EventCardProps) {
-    const eventDate = format(new Date(event.event_date), 'dd MMM yyyy')
-    const deadline = format(new Date(event.registration_deadline), 'dd MMM yyyy, hh:mm a')
+    const eventDate = format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')
+    const deadline = format(new Date(event.registration_deadline), 'dd/MM/yyyy, hh:mm a')
     const hasCategories = (event.categories?.length ?? 0) > 0
 
     return (

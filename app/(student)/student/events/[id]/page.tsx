@@ -52,10 +52,10 @@ export default async function StudentEventDetailPage({ params }: Props) {
             <div className="glass" style={{ padding: 24, marginBottom: 24 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
                     <Badge variant={event.status}>{event.status}</Badge>
-                    <Badge variant="info">📅 {format(new Date(event.event_date), 'dd MMM yyyy')}</Badge>
+                    <Badge variant="info">📅 {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}</Badge>
                     {event.status === 'open' && (
                         <Badge variant={isDeadlinePassed ? 'failed' : 'pending'}>
-                            Deadline: {format(new Date(event.registration_deadline), 'dd MMM yyyy, hh:mm a')}
+                            Deadline: {format(new Date(event.registration_deadline), 'dd/MM/yyyy, hh:mm a')}
                         </Badge>
                     )}
                     {event.department && <Badge variant="info">{event.department.name}</Badge>}

@@ -1,6 +1,26 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+
+export async function clearMustChangePasswordAction(): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Get the current user from the session
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        // Use admin client to bypass RLS
+        const admin = createAdminClient()
+        const { error } = await admin.from('users')
+            .update({ must_change_password: false })
+            .eq('id', user.id)
+
+        if (error) return { success: false, error: error.message }
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
 
 export async function registerStudentAction(data: {
     name: string

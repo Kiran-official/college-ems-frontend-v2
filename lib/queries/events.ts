@@ -1,4 +1,4 @@
-import { createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient, createAdminClient } from '@/lib/supabase/server'
 import { autoClosePastEventsAction } from '@/lib/actions/eventActions';
 import type { Event } from '@/lib/types/db'
 
@@ -6,8 +6,8 @@ const EVENT_SELECT = `
     *,
     department:departments(*),
     creator:users!events_created_by_fkey(id, name, email, role),
-    faculty_in_charge(*, teacher:users!faculty_in_charge_teacher_id_fkey(id, name, email)),
-    categories:event_categories(*)
+    faculty_in_charge:faculty_in_charge!faculty_in_charge_event_id_fkey(*, teacher:users!fic_teacher_fkey(id, name, email)),
+    categories:event_categories!event_categories_event_id_fkey(*)
 `
 
 export async function getAllEvents(): Promise<Event[]> {
@@ -30,7 +30,7 @@ export async function getActiveEvents(): Promise<Event[]> {
 }
 
 export async function getEventById(id: string): Promise<Event | null> {
-    const supabase = await createSSRClient()
+    const supabase = createAdminClient()
     const { data } = await supabase
         .from('events')
         .select(EVENT_SELECT)

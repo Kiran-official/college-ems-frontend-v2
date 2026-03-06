@@ -10,12 +10,18 @@ import { SearchInput } from '@/components/forms/SearchInput'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { CSVImportModal } from '@/components/admin/CSVImportModal'
 import { createUserAction, toggleUserActiveAction } from '@/lib/actions/userActions'
+import { incrementSemesterAction, decrementSemesterAction } from '@/lib/actions/semesterActions'
 import { createClient } from '@/lib/supabase/client'
-import { Users, Plus, Upload, Power } from 'lucide-react'
+import { Users, Plus, Upload, Power, Filter, ChevronUp, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import type { User, Department } from '@/lib/types/db'
 
 type Tab = 'students' | 'teachers' | 'admins'
+
+const DEPT_PROGRAMMES: Record<string, string[]> = {
+    'Commerce': ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA'],
+    'Computer Science': ['BCA', 'BCA(AI&ML)'],
+}
 
 function UsersContent() {
     const searchParams = useSearchParams()
@@ -26,6 +32,12 @@ function UsersContent() {
     const [departments, setDepartments] = useState<Department[]>([])
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
+
+    // Filters
+    const [showFilters, setShowFilters] = useState(false)
+    const [filterDept, setFilterDept] = useState('')
+    const [filterProgramme, setFilterProgramme] = useState('')
+    const [filterSemester, setFilterSemester] = useState('')
 
     // Modals
     const [showCreate, setShowCreate] = useState(false)
@@ -38,6 +50,9 @@ function UsersContent() {
     })
     const [createPending, startCreate] = useTransition()
     const [createError, setCreateError] = useState('')
+
+    // Semester actions
+    const [semesterPending, startSemester] = useTransition()
 
     useEffect(() => {
         loadData()
@@ -66,10 +81,25 @@ function UsersContent() {
         router.push(`/admin/users?tab=${t}`)
     }
 
-    const filtered = users.filter(u =>
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
-    )
+    // Only show departments that exist in DEPT_PROGRAMMES
+    const allowedDepts = departments.filter(d => Object.keys(DEPT_PROGRAMMES).includes(d.name))
+
+    // Get programmes for selected department
+    const selectedDeptName = departments.find(d => d.id === formData.department_id)?.name ?? ''
+    const availableProgrammes = DEPT_PROGRAMMES[selectedDeptName] ?? []
+
+    // Filter programmes for filter dropdown based on filter dept
+    const filterDeptName = departments.find(d => d.id === filterDept)?.name ?? ''
+    const filterProgrammes = filterDeptName ? (DEPT_PROGRAMMES[filterDeptName] ?? []) : Object.values(DEPT_PROGRAMMES).flat()
+
+    const filtered = users.filter(u => {
+        const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+            u.email.toLowerCase().includes(search.toLowerCase())
+        const matchesDept = !filterDept || u.department_id === filterDept
+        const matchesProg = !filterProgramme || u.programme === filterProgramme
+        const matchesSem = !filterSemester || String(u.semester ?? 1) === filterSemester
+        return matchesSearch && matchesDept && matchesProg && matchesSem
+    })
 
     async function handleCreate() {
         setCreateError('')
@@ -102,6 +132,16 @@ function UsersContent() {
         })
     }
 
+    function handleSemesterChange(direction: 'up' | 'down') {
+        startSemester(async () => {
+            const result = direction === 'up'
+                ? await incrementSemesterAction()
+                : await decrementSemesterAction()
+            if (result.success) loadData()
+            else alert(result.error ?? 'Failed to update semester')
+        })
+    }
+
     const tabRole = tab === 'admins' ? 'Admin' : tab === 'teachers' ? 'Teacher' : 'Student'
 
     return (
@@ -125,9 +165,24 @@ function UsersContent() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                <SearchInput value={search} onChange={setSearch} placeholder={`Search ${tabRole.toLowerCase()}s…`} />
-                <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
+                    <SearchInput value={search} onChange={setSearch} placeholder={`Search ${tabRole.toLowerCase()}s…`} />
+                    <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                        <Filter size={14} /> Filters
+                    </Button>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {tab === 'students' && (
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <Button variant="outline" size="sm" onClick={() => handleSemesterChange('up')} loading={semesterPending} title="Increment semester for all students">
+                                <ChevronUp size={14} /> Next Sem
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleSemesterChange('down')} loading={semesterPending} title="Undo semester increment">
+                                <ChevronDown size={14} /> Undo
+                            </Button>
+                        </div>
+                    )}
                     {tab !== 'admins' && (
                         <Button variant="outline" size="sm" onClick={() => setShowCSV(true)}>
                             <Upload size={14} /> Import CSV
@@ -138,6 +193,42 @@ function UsersContent() {
                     </Button>
                 </div>
             </div>
+
+            {/* Filter bar */}
+            {showFilters && (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {tab !== 'admins' && (
+                        <div style={{ minWidth: 160 }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Department</label>
+                            <select className="form-select" value={filterDept} onChange={e => { setFilterDept(e.target.value); setFilterProgramme('') }}>
+                                <option value="">All Departments</option>
+                                {allowedDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    {tab === 'students' && (
+                        <>
+                            <div style={{ minWidth: 160 }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Programme</label>
+                                <select className="form-select" value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)}>
+                                    <option value="">All Programmes</option>
+                                    {filterProgrammes.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ minWidth: 120 }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Semester</label>
+                                <select className="form-select" value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
+                                    <option value="">All Semesters</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
+                                </select>
+                            </div>
+                        </>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester('') }}>
+                        Clear
+                    </Button>
+                </div>
+            )}
 
             {/* Table */}
             {loading ? (
@@ -156,6 +247,7 @@ function UsersContent() {
                                 <th>Phone</th>
                                 {tab !== 'admins' && <th>Department</th>}
                                 {tab === 'students' && <th>Programme</th>}
+                                {tab === 'students' && <th>Semester</th>}
                                 {tab === 'students' && <th>Type</th>}
                                 <th>Status</th>
                                 <th>Created</th>
@@ -170,6 +262,7 @@ function UsersContent() {
                                     <td>{u.phone_number ?? '—'}</td>
                                     {tab !== 'admins' && <td>{u.department?.name ?? '—'}</td>}
                                     {tab === 'students' && <td>{u.programme ?? '—'}</td>}
+                                    {tab === 'students' && <td>{u.semester ?? 1}</td>}
                                     {tab === 'students' && (
                                         <td><Badge variant={u.student_type ?? 'internal'}>{u.student_type ?? 'internal'}</Badge></td>
                                     )}
@@ -178,7 +271,7 @@ function UsersContent() {
                                             {u.is_active ? 'Active' : 'Inactive'}
                                         </Badge>
                                     </td>
-                                    <td>{format(new Date(u.created_at), 'dd MMM yyyy')}</td>
+                                    <td>{format(new Date(u.created_at), 'dd/MM/yyyy')}</td>
                                     <td>
                                         <Button
                                             size="sm"
@@ -209,18 +302,20 @@ function UsersContent() {
                     <FormGroup label="Phone Number">
                         <input className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value })} placeholder="e.g. 9876543210" />
                     </FormGroup>
-                    <FormGroup label="Department">
-                        <select className="form-select" value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })}>
-                            <option value="">Select…</option>
-                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                    </FormGroup>
+                    {tab !== 'admins' && (
+                        <FormGroup label="Department">
+                            <select className="form-select" value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value, programme: '' })}>
+                                <option value="">Select…</option>
+                                {allowedDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </FormGroup>
+                    )}
                     {tab === 'students' && (
                         <>
                             <FormGroup label="Programme">
                                 <select className="form-select" value={formData.programme} onChange={e => setFormData({ ...formData, programme: e.target.value })}>
                                     <option value="">Select…</option>
-                                    {['BCom', 'BCom (A&F)', 'BCom (BDA)', 'BCom (CA)', 'BBA', 'BCA', 'BCA (AI & ML)'].map(p => (
+                                    {availableProgrammes.map(p => (
                                         <option key={p} value={p}>{p}</option>
                                     ))}
                                 </select>

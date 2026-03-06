@@ -9,15 +9,25 @@ import { bulkCreateUsersAction } from '@/lib/actions/userActions'
 import { Download, Upload, CheckCircle2, Trash2 } from 'lucide-react'
 
 const VALID_DEPTS = ['Commerce', 'Computer Science']
-const VALID_PROGS = ['BCom', 'BCom (A&F)', 'BCom (BDA)', 'BCom (CA)', 'BBA', 'BCA', 'BCA (AI & ML)']
+const VALID_PROGS = ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA', 'BCA', 'BCA(AI&ML)']
 
 /** Returns a map of field → error message for a single row */
 function validateRowFields(row: Record<string, string>, role: 'student' | 'teacher') {
     const fieldErrors: Record<string, string> = {}
     if (!row.name?.trim()) fieldErrors.name = 'Name required'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email ?? '')) fieldErrors.email = 'Invalid email'
-    if (!VALID_DEPTS.includes(row.department?.trim())) fieldErrors.department = 'Invalid department'
-    if (role === 'student' && !VALID_PROGS.includes(row.programme?.trim())) fieldErrors.programme = 'Invalid programme'
+
+    const dept = row.department?.trim().toLowerCase()
+    if (!VALID_DEPTS.some(d => d.toLowerCase() === dept)) {
+        fieldErrors.department = 'Invalid department'
+    }
+
+    if (role === 'student') {
+        const prog = row.programme?.trim().toLowerCase()
+        if (!VALID_PROGS.some(p => p.toLowerCase() === prog)) {
+            fieldErrors.programme = 'Invalid programme'
+        }
+    }
     return fieldErrors
 }
 

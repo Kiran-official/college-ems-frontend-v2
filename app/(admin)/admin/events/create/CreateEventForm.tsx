@@ -89,8 +89,8 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                     </FormGroup>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <FormGroup label="Event Date" required>
-                            <input type="date" className="form-input" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+                        <FormGroup label="Event Date & Time" required>
+                            <input type="datetime-local" className="form-input" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                         </FormGroup>
                         <FormGroup label="Registration Deadline" required>
                             <input type="datetime-local" className="form-input" value={regDeadline} onChange={e => setRegDeadline(e.target.value)} />
@@ -100,7 +100,9 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                     <FormGroup label="Department">
                         <select className="form-select" value={departmentId} onChange={e => setDepartmentId(e.target.value)}>
                             <option value="">None</option>
-                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            {departments
+                                .filter(d => ['Commerce', 'Computer Science'].includes(d.name))
+                                .map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                     </FormGroup>
 
@@ -129,7 +131,7 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                 <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Participation & Faculty</h2>
 
-                    <FormGroup label="Faculty in Charge" required>
+                    <FormGroup label="Faculty in Charge">
                         <TeacherSearchInput
                             selectedTeachers={faculty}
                             onChange={setFaculty}
