@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Calendar, Plus, Archive, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { ArchiveRestoreButtons } from './ArchiveRestoreButtons'
+import { DeleteEventButton } from './DeleteEventButton'
 
 export default async function AdminEventsPage() {
     const active = await getActiveEvents()
@@ -62,6 +63,7 @@ export default async function AdminEventsPage() {
                                         <div style={{ display: 'flex', gap: 6 }}>
                                             <Link href={`/admin/events/${e.id}`} className="btn btn--outline btn--sm">Manage</Link>
                                             <ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} />
+                                            <DeleteEventButton eventId={e.id} eventTitle={e.title} />
                                         </div>
                                     </td>
                                 </tr>
@@ -97,7 +99,12 @@ export default async function AdminEventsPage() {
                                         <td>{e.title}</td>
                                         <td>{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
                                         <td><Badge variant={e.status}>{e.status}</Badge></td>
-                                        <td><ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} /></td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} />
+                                                <DeleteEventButton eventId={e.id} eventTitle={e.title} />
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

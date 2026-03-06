@@ -103,28 +103,46 @@ export async function createTeamAction(data: {
 
         const admin = createAdminClient()
 
-        // Create team
+        // 1. Check if student is already in a team for this event/category
+        let existTeamCheck = admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', user.id)
+            .eq('event_id', data.event_id)
+
+        if (data.category_id) {
+            existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
+        } else {
+            existTeamCheck = existTeamCheck.is('category_id', null)
+        }
+
+        const { data: existingReg } = await existTeamCheck.maybeSingle()
+        if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
+
+        // 2. Create the team
         const { data: team, error: teamError } = await admin.from('teams').insert({
             event_id: data.event_id,
             category_id: data.category_id || null,
-            team_name: data.team_name,
+            team_name: data.team_name.trim(),
             created_by: user.id,
         }).select('id').single()
 
         if (teamError || !team) return { success: false, error: teamError?.message ?? 'Failed to create team' }
 
-        // Add creator and members as team members
-        const allMembers = [user.id, ...data.member_ids.filter(id => id !== user.id)]
+        // 3. Auto-enrol the creator
+        // Add to team_members
+        await admin.from('team_members').insert({
+            team_id: team.id,
+            student_id: user.id
+        })
 
-        for (const memberId of allMembers) {
-            await admin.from('team_members').insert({
-                team_id: team.id,
-                student_id: memberId,
-            })
-
-            // Create individual registration for each member
+        // Handle creator's individual registration (Update if exists, Insert if not)
+        if (existingReg) {
+            await admin.from('individual_registrations')
+                .update({ team_id: team.id })
+                .eq('id', existingReg.id)
+        } else {
             await admin.from('individual_registrations').insert({
-                student_id: memberId,
+                student_id: user.id,
                 event_id: data.event_id,
                 category_id: data.category_id || null,
                 team_id: team.id,
@@ -132,9 +150,42 @@ export async function createTeamAction(data: {
             })
         }
 
+        // 4. Add other members if provided (optional at creation)
+        if (data.member_ids && data.member_ids.length > 0) {
+            const otherMembers = data.member_ids.filter(id => id !== user.id)
+            for (const memberId of otherMembers) {
+                // Add to team_members
+                await admin.from('team_members').insert({
+                    team_id: team.id,
+                    student_id: memberId,
+                })
+
+                // Upsert individual registration for the member
+                const { data: mReg } = await admin.from('individual_registrations')
+                    .select('id')
+                    .eq('student_id', memberId)
+                    .eq('event_id', data.event_id)
+                    .eq('category_id', data.category_id || null)
+                    .maybeSingle()
+
+                if (mReg) {
+                    await admin.from('individual_registrations').update({ team_id: team.id }).eq('id', mReg.id)
+                } else {
+                    await admin.from('individual_registrations').insert({
+                        student_id: memberId,
+                        event_id: data.event_id,
+                        category_id: data.category_id || null,
+                        team_id: team.id,
+                        attendance_status: 'not_marked',
+                    })
+                }
+            }
+        }
+
         revalidatePath(`/student/events/${data.event_id}`)
         return { success: true, team_id: team.id }
-    } catch {
+    } catch (e) {
+        console.error('Error in createTeamAction:', e)
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
@@ -150,6 +201,21 @@ export async function joinTeamAction(data: {
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
+
+        // Check if student is already in a team for this event/category
+        let existTeamCheck = admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', user.id)
+            .eq('event_id', data.event_id)
+
+        if (data.category_id) {
+            existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
+        } else {
+            existTeamCheck = existTeamCheck.is('category_id', null)
+        }
+
+        const { data: existingReg } = await existTeamCheck.maybeSingle()
+        if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
         // Add to team members
         const { error: tmError } = await admin.from('team_members').insert({

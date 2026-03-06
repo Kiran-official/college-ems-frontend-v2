@@ -219,17 +219,22 @@ function RegistrationAction({
                                     <Users2 size={16} /> Create New Team
                                 </Button>
                             ) : (
-                                <div style={{ display: 'flex', gap: 8 }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                     <input
                                         className="form-input"
                                         value={teamName}
                                         onChange={e => setTeamName(e.target.value)}
                                         placeholder="Enter team name…"
-                                        style={{ flex: 1 }}
+                                        style={{ flex: 1, minWidth: '200px' }}
                                     />
-                                    <Button onClick={handleCreateTeam} loading={pending} disabled={!teamName.trim()}>
-                                        Create
-                                    </Button>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <Button onClick={handleCreateTeam} loading={pending} disabled={!teamName.trim()}>
+                                            Create
+                                        </Button>
+                                        <Button variant="outline" onClick={() => { setShowCreateTeam(false); setTeamName(''); }}>
+                                            Cancel
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

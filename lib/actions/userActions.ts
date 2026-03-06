@@ -41,11 +41,7 @@ export async function createUserAction(data: {
         }
         if (!authData.user) return { success: false, error: 'Failed to create user' }
 
-<<<<<<< HEAD
         // Upsert user row (a DB trigger may have already inserted a bare-bones row)
-=======
-        // Insert/Update user row
->>>>>>> 39f8e09bbe98e2a686f28fbe2510cacdd5db6730
         const { error: insertError } = await admin.from('users').upsert({
             id: authData.user.id,
             name: data.name,
@@ -177,28 +173,11 @@ export async function bulkCreateUsersAction(
                 continue
             }
 
-<<<<<<< HEAD
             // Upsert the users row (a DB trigger may have already inserted a bare-bones row)
             const { error: insertError } = await admin.from('users').upsert(
                 { id: authData.user.id, ...userData },
                 { onConflict: 'id' }
             )
-=======
-            const departmentId = u.department ? deptMap.get(u.department) : undefined
-
-            const { error: insertError } = await admin.from('users').upsert({
-                id: authData.user.id,
-                name: u.name,
-                email: u.email,
-                phone_number: u.phone_number || null,
-                role: role,
-                department_id: departmentId || null,
-                programme: role === 'student' ? (u.programme || null) : null,
-                student_type: role === 'student' ? 'internal' : undefined,
-                must_change_password: true,
-                is_active: true,
-            })
->>>>>>> 39f8e09bbe98e2a686f28fbe2510cacdd5db6730
 
             if (insertError) {
                 await admin.auth.admin.deleteUser(authData.user.id)

@@ -21,10 +21,10 @@ export default async function AdminDashboard() {
 
             {/* Stat Cards */}
             <div className="card-grid" style={{ marginBottom: 32 }}>
-                <StatCard label="Total Users" value={userStats.totalUsers} icon={Users} />
-                <StatCard label="Total Events" value={eventStats.totalEvents} icon={Calendar} />
+                <StatCard label="Total Users" value={userStats.totalUsers} imageIcon="/assets/icon_users.png" />
+                <StatCard label="Total Events" value={eventStats.totalEvents} imageIcon="/assets/icon_events.png" />
                 <StatCard label="Active Events" value={eventStats.activeEvents} icon={Activity} />
-                <StatCard label="Certificate Health" value={certStats.generated} icon={Award} />
+                <StatCard label="Certificates" value={certStats.generated} imageIcon="/assets/icon_award.png" />
             </div>
 
             {/* Alert row */}

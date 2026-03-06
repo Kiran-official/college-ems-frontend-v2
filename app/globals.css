@@ -407,6 +407,8 @@ img {
 @media (max-width: 640px) {
   .sidebar {
     transform: translateX(-100%);
+    width: var(--sidebar-w) !important;
+    /* Force full width on mobile */
   }
 
   .sidebar--mobile-open {
@@ -448,6 +450,21 @@ img {
 @media (max-width: 640px) {
   .mobile-header {
     display: flex;
+  }
+
+  .mobile-header button {
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    margin-left: -8px;
+    border-radius: var(--r-md);
+    transition: background 0.2s;
+  }
+
+  .mobile-header button:hover {
+    background: var(--accent-dim);
   }
 }
 
@@ -538,14 +555,30 @@ img {
 }
 
 /* ── Login Page ─────────────────────────────────────────────────── */
+/* ── Login Page ─────────────────────────────────────────────────── */
 .login-page {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 42% 58%;
+  background: var(--bg-void);
+  background-image: url('/assets/login_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  position: relative;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 30%, rgba(168, 85, 247, 0.15), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(212, 160, 23, 0.08), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .login-brand {
-  background: var(--bg-void);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -554,54 +587,50 @@ img {
   text-align: center;
   gap: 20px;
   position: relative;
-  overflow: hidden;
-}
-
-.login-brand::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(168, 85, 247, 0.18) 0%, rgba(212, 160, 23, 0.08) 60%, transparent 80%);
-  pointer-events: none;
+  z-index: 1;
+  background: rgba(5, 4, 16, 0.3);
+  backdrop-filter: blur(4px);
+  border-right: 1px solid var(--border-glass);
 }
 
 .login-logo {
   width: 128px;
   height: 128px;
   object-fit: contain;
-  position: relative;
-  z-index: 1;
+  filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.4));
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
 }
 
 .login-college {
   font-size: 1.125rem;
   font-weight: 700;
-  position: relative;
-  z-index: 1;
+  color: white;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .login-system {
   font-size: 1rem;
   font-weight: 500;
   color: var(--accent);
-  position: relative;
-  z-index: 1;
+  text-shadow: 0 0 15px var(--accent-glow);
 }
 
 .login-tagline {
   font-size: 0.75rem;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   letter-spacing: 1.5px;
-  position: relative;
-  z-index: 1;
+  opacity: 0.8;
 }
 
 .login-form-panel {
-  background: var(--bg-base);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 48px;
+  position: relative;
+  z-index: 1;
+  background: rgba(9, 7, 26, 0.2);
 }
 
 .login-card {
@@ -622,27 +651,37 @@ img {
   margin-bottom: 36px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .login-page {
     grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
   .login-brand {
-    min-height: 200px;
-    padding: 32px 24px;
-  }
-
-  .login-logo {
-    width: 72px;
-    height: 72px;
+    padding: 60px 24px 40px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-glass);
+    background: linear-gradient(to bottom, rgba(5, 4, 16, 0.4), transparent);
   }
 
   .login-form-panel {
-    padding: 24px 16px;
+    padding: 40px 16px 80px;
+    background: none;
   }
 
   .login-card {
-    padding: 28px 20px;
+    padding: 32px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-logo {
+    width: 96px;
+    height: 96px;
+  }
+
+  .login-title {
+    font-size: 1.75rem;
   }
 }
 
@@ -653,26 +692,31 @@ img {
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
-  background: var(--bg-base);
+  background: var(--bg-void);
+  background-image: url('/assets/login_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .register-page::before {
   content: '';
   position: absolute;
-  width: 600px;
-  height: 600px;
-  top: -200px;
-  right: -200px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.12), transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(212, 160, 23, 0.06), transparent 50%);
   pointer-events: none;
+  z-index: 0;
 }
 
 .register-card {
   width: 100%;
   max-width: 480px;
   padding: 44px;
+  position: relative;
+  z-index: 1;
 }
 
 .register-title {
@@ -694,7 +738,11 @@ img {
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
-  background: var(--bg-base);
+  background: var(--bg-void);
+  background-image: url('/assets/login_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 .change-password-card {

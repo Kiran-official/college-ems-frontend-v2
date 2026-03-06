@@ -219,6 +219,31 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
     }
 }
 
+export async function hardDeleteEventAction(eventId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile || profile.role !== 'admin') {
+            return { success: false, error: 'Not authorised' }
+        }
+
+        const admin = createAdminClient()
+        const { error } = await admin.from('events').delete().eq('id', eventId)
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
+        revalidatePath('/student/events')
+        return { success: true }
+    } catch (e) {
+        console.error('Error in hardDeleteEventAction:', e)
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
 export async function addParticipantAfterCloseAction(data: {
     event_id: string
     student_id: string

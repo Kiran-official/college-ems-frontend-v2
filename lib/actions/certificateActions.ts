@@ -124,3 +124,58 @@ export async function updateTemplateAction(
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
+
+export async function uploadTemplateBackgroundAction(
+    formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated. Please log in.' }
+
+        const file = formData.get('file') as File | null
+        if (!file || !(file instanceof Blob)) {
+            return { success: false, error: 'Invalid file provided.' }
+        }
+
+        const admin = createAdminClient()
+
+        // Ensure bucket exists
+        const { data: buckets } = await admin.storage.listBuckets()
+        if (!buckets?.find(b => b.name === 'certificate-templates')) {
+            const { error: createError } = await admin.storage.createBucket('certificate-templates', {
+                public: true,
+                fileSizeLimit: 6242880, // 6MB
+            })
+            if (createError) {
+                console.error('Bucket Creation Error:', createError)
+                return { success: false, error: 'Storage bucket not initialized. Please contact admin.' }
+            }
+        }
+
+        const fileExt = file.name ? file.name.split('.').pop() : 'png'
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`
+        const filePath = `backgrounds/${fileName}`
+
+        const { error: uploadError } = await admin.storage
+            .from('certificate-templates')
+            .upload(filePath, file, {
+                contentType: file.type,
+                upsert: true
+            })
+
+        if (uploadError) {
+            console.error('Supabase Upload Error:', uploadError)
+            return { success: false, error: `Upload failed: ${uploadError.message}` }
+        }
+
+        const { data: urlData } = admin.storage
+            .from('certificate-templates')
+            .getPublicUrl(filePath)
+
+        return { success: true, url: urlData.publicUrl }
+    } catch (err) {
+        console.error('Upload Action Crash:', err)
+        return { success: false, error: err instanceof Error ? err.message : 'An error occurred during upload' }
+    }
+}

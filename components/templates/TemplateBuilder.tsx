@@ -3,9 +3,9 @@
 import { useState, useRef, useCallback, useTransition } from 'react'
 import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
-import { createTemplateAction, updateTemplateAction } from '@/lib/actions/certificateActions'
+import { createTemplateAction, updateTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Move, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Move, GripVertical, Upload, Loader2 } from 'lucide-react'
 import type { TemplateField, TemplateLayout, CertificateTemplate, Event, EventCategory } from '@/lib/types/db'
 
 const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
@@ -42,7 +42,9 @@ interface TemplateBuilderProps {
 export function TemplateBuilder({ events, template, basePath }: TemplateBuilderProps) {
     const router = useRouter()
     const [pending, startTransition] = useTransition()
+    const [uploading, setUploading] = useState(false)
     const canvasRef = useRef<HTMLDivElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [eventId, setEventId] = useState(template?.event_id ?? '')
     const [categoryId, setCategoryId] = useState(template?.category_id ?? '')
@@ -113,6 +115,34 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
         return ft?.label ?? f.field_type
     }
 
+    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File is too large. Max size is 5MB.')
+            return
+        }
+
+        setUploading(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const result = await uploadTemplateBackgroundAction(formData)
+            if (result.success && result.url) {
+                setBgUrl(result.url)
+            } else {
+                alert(result.error || 'Failed to upload image')
+            }
+        } catch (err: any) {
+            console.error('Client Upload Error:', err)
+            alert('Upload failed: ' + (err?.message || 'An unexpected error occurred'))
+        } finally {
+            setUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
     function save() {
         if (!eventId || !templateName.trim()) return
         const layout: TemplateLayout = { fields }
@@ -165,8 +195,31 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                             <option value="winner">Winner</option>
                         </select>
                     </FormGroup>
-                    <FormGroup label="Background Image URL">
-                        <input className="form-input" value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="https://…" />
+
+                    <FormGroup label="Background Image">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input className="form-input" value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="https://…" />
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                />
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    loading={uploading}
+                                    type="button"
+                                >
+                                    {!uploading && <Upload size={14} style={{ marginRight: 6 }} />}
+                                    Upload
+                                </Button>
+                            </div>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Paste a URL or upload a photo from your device.</p>
+                        </div>
                     </FormGroup>
                 </div>
 
