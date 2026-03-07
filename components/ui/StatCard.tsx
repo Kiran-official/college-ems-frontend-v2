@@ -12,9 +12,9 @@ export function StatCard({ label, value, icon: Icon, imageIcon }: StatCardProps)
         <div className="glass stat-card">
             <div className="stat-card__icon">
                 {imageIcon ? (
-                    <img src={imageIcon} alt={label} style={{ width: 44, height: 44, objectFit: 'contain' }} />
+                    <img src={imageIcon} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : Icon ? (
-                    <Icon size={22} />
+                    <Icon size={24} />
                 ) : null}
             </div>
             <div className="stat-card__value">{value}</div>

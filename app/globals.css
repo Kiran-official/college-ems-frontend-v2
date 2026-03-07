@@ -68,6 +68,11 @@ img {
 
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-glass: 0 8px 40px rgba(0, 0, 0, 0.5);
+
+  /* Stat Icon Pods */
+  --stat-icon-bg: rgba(255, 255, 255, 0.12);
+  --stat-icon-border: rgba(255, 255, 255, 0.15);
+  --stat-icon-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Light Mode ─────────────────────────────────────────────────── */
@@ -88,6 +93,11 @@ img {
 
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  /* Stat Icon Pods */
+  --stat-icon-bg: rgba(255, 255, 255, 0.95);
+  --stat-icon-border: rgba(0, 0, 0, 0.05);
+  --stat-icon-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 2px 4px rgba(255, 255, 255, 0.8);
 }
 
 /* ── Accent Base ────────────────────────────────────────────────── */
@@ -530,13 +540,17 @@ img {
 }
 
 .stat-card__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-md);
-  background: var(--accent-dim);
-  color: var(--accent);
-  display: grid;
-  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--stat-icon-bg);
+  border: 1px solid var(--stat-icon-border);
+  box-shadow: var(--stat-icon-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
   align-self: flex-end;
 }
 

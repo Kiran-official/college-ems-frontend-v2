@@ -23,7 +23,7 @@ export default async function AdminDashboard() {
             <div className="card-grid" style={{ marginBottom: 32 }}>
                 <StatCard label="Total Users" value={userStats.totalUsers} imageIcon="/assets/icon_users.png" />
                 <StatCard label="Total Events" value={eventStats.totalEvents} imageIcon="/assets/icon_events.png" />
-                <StatCard label="Active Events" value={eventStats.activeEvents} icon={Activity} />
+                <StatCard label="Active Events" value={eventStats.activeEvents} imageIcon="/assets/icon_active_events.png" />
                 <StatCard label="Certificates" value={certStats.generated} imageIcon="/assets/icon_award.png" />
             </div>
 

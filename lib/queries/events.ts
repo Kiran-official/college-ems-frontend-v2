@@ -116,6 +116,7 @@ export async function getEventStats() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['open', 'closed'])
         .eq('is_active', true)
+
     return {
         totalEvents: totalEvents ?? 0,
         activeEvents: activeEvents ?? 0,
