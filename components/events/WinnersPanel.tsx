@@ -13,6 +13,7 @@ interface WinnersPanelProps {
     registrations: IndividualRegistration[]
     teams: Team[]
     categories: EventCategory[]
+    categoryId?: string
 }
 
 function WinnerForm({ eventId, categoryId, isTeam, registrations, teams, onDeclared }: {
@@ -112,7 +113,7 @@ function WinnerForm({ eventId, categoryId, isTeam, registrations, teams, onDecla
     )
 }
 
-function WinnerList({ winners, eventId, onRemoved }: { winners: Winner[]; eventId: string; onRemoved: () => void }) {
+function WinnerList({ winners, eventId, onRemoved, readOnly }: { winners: Winner[]; eventId: string; onRemoved: () => void; readOnly?: boolean }) {
     const [pending, startTransition] = useTransition()
 
     function remove(winnerId: string) {
@@ -146,43 +147,80 @@ function WinnerList({ winners, eventId, onRemoved }: { winners: Winner[]; eventI
                             )}
                         </div>
                     </div>
-                    <button
-                        onClick={() => remove(w.id)}
-                        disabled={pending}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4 }}
-                        aria-label="Remove winner"
-                    >
-                        <Trash2 size={14} />
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={() => remove(w.id)}
+                            disabled={pending}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4 }}
+                            aria-label="Remove winner"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
             ))}
         </div>
     )
 }
 
-export function WinnersPanel({ event, winners, registrations, teams, categories }: WinnersPanelProps) {
+export function WinnersPanel({ event, winners, registrations, teams, categories, categoryId }: WinnersPanelProps) {
     const [key, setKey] = useState(0)
     const refresh = () => { setKey(k => k + 1); window.location.reload() }
     const hasCategories = categories.length > 0
+
+    if (categoryId) {
+        const cat = categories.find(c => c.id === categoryId)
+        const catWinners = winners.filter(w => w.category_id === categoryId)
+        const catRegs = registrations.filter(r => r.category_id === categoryId)
+        const catTeams = teams.filter(t => t.category_id === categoryId)
+        const catIsTeam = cat?.participant_type === 'multiple'
+
+        return (
+            <div key={key}>
+                <WinnerList winners={catWinners} eventId={event.id} onRemoved={refresh} readOnly={event.results_published} />
+                {!event.results_published && (
+                    <WinnerForm
+                        eventId={event.id}
+                        categoryId={categoryId}
+                        isTeam={catIsTeam ?? false}
+                        registrations={catRegs}
+                        teams={catTeams}
+                        onDeclared={refresh}
+                    />
+                )}
+            </div>
+        )
+    }
 
     if (!hasCategories) {
         const isTeam = event.participant_type === 'multiple'
         return (
             <div key={key}>
-                <WinnerList winners={winners} eventId={event.id} onRemoved={refresh} />
-                <WinnerForm
-                    eventId={event.id}
-                    isTeam={isTeam}
-                    registrations={registrations}
-                    teams={teams}
-                    onDeclared={refresh}
-                />
+                <WinnerList winners={winners} eventId={event.id} onRemoved={refresh} readOnly={event.results_published} />
+                {event.results_published ? (
+                    <div className="glass" style={{ padding: 16, textAlign: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 500, border: '1px solid rgba(16,185,129,0.2)', marginTop: 12 }}>
+                        ✓ Results published. Winner declaration is closed.
+                    </div>
+                ) : (
+                    <WinnerForm
+                        eventId={event.id}
+                        isTeam={isTeam}
+                        registrations={registrations}
+                        teams={teams}
+                        onDeclared={refresh}
+                    />
+                )}
             </div>
         )
     }
 
     return (
         <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {event.results_published && (
+                <div className="glass" style={{ padding: 16, textAlign: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 500, border: '1px solid rgba(16,185,129,0.2)' }}>
+                    ✓ Results published for this event. No further changes can be made to finalists.
+                </div>
+            )}
             {categories.map(cat => {
                 const catWinners = winners.filter(w => w.category_id === cat.id)
                 const catRegs = registrations.filter(r => r.category_id === cat.id)
@@ -193,15 +231,17 @@ export function WinnersPanel({ event, winners, registrations, teams, categories 
                     <div key={cat.id}>
                         <div className="category-section-header">{cat.category_name}</div>
                         <div style={{ padding: '0 4px' }}>
-                            <WinnerList winners={catWinners} eventId={event.id} onRemoved={refresh} />
-                            <WinnerForm
-                                eventId={event.id}
-                                categoryId={cat.id}
-                                isTeam={catIsTeam}
-                                registrations={catRegs}
-                                teams={catTeams}
-                                onDeclared={refresh}
-                            />
+                            <WinnerList winners={catWinners} eventId={event.id} onRemoved={refresh} readOnly={event.results_published} />
+                            {!event.results_published && (
+                                <WinnerForm
+                                    eventId={event.id}
+                                    categoryId={cat.id}
+                                    isTeam={catIsTeam}
+                                    registrations={catRegs}
+                                    teams={catTeams}
+                                    onDeclared={refresh}
+                                />
+                            )}
                         </div>
                     </div>
                 )

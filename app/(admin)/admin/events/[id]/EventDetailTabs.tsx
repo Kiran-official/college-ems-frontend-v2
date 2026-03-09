@@ -5,11 +5,13 @@ import { RegistrationsPanel } from '@/components/events/RegistrationsPanel'
 import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
+import { CategoryManagementBlock } from '@/components/events/CategoryManagementBlock'
+import { CategoryDefinitionPanel } from '@/components/events/CategoryDefinitionPanel'
 import { Button } from '@/components/ui/Button'
 import { closeEventAction, publishResultsAction, completeEventAction } from '@/lib/actions/eventActions'
 import type { Event, EventCategory, IndividualRegistration, Team, Winner, Certificate } from '@/lib/types/db'
 
-type Tab = 'registrations' | 'attendance' | 'winners' | 'certificates' | 'actions'
+type Tab = 'setup' | 'categories' | 'registrations' | 'attendance' | 'winners' | 'certificates' | 'actions'
 
 interface EventDetailTabsProps {
     event: Event
@@ -22,7 +24,8 @@ interface EventDetailTabsProps {
 }
 
 export function EventDetailTabs({ event, categories, registrations, teams, winners, certificates, certStats }: EventDetailTabsProps) {
-    const [tab, setTab] = useState<Tab>('registrations')
+    const hasCategories = categories.length > 0
+    const [tab, setTab] = useState<Tab>(hasCategories ? 'categories' : 'registrations')
     const [actionPending, startAction] = useTransition()
 
     function handleAction(action: () => Promise<{ success: boolean; error?: string }>) {
@@ -37,19 +40,43 @@ export function EventDetailTabs({ event, categories, registrations, teams, winne
         <div>
             {/* Tab bar */}
             <div className="tab-bar">
-                {(['registrations', 'attendance', 'winners', 'certificates', 'actions'] as Tab[]).map(t => (
+                {([
+                    'setup',
+                    ...(hasCategories ? ['categories'] : []),
+                    'registrations', 'attendance', 'winners', 'certificates', 'actions'
+                ] as Tab[]).map(t => (
                     <button
                         key={t}
                         className={`tab-item ${tab === t ? 'tab-item--active' : ''}`}
                         onClick={() => setTab(t)}
                     >
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                        {t === 'setup' ? 'Category Setup' :
+                            t === 'categories' ? 'Manage Categories' :
+                                t.charAt(0).toUpperCase() + t.slice(1)}
                     </button>
                 ))}
             </div>
 
             {/* Tab content */}
             <div style={{ marginTop: 20 }}>
+                {tab === 'setup' && (
+                    <CategoryDefinitionPanel event={event} categories={categories} />
+                )}
+                {tab === 'categories' && hasCategories && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        {categories.map(cat => (
+                            <CategoryManagementBlock
+                                key={cat.id}
+                                event={event}
+                                category={cat}
+                                registrations={registrations}
+                                teams={teams}
+                                winners={winners}
+                                certificates={certificates}
+                            />
+                        ))}
+                    </div>
+                )}
                 {tab === 'registrations' && (
                     <RegistrationsPanel event={event} registrations={registrations} categories={categories} />
                 )}
@@ -79,22 +106,11 @@ export function EventDetailTabs({ event, categories, registrations, teams, winne
 
                         {event.status === 'closed' && !event.results_published && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Button variant="outline" onClick={() => handleAction(() => publishResultsAction(event.id))} loading={actionPending}>
-                                    Publish Results
+                                <Button variant="primary" onClick={() => handleAction(() => publishResultsAction(event.id))} loading={actionPending}>
+                                    Publish Results & Complete Event
                                 </Button>
                                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-                                    Makes winners visible to students.
-                                </span>
-                            </div>
-                        )}
-
-                        {event.status === 'closed' && event.results_published && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Button variant="primary" onClick={() => handleAction(() => completeEventAction(event.id))} loading={actionPending}>
-                                    Complete Event
-                                </Button>
-                                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-                                    Finalizes the event. Attendance and winners become permanent.
+                                    Makes winners visible to students and finalizes the event.
                                 </span>
                             </div>
                         )}

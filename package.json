@@ -26,6 +26,8 @@
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "dotenv": "^16.4.7",
+    "@types/dotenv": "^8.2.3"
   }
 }

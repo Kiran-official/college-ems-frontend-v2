@@ -5,11 +5,13 @@ import { RegistrationsPanel } from '@/components/events/RegistrationsPanel'
 import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
+import { CategoryManagementBlock } from '@/components/events/CategoryManagementBlock'
+import { CategoryDefinitionPanel } from '@/components/events/CategoryDefinitionPanel'
 import { Button } from '@/components/ui/Button'
 import { closeEventAction, publishResultsAction, completeEventAction } from '@/lib/actions/eventActions'
 import type { Event, EventCategory, IndividualRegistration, Team, Winner, Certificate } from '@/lib/types/db'
 
-type Tab = 'registrations' | 'attendance' | 'winners' | 'certificates' | 'actions'
+type Tab = 'setup' | 'categories' | 'registrations' | 'attendance' | 'winners' | 'certificates' | 'actions'
 
 interface TeacherEventTabsProps {
     event: Event
@@ -22,7 +24,8 @@ interface TeacherEventTabsProps {
 }
 
 export function TeacherEventTabs({ event, categories, registrations, teams, winners, certificates, certStats }: TeacherEventTabsProps) {
-    const [tab, setTab] = useState<Tab>('registrations')
+    const hasCategories = categories.length > 0
+    const [tab, setTab] = useState<Tab>(hasCategories ? 'categories' : 'registrations')
     const [actionPending, startAction] = useTransition()
 
     function handleAction(action: () => Promise<{ success: boolean; error?: string }>) {
@@ -36,14 +39,38 @@ export function TeacherEventTabs({ event, categories, registrations, teams, winn
     return (
         <div>
             <div className="tab-bar">
-                {(['registrations', 'attendance', 'winners', 'certificates', 'actions'] as Tab[]).map(t => (
+                {([
+                    'setup',
+                    ...(hasCategories ? ['categories'] : []),
+                    'registrations', 'attendance', 'winners', 'certificates', 'actions'
+                ] as Tab[]).map(t => (
                     <button key={t} className={`tab-item ${tab === t ? 'tab-item--active' : ''}`} onClick={() => setTab(t)}>
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                        {t === 'setup' ? 'Category Setup' :
+                            t === 'categories' ? 'Manage Categories' :
+                                t.charAt(0).toUpperCase() + t.slice(1)}
                     </button>
                 ))}
             </div>
 
             <div style={{ marginTop: 20 }}>
+                {tab === 'setup' && (
+                    <CategoryDefinitionPanel event={event} categories={categories} />
+                )}
+                {tab === 'categories' && hasCategories && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        {categories.map(cat => (
+                            <CategoryManagementBlock
+                                key={cat.id}
+                                event={event}
+                                category={cat}
+                                registrations={registrations}
+                                teams={teams}
+                                winners={winners}
+                                certificates={certificates}
+                            />
+                        ))}
+                    </div>
+                )}
                 {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} categories={categories} />}
                 {tab === 'attendance' && <AttendancePanel event={event} registrations={registrations} categories={categories} />}
                 {tab === 'winners' && <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} categories={categories} />}

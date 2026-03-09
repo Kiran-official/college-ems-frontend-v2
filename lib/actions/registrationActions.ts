@@ -12,24 +12,14 @@ export async function registerForEventAction(data: {
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
 
-        // Verify event is open and deadline hasn't passed
         const { data: event } = await ssr.from('events').select('status, registration_deadline').eq('id', data.event_id).single()
         if (!event) return { success: false, error: 'Event not found' }
         if (event.status !== 'open') return { success: false, error: 'Registration is closed' }
-        if (new Date() >= new Date(event.registration_deadline)) {
-            return { success: false, error: 'Registration deadline has passed' }
-        }
+        if (new Date() >= new Date(event.registration_deadline)) return { success: false, error: 'Registration deadline has passed' }
 
-        // Check if already registered
-        let existCheck = ssr.from('individual_registrations')
-            .select('id')
-            .eq('student_id', user.id)
-            .eq('event_id', data.event_id)
-        if (data.category_id) {
-            existCheck = existCheck.eq('category_id', data.category_id)
-        } else {
-            existCheck = existCheck.is('category_id', null)
-        }
+        let existCheck = ssr.from('individual_registrations').select('id').eq('student_id', user.id).eq('event_id', data.event_id)
+        if (data.category_id) existCheck = existCheck.eq('category_id', data.category_id)
+        else existCheck = existCheck.is('category_id', null)
         const { data: existing } = await existCheck.maybeSingle()
         if (existing) return { success: false, error: 'Already registered' }
 
@@ -38,7 +28,7 @@ export async function registerForEventAction(data: {
             student_id: user.id,
             event_id: data.event_id,
             category_id: data.category_id || null,
-            attendance_status: 'not_marked',
+            attendance_status: 'registered',
         })
         if (error) return { success: false, error: error.message }
 
@@ -57,7 +47,6 @@ export async function cancelRegistrationAction(
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
 
-        // Get registration and verify ownership + event conditions
         const { data: reg } = await ssr
             .from('individual_registrations')
             .select('*, event:events!inner(status, registration_deadline)')
@@ -68,18 +57,13 @@ export async function cancelRegistrationAction(
 
         const event = reg.event as unknown as { status: string; registration_deadline: string }
         if (event.status !== 'open') return { success: false, error: 'Cannot cancel — event is no longer open' }
-        if (new Date() >= new Date(event.registration_deadline)) {
-            return { success: false, error: 'Cannot cancel — deadline has passed' }
-        }
+        if (new Date() >= new Date(event.registration_deadline)) return { success: false, error: 'Cannot cancel — deadline has passed' }
 
         const admin = createAdminClient()
-
-        // If team member, remove from team
         if (reg.team_id) {
             await admin.from('team_members').delete().eq('team_id', reg.team_id).eq('student_id', user.id)
         }
 
-        // Delete registration
         const { error } = await admin.from('individual_registrations').delete().eq('id', registrationId)
         if (error) return { success: false, error: error.message }
 
@@ -103,89 +87,90 @@ export async function createTeamAction(data: {
 
         const admin = createAdminClient()
 
-        // 1. Check if student is already in a team for this event/category
-        let existTeamCheck = admin.from('individual_registrations')
-            .select('id, team_id')
-            .eq('student_id', user.id)
-            .eq('event_id', data.event_id)
+        // 1. Check if student already created a team for this event/category
+        let createdTeamCheck = admin.from('teams').select('id').eq('created_by', user.id).eq('event_id', data.event_id)
+        if (data.category_id) createdTeamCheck = createdTeamCheck.eq('category_id', data.category_id)
+        else createdTeamCheck = createdTeamCheck.is('category_id', null)
+        const { data: existingCreatedTeam } = await createdTeamCheck.maybeSingle()
+        if (existingCreatedTeam) return { success: false, error: 'You have already created a team for this event' }
 
-        if (data.category_id) {
-            existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
-        } else {
-            existTeamCheck = existTeamCheck.is('category_id', null)
-        }
-
+        // 2. Check if student is already an approved member of another team
+        let existTeamCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', user.id).eq('event_id', data.event_id)
+        if (data.category_id) existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
+        else existTeamCheck = existTeamCheck.is('category_id', null)
         const { data: existingReg } = await existTeamCheck.maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
-        // 2. Create the team
+        // 3. Auto-cancel any pending join requests the student sent (student-initiated, invited_by IS NULL)
+        await admin.from('team_members')
+            .delete()
+            .eq('student_id', user.id)
+            .eq('status', 'pending')
+            .is('invited_by', null)
+            .in('team_id',
+                (await admin.from('teams').select('id').eq('event_id', data.event_id)).data?.map(t => t.id) ?? []
+            )
+
+        // 4. Create the team
         const { data: team, error: teamError } = await admin.from('teams').insert({
             event_id: data.event_id,
             category_id: data.category_id || null,
             team_name: data.team_name.trim(),
             created_by: user.id,
         }).select('id').single()
-
         if (teamError || !team) return { success: false, error: teamError?.message ?? 'Failed to create team' }
 
-        // 3. Auto-enrol the creator
-        // Add to team_members
-        await admin.from('team_members').insert({
+        // 5. Auto-enrol the creator as an approved member
+        const { error: memberError } = await admin.from('team_members').insert({
             team_id: team.id,
-            student_id: user.id
+            student_id: user.id,
+            status: 'approved',
         })
+        if (memberError) {
+            await admin.from('teams').delete().eq('id', team.id)
+            return { success: false, error: 'Failed to enrol you in the team: ' + memberError.message }
+        }
 
-        // Handle creator's individual registration (Update if exists, Insert if not)
+        // 6. Create or update individual_registration for the creator
         if (existingReg) {
-            await admin.from('individual_registrations')
-                .update({ team_id: team.id })
-                .eq('id', existingReg.id)
+            const { error: regError } = await admin.from('individual_registrations').update({ team_id: team.id }).eq('id', existingReg.id)
+            if (regError) {
+                await admin.from('team_members').delete().eq('team_id', team.id)
+                await admin.from('teams').delete().eq('id', team.id)
+                return { success: false, error: 'Team creation failed: ' + regError.message }
+            }
         } else {
-            await admin.from('individual_registrations').insert({
+            const { error: regError } = await admin.from('individual_registrations').insert({
                 student_id: user.id,
                 event_id: data.event_id,
                 category_id: data.category_id || null,
                 team_id: team.id,
-                attendance_status: 'not_marked',
+                attendance_status: 'registered',
             })
+            if (regError) {
+                await admin.from('team_members').delete().eq('team_id', team.id)
+                await admin.from('teams').delete().eq('id', team.id)
+                return { success: false, error: 'Team creation failed: ' + regError.message }
+            }
         }
 
-        // 4. Add other members if provided (optional at creation)
-        if (data.member_ids && data.member_ids.length > 0) {
-            const otherMembers = data.member_ids.filter(id => id !== user.id)
-            for (const memberId of otherMembers) {
-                // Add to team_members
-                await admin.from('team_members').insert({
+        // 7. Auto-invite selected members as pending invites (creator-initiated)
+        const otherMembers = (data.member_ids ?? []).filter(id => id !== user.id)
+        if (otherMembers.length > 0) {
+            await admin.from('team_members').insert(
+                otherMembers.map(memberId => ({
                     team_id: team.id,
                     student_id: memberId,
-                })
-
-                // Upsert individual registration for the member
-                const { data: mReg } = await admin.from('individual_registrations')
-                    .select('id')
-                    .eq('student_id', memberId)
-                    .eq('event_id', data.event_id)
-                    .eq('category_id', data.category_id || null)
-                    .maybeSingle()
-
-                if (mReg) {
-                    await admin.from('individual_registrations').update({ team_id: team.id }).eq('id', mReg.id)
-                } else {
-                    await admin.from('individual_registrations').insert({
-                        student_id: memberId,
-                        event_id: data.event_id,
-                        category_id: data.category_id || null,
-                        team_id: team.id,
-                        attendance_status: 'not_marked',
-                    })
-                }
-            }
+                    status: 'pending',
+                    invited_by: user.id,
+                }))
+            )
         }
 
         revalidatePath(`/student/events/${data.event_id}`)
         return { success: true, team_id: team.id }
     } catch (e) {
-        console.error('Error in createTeamAction:', e)
+        console.error('createTeamAction error:', e)
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
@@ -202,37 +187,330 @@ export async function joinTeamAction(data: {
 
         const admin = createAdminClient()
 
-        // Check if student is already in a team for this event/category
-        let existTeamCheck = admin.from('individual_registrations')
-            .select('id, team_id')
-            .eq('student_id', user.id)
-            .eq('event_id', data.event_id)
-
-        if (data.category_id) {
-            existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
-        } else {
-            existTeamCheck = existTeamCheck.is('category_id', null)
+        const { data: existingMember } = await admin.from('team_members').select('id, status').eq('student_id', user.id).eq('team_id', data.team_id).maybeSingle()
+        if (existingMember) {
+            if (existingMember.status === 'pending') return { success: false, error: 'You already have a pending request for this team' }
+            return { success: false, error: 'You are already a member of this team' }
         }
 
-        const { data: existingReg } = await existTeamCheck.maybeSingle()
+        let regCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', user.id).eq('event_id', data.event_id)
+        if (data.category_id) regCheck = regCheck.eq('category_id', data.category_id)
+        else regCheck = regCheck.is('category_id', null)
+        const { data: existingReg } = await regCheck.maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
-        // Add to team members
+        // Insert as student-initiated request (invited_by = null)
         const { error: tmError } = await admin.from('team_members').insert({
             team_id: data.team_id,
             student_id: user.id,
+            status: 'pending',
+            invited_by: null,
         })
         if (tmError) return { success: false, error: tmError.message }
 
-        // Create individual registration
-        const { error: regError } = await admin.from('individual_registrations').insert({
-            student_id: user.id,
-            event_id: data.event_id,
-            category_id: data.category_id || null,
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+// Creator sends an invite to a student (creator-initiated)
+export async function sendInviteAction(data: {
+    team_id: string
+    student_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // Verify caller is the team creator
+        const { data: team } = await admin.from('teams').select('id, created_by, event_id, category_id').eq('id', data.team_id).single()
+        if (!team) return { success: false, error: 'Team not found' }
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can send invites' }
+
+        // Check team size
+        let maxSize: number | null = null
+        if (team.category_id) {
+            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', team.category_id).single()
+            maxSize = cat?.team_size ?? null
+        } else {
+            const { data: evt } = await admin.from('events').select('team_size').eq('id', team.event_id).single()
+            maxSize = evt?.team_size ?? null
+        }
+        if (maxSize) {
+            const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', data.team_id).eq('status', 'approved')
+            if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is already full' }
+        }
+
+        // Check student not already in team or already invited
+        const { data: existing } = await admin.from('team_members').select('id, status').eq('team_id', data.team_id).eq('student_id', data.student_id).maybeSingle()
+        if (existing) {
+            if (existing.status === 'approved') return { success: false, error: 'Student is already a member of this team' }
+            if (existing.status === 'pending') return { success: false, error: 'Student already has a pending request/invite for this team' }
+        }
+
+        // Check student not already in another team for this event
+        let regCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', data.student_id).eq('event_id', data.event_id)
+        if (team.category_id) regCheck = regCheck.eq('category_id', team.category_id)
+        else regCheck = regCheck.is('category_id', null)
+        const { data: existingReg } = await regCheck.maybeSingle()
+        if (existingReg?.team_id) return { success: false, error: 'Student is already in a team for this event' }
+
+        // Insert invite (invited_by = creator)
+        const { error } = await admin.from('team_members').insert({
             team_id: data.team_id,
-            attendance_status: 'not_marked',
+            student_id: data.student_id,
+            status: 'pending',
+            invited_by: user.id,
         })
-        if (regError) return { success: false, error: regError.message }
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+// Invited student accepts an invite (creator-initiated)
+export async function acceptInviteAction(data: {
+    team_member_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: tm } = await admin.from('team_members')
+            .select('*, team:teams!inner(created_by, event_id, category_id)')
+            .eq('id', data.team_member_id)
+            .single()
+        if (!tm) return { success: false, error: 'Invite not found' }
+        if (tm.student_id !== user.id) return { success: false, error: 'Not authorised' }
+        if (!tm.invited_by) return { success: false, error: 'This is a join request, not an invite' }
+
+        const team = tm.team as any
+        const eventId: string = team.event_id
+        const categoryId: string | null = team.category_id ?? null
+
+        // Check team still has space
+        let maxSize: number | null = null
+        if (categoryId) {
+            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', categoryId).single()
+            maxSize = cat?.team_size ?? null
+        } else {
+            const { data: evt } = await admin.from('events').select('team_size').eq('id', eventId).single()
+            maxSize = evt?.team_size ?? null
+        }
+        if (maxSize) {
+            const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', tm.team_id).eq('status', 'approved')
+            if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is now full' }
+        }
+
+        // Cancel any pending join requests the student sent to other teams
+        await admin.from('team_members')
+            .delete()
+            .eq('student_id', user.id)
+            .eq('status', 'pending')
+            .is('invited_by', null)
+            .neq('id', data.team_member_id)
+            .in('team_id',
+                (await admin.from('teams').select('id').eq('event_id', eventId)).data?.map(t => t.id) ?? []
+            )
+
+        // Approve the invite
+        await admin.from('team_members').update({ status: 'approved' }).eq('id', data.team_member_id)
+
+        // Create or update individual_registration
+        const existingRegQuery = admin.from('individual_registrations').select('id').eq('student_id', user.id).eq('event_id', eventId)
+        const { data: existingReg } = await (categoryId ? existingRegQuery.eq('category_id', categoryId) : existingRegQuery.is('category_id', null)).maybeSingle()
+
+        if (existingReg) {
+            await admin.from('individual_registrations').update({ team_id: tm.team_id }).eq('id', existingReg.id)
+        } else {
+            await admin.from('individual_registrations').insert({
+                student_id: user.id,
+                event_id: eventId,
+                category_id: categoryId,
+                team_id: tm.team_id,
+                attendance_status: 'registered',
+            })
+        }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+// Invited student declines an invite
+export async function declineInviteAction(data: {
+    team_member_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: tm } = await admin.from('team_members').select('id, student_id, invited_by').eq('id', data.team_member_id).single()
+        if (!tm) return { success: false, error: 'Invite not found' }
+        if (tm.student_id !== user.id) return { success: false, error: 'Not authorised' }
+
+        await admin.from('team_members').delete().eq('id', data.team_member_id)
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function approveJoinRequestAction(data: {
+    team_member_id: string
+    event_id: string
+    category_id?: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: tm } = await admin.from('team_members')
+            .select('*, team:teams!inner(created_by, event_id, category_id)')
+            .eq('id', data.team_member_id)
+            .single()
+        if (!tm) return { success: false, error: 'Request not found' }
+
+        const team = tm.team as any
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can approve requests' }
+
+        const eventId: string = team.event_id
+        const categoryId: string | null = team.category_id ?? null
+
+        let maxSize: number | null = null
+        if (categoryId) {
+            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', categoryId).single()
+            maxSize = cat?.team_size ?? null
+        } else {
+            const { data: evt } = await admin.from('events').select('team_size').eq('id', eventId).single()
+            maxSize = evt?.team_size ?? null
+        }
+        if (maxSize) {
+            const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', tm.team_id).eq('status', 'approved')
+            if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is already full' }
+        }
+
+        await admin.from('team_members').update({ status: 'approved' }).eq('id', data.team_member_id)
+
+        const existingRegQuery = admin.from('individual_registrations').select('id').eq('student_id', tm.student_id).eq('event_id', eventId)
+        const { data: existingReg } = await (categoryId ? existingRegQuery.eq('category_id', categoryId) : existingRegQuery.is('category_id', null)).maybeSingle()
+
+        if (existingReg) {
+            await admin.from('individual_registrations').update({ team_id: tm.team_id }).eq('id', existingReg.id)
+        } else {
+            await admin.from('individual_registrations').insert({
+                student_id: tm.student_id,
+                event_id: eventId,
+                category_id: categoryId,
+                team_id: tm.team_id,
+                attendance_status: 'registered',
+            })
+        }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function rejectJoinRequestAction(data: {
+    team_member_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(created_by)').eq('id', data.team_member_id).single()
+        if (!tm) return { success: false, error: 'Request not found' }
+
+        const team = tm.team as any
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can reject requests' }
+
+        await admin.from('team_members').delete().eq('id', data.team_member_id)
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function removeMemberAction(data: {
+    team_member_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(created_by, event_id)').eq('id', data.team_member_id).single()
+        if (!tm) return { success: false, error: 'Member not found' }
+
+        const team = tm.team as any
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can remove members' }
+        if (tm.student_id === user.id) return { success: false, error: 'You cannot remove yourself — delete the team instead' }
+
+        await admin.from('team_members').delete().eq('id', data.team_member_id)
+        await admin.from('individual_registrations').update({ team_id: null }).eq('student_id', tm.student_id).eq('team_id', tm.team_id)
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function deleteTeamAction(data: {
+    team_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        const { data: team } = await admin.from('teams').select('id, created_by').eq('id', data.team_id).single()
+        if (!team) return { success: false, error: 'Team not found' }
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can delete the team' }
+
+        await admin.from('individual_registrations').update({ team_id: null }).eq('team_id', data.team_id)
+        await admin.from('team_members').delete().eq('team_id', data.team_id)
+        const { error } = await admin.from('teams').delete().eq('id', data.team_id)
+        if (error) return { success: false, error: error.message }
 
         revalidatePath(`/student/events/${data.event_id}`)
         return { success: true }
@@ -252,14 +530,8 @@ export async function leaveTeamAction(data: {
 
         const admin = createAdminClient()
 
-        // Remove from team members
         await admin.from('team_members').delete().eq('team_id', data.team_id).eq('student_id', user.id)
-
-        // Remove registration
-        await admin.from('individual_registrations').delete()
-            .eq('team_id', data.team_id)
-            .eq('student_id', user.id)
-            .eq('event_id', data.event_id)
+        await admin.from('individual_registrations').delete().eq('team_id', data.team_id).eq('student_id', user.id).eq('event_id', data.event_id)
 
         revalidatePath(`/student/events/${data.event_id}`)
         return { success: true }

@@ -38,6 +38,7 @@ function UsersContent() {
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
     const [filterSemester, setFilterSemester] = useState('')
+    const [filterStudentType, setFilterStudentType] = useState('')
 
     // Modals
     const [showCreate, setShowCreate] = useState(false)
@@ -98,7 +99,8 @@ function UsersContent() {
         const matchesDept = !filterDept || u.department_id === filterDept
         const matchesProg = !filterProgramme || u.programme === filterProgramme
         const matchesSem = !filterSemester || String(u.semester ?? 1) === filterSemester
-        return matchesSearch && matchesDept && matchesProg && matchesSem
+        const matchesType = !filterStudentType || (u.student_type ?? 'internal') === filterStudentType
+        return matchesSearch && matchesDept && matchesProg && matchesSem && matchesType
     })
 
     async function handleCreate() {
@@ -222,9 +224,17 @@ function UsersContent() {
                                     {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
                                 </select>
                             </div>
+                            <div style={{ minWidth: 120 }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Student Type</label>
+                                <select className="form-select" value={filterStudentType} onChange={e => setFilterStudentType(e.target.value)}>
+                                    <option value="">All Types</option>
+                                    <option value="internal">Internal</option>
+                                    <option value="external">External</option>
+                                </select>
+                            </div>
                         </>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester('') }}>
+                    <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester(''); setFilterStudentType('') }}>
                         Clear
                     </Button>
                 </div>

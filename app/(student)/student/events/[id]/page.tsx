@@ -43,47 +43,72 @@ export default async function StudentEventDetailPage({ params }: Props) {
 
     return (
         <div className="page">
-            <div className="page-header">
-                <h1 className="page-title">{event.title}</h1>
-                {event.description && <p className="page-sub">{event.description}</p>}
+            <div className="mesh-bg">
+                <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', right: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
+                <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', left: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
             </div>
 
-            {/* Event info card */}
-            <div className="glass" style={{ padding: 24, marginBottom: 24 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <div className="page-header">
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                     <Badge variant={event.status}>{event.status}</Badge>
-                    <Badge variant="info">📅 {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}</Badge>
-                    {event.status === 'open' && (
-                        <Badge variant={isDeadlinePassed ? 'failed' : 'pending'}>
-                            Deadline: {format(new Date(event.registration_deadline), 'dd/MM/yyyy, hh:mm a')}
-                        </Badge>
-                    )}
                     {event.department && <Badge variant="info">{event.department.name}</Badge>}
                 </div>
-
-                {/* Faculty info (not admin role) */}
-                {event.faculty_in_charge && event.faculty_in_charge.length > 0 && (
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-                        <strong>Organised by:</strong>{' '}
-                        {event.faculty_in_charge
-                            .filter(f => !f.category_id)
-                            .map(f => f.teacher?.name)
-                            .filter(Boolean)
-                            .join(', ')}
-                    </div>
+                <h1 className="page-title">{event.title}</h1>
+                {event.description && (
+                    <p className="page-sub" style={{ maxWidth: 800 }}>
+                        {event.description}
+                    </p>
                 )}
             </div>
 
+            {/* Event info card */}
+            <div className="glass-premium" style={{ marginBottom: 40, padding: 32 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 32 }}>
+                    <div className="bento-item__content">
+                        <div className="stat-card__label" style={{ marginBottom: 8 }}>Event Date</div>
+                        <div className="stat-card__value" style={{ fontSize: '1.25rem' }}>
+                            {format(new Date(event.event_date), 'dd MMM yyyy, hh:mm a')}
+                        </div>
+                    </div>
+                    {event.status === 'open' && (
+                        <div className="bento-item__content">
+                            <div className="stat-card__label" style={{ marginBottom: 8 }}>Registration Deadline</div>
+                            <div className="stat-card__value" style={{ fontSize: '1.25rem', color: isDeadlinePassed ? 'var(--error)' : 'var(--warning)' }}>
+                                {format(new Date(event.registration_deadline), 'dd MMM yyyy, hh:mm a')}
+                            </div>
+                        </div>
+                    )}
+                    {event.faculty_in_charge && event.faculty_in_charge.length > 0 && (
+                        <div className="bento-item__content">
+                            <div className="stat-card__label" style={{ marginBottom: 8 }}>Organised By</div>
+                            <div className="stat-card__value" style={{ fontSize: '1.125rem', fontWeight: 600 }}>
+                                {event.faculty_in_charge
+                                    .filter(f => !f.category_id)
+                                    .map(f => f.teacher?.name)
+                                    .filter(Boolean)
+                                    .join(', ')}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="stat-card__glow" />
+            </div>
+
             {/* Registration / Team Actions */}
-            <StudentEventActions
-                event={event}
-                categories={categories}
-                registrationMap={Object.fromEntries(registrationMap)}
-                teams={teams}
-                winners={winners}
-                studentId={user.id}
-                isDeadlinePassed={isDeadlinePassed}
-            />
+            <section>
+                <div className="section-header" style={{ marginBottom: 24 }}>
+                    <h2 className="section-title">Registration & Participation</h2>
+                </div>
+                <StudentEventActions
+                    event={event}
+                    categories={categories}
+                    registrationMap={Object.fromEntries(registrationMap)}
+                    teams={teams}
+                    winners={winners}
+                    studentId={user.id}
+                    isDeadlinePassed={isDeadlinePassed}
+                />
+            </section>
         </div>
     )
 }

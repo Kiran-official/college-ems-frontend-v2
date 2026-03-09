@@ -75,6 +75,7 @@ export async function bulkCreateUsersAction(
         role?: 'teacher' | 'student'
         department?: string
         programme?: string
+        semester?: string
         student_type?: 'internal' | 'external'
     }>,
     role: 'teacher' | 'student' = 'student'
@@ -119,6 +120,8 @@ export async function bulkCreateUsersAction(
             const tempPassword = u.phone_number?.trim() || `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
             // The user data to write into the public.users table
+            const semesterVal = u.semester ? parseInt(u.semester, 10) : 1
+
             const userData = {
                 name: u.name,
                 email: u.email.trim(),
@@ -126,6 +129,7 @@ export async function bulkCreateUsersAction(
                 role: role,
                 department_id: departmentId || null,
                 programme: role === 'student' ? (u.programme || null) : null,
+                semester: role === 'student' ? (isNaN(semesterVal) ? 1 : semesterVal) : null,
                 student_type: role === 'student' ? 'internal' : null,
                 must_change_password: true,
                 is_active: true,
@@ -215,5 +219,38 @@ export async function toggleUserActiveAction(
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function searchStudentsForInviteAction(
+    query: string,
+    excludeId: string
+): Promise<{ id: string; name: string; email: string; programme?: string; semester?: number }[]> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return []
+
+        if (!query.trim() || query.trim().length < 2) return []
+
+        const admin = createAdminClient()
+        const { data, error } = await admin
+            .from('users')
+            .select('id, name, email, programme, semester')
+            .eq('role', 'student')
+            .eq('is_active', true)
+            .neq('id', excludeId)
+            .or(`name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`)
+            .order('name')
+            .limit(8)
+
+        if (error) {
+            console.error('Student search error:', error)
+            return []
+        }
+
+        return data ?? []
+    } catch {
+        return []
     }
 }

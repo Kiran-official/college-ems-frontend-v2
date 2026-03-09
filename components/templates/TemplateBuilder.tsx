@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
 import { createTemplateAction, updateTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Move, GripVertical, Upload, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Move, GripVertical, Upload, Loader2, AlignLeft, AlignCenter, AlignRight, Type, Bold, Italic, Settings2, LayoutTemplate, Paintbrush, Image as ImageIcon } from 'lucide-react'
 import type { TemplateField, TemplateLayout, CertificateTemplate, Event, EventCategory } from '@/lib/types/db'
 
 const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
@@ -149,7 +149,12 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
 
         startTransition(async () => {
             if (template) {
-                await updateTemplateAction(template.id, { template_name: templateName, layout_json: layout, background_image_url: bgUrl || undefined })
+                const result = await updateTemplateAction(template.id, { template_name: templateName, layout_json: layout, background_image_url: bgUrl || undefined })
+                if (result.success) {
+                    alert('Template updated successfully.')
+                } else {
+                    alert(result.error || 'Failed to update template.')
+                }
             } else {
                 const result = await createTemplateAction({
                     event_id: eventId,
@@ -161,17 +166,27 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                 })
                 if (result.success && result.template_id) {
                     router.push(`${basePath}/${result.template_id}`)
+                } else {
+                    alert(result.error || 'Failed to create template.')
+                    console.error('Template creation error:', result.error)
                 }
             }
         })
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 24, minHeight: 500 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 32, minHeight: 'calc(100vh - 140px)', alignItems: 'start' }}>
             {/* Left panel — toolbar and field properties */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingRight: 8, paddingBottom: 120 }}>
                 {/* Meta fields */}
-                <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, rgba(0,201,255,0.2) 0%, rgba(146,254,157,0.2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,201,255,0.3)' }}>
+                            <Settings2 size={16} color="var(--accent)" />
+                        </div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Template Settings</h3>
+                    </div>
+
                     <FormGroup label="Template Name" required>
                         <input className="form-input" value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Participation Certificate" />
                     </FormGroup>
@@ -197,9 +212,12 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                     </FormGroup>
 
                     <FormGroup label="Background Image">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <input className="form-input" value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="https://…" />
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <ImageIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                    <input className="form-input" style={{ paddingLeft: 34 }} value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="https://…" />
+                                </div>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -213,38 +231,109 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                                     onClick={() => fileInputRef.current?.click()}
                                     loading={uploading}
                                     type="button"
+                                    style={{ height: 42 }}
                                 >
                                     {!uploading && <Upload size={14} style={{ marginRight: 6 }} />}
                                     Upload
                                 </Button>
                             </div>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Paste a URL or upload a photo from your device.</p>
+                            {bgUrl && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} /> Background applied
+                                </div>
+                            )}
                         </div>
                     </FormGroup>
                 </div>
 
                 {/* Add field buttons */}
-                <div className="glass" style={{ padding: 16 }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 10 }}>
-                        Add Field
+                <div className="glass" style={{ padding: 24, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(255,0,128,0.2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(124,58,237,0.3)' }}>
+                            <LayoutTemplate size={16} color="#B983FF" />
+                        </div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Fields</h3>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         {availableFieldTypes.map(ft => (
-                            <Button key={ft.value} size="sm" variant="ghost" onClick={() => addField(ft.value)}>
-                                <Plus size={12} /> {ft.label}
-                            </Button>
+                            <button
+                                key={ft.value}
+                                onClick={() => addField(ft.value)}
+                                className="glass-button"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '10px 12px',
+                                    borderRadius: 'var(--r-md)',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                                    e.currentTarget.style.color = 'var(--text-primary)'
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                                    e.currentTarget.style.color = 'var(--text-secondary)'
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                                }}
+                            >
+                                <Plus size={14} style={{ opacity: 0.6 }} />
+                                {ft.label}
+                            </button>
                         ))}
                     </div>
                 </div>
 
                 {/* Selected field properties */}
                 {selectedField && (
-                    <div className="glass" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="glass" style={{
+                        padding: 24,
+                        borderRadius: 'var(--r-lg)',
+                        border: '1px solid var(--accent)',
+                        boxShadow: '0 0 20px rgba(0, 201, 255, 0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        {/* Glow effect */}
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', opacity: 0.5 }} />
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)' }}>
-                                Field Properties
-                            </span>
-                            <button onClick={() => removeField(selectedField.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'rgba(0, 201, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0, 201, 255, 0.2)' }}>
+                                    <Paintbrush size={16} color="var(--accent)" />
+                                </div>
+                                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Design Field</h3>
+                            </div>
+                            <button
+                                onClick={() => removeField(selectedField.id)}
+                                style={{
+                                    background: 'rgba(255, 68, 68, 0.1)',
+                                    border: '1px solid rgba(255, 68, 68, 0.2)',
+                                    borderRadius: 'var(--r-sm)',
+                                    width: 32,
+                                    height: 32,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: 'var(--error)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.2)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.1)' }}
+                                title="Remove Field"
+                            >
                                 <Trash2 size={14} />
                             </button>
                         </div>
@@ -255,101 +344,230 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                             </FormGroup>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <FormGroup label="Font Size">
                                 <input type="number" className="form-input" value={selectedField.fontSize} onChange={e => updateField(selectedField.id, { fontSize: Number(e.target.value) })} min={8} max={72} />
                             </FormGroup>
                             <FormGroup label="Color">
-                                <input type="color" value={selectedField.color} onChange={e => updateField(selectedField.id, { color: e.target.value })} style={{ width: '100%', height: 40, border: 'none', cursor: 'pointer' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 'var(--r-md)', padding: '4px 8px' }}>
+                                    <input type="color" value={selectedField.color} onChange={e => updateField(selectedField.id, { color: e.target.value })} style={{ width: 28, height: 28, border: 'none', borderRadius: '4px', cursor: 'pointer', padding: 0, background: 'none' }} />
+                                    <span style={{ fontSize: '0.8125rem', fontFamily: 'monospace', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>{selectedField.color}</span>
+                                </div>
                             </FormGroup>
                         </div>
 
-                        <FormGroup label="Align">
-                            <select className="form-select" value={selectedField.align} onChange={e => updateField(selectedField.id, { align: e.target.value as 'left' | 'center' | 'right' })}>
-                                <option value="left">Left</option>
-                                <option value="center">Center</option>
-                                <option value="right">Right</option>
-                            </select>
+                        <FormGroup label="Alignment">
+                            <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.2)', padding: 4, borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                                {(['left', 'center', 'right'] as const).map(align => (
+                                    <button
+                                        key={align}
+                                        onClick={() => updateField(selectedField.id, { align })}
+                                        style={{
+                                            flex: 1,
+                                            height: 36,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: 'var(--r-sm)',
+                                            background: selectedField.align === align ? 'var(--focus-ring)' : 'transparent',
+                                            color: selectedField.align === align ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: selectedField.align === align ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
+                                        }}
+                                    >
+                                        {align === 'left' && <AlignLeft size={16} />}
+                                        {align === 'center' && <AlignCenter size={16} />}
+                                        {align === 'right' && <AlignRight size={16} />}
+                                    </button>
+                                ))}
+                            </div>
                         </FormGroup>
 
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={selectedField.bold} onChange={e => updateField(selectedField.id, { bold: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
-                                Bold
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={selectedField.italic} onChange={e => updateField(selectedField.id, { italic: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
-                                Italic
-                            </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                                onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
+                                style={{
+                                    flex: 1,
+                                    height: 40,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    borderRadius: 'var(--r-md)',
+                                    background: selectedField.bold ? 'rgba(124, 58, 237, 0.15)' : 'rgba(0,0,0,0.2)',
+                                    border: `1px solid ${selectedField.bold ? 'var(--accent)' : 'var(--border)'}`,
+                                    color: selectedField.bold ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: selectedField.bold ? 600 : 400,
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <Bold size={14} /> Bold
+                            </button>
+                            <button
+                                onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
+                                style={{
+                                    flex: 1,
+                                    height: 40,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    borderRadius: 'var(--r-md)',
+                                    background: selectedField.italic ? 'rgba(124, 58, 237, 0.15)' : 'rgba(0,0,0,0.2)',
+                                    border: `1px solid ${selectedField.italic ? 'var(--accent)' : 'var(--border)'}`,
+                                    color: selectedField.italic ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8125rem',
+                                    fontStyle: selectedField.italic ? 'italic' : 'normal',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <Italic size={14} /> Italic
+                            </button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                            <FormGroup label="X %">
-                                <input type="number" className="form-input" value={selectedField.x} onChange={e => updateField(selectedField.id, { x: Number(e.target.value) })} min={0} max={100} />
-                            </FormGroup>
-                            <FormGroup label="Y %">
-                                <input type="number" className="form-input" value={selectedField.y} onChange={e => updateField(selectedField.id, { y: Number(e.target.value) })} min={0} max={100} />
-                            </FormGroup>
-                            <FormGroup label="Width %">
-                                <input type="number" className="form-input" value={selectedField.width} onChange={e => updateField(selectedField.id, { width: Number(e.target.value) })} min={5} max={100} />
-                            </FormGroup>
+                        <div style={{ position: 'relative', padding: '16px 0 8px', marginTop: 8 }}>
+                            <div style={{ position: 'absolute', top: 0, left: -24, right: -24, height: 1, background: 'var(--border-glass)' }} />
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 12 }}>Position & Size</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                                <FormGroup label="X %">
+                                    <input type="number" className="form-input" value={selectedField.x} onChange={e => updateField(selectedField.id, { x: Number(e.target.value) })} min={0} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                </FormGroup>
+                                <FormGroup label="Y %">
+                                    <input type="number" className="form-input" value={selectedField.y} onChange={e => updateField(selectedField.id, { y: Number(e.target.value) })} min={0} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                </FormGroup>
+                                <FormGroup label="Width %">
+                                    <input type="number" className="form-input" value={selectedField.width} onChange={e => updateField(selectedField.id, { width: Number(e.target.value) })} min={5} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                </FormGroup>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                <Button onClick={save} loading={pending} disabled={!eventId || !templateName.trim()}>
-                    {template ? 'Update Template' : 'Create Template'}
-                </Button>
+                <div style={{ marginTop: 'auto', paddingTop: 16, position: 'sticky', bottom: 16, zIndex: 10 }}>
+                    <Button onClick={save} loading={pending} disabled={!eventId || !templateName.trim()} full style={{ height: 48, fontSize: '0.9375rem', fontWeight: 600, boxShadow: '0 8px 16px rgba(0,201,255,0.2)' }}>
+                        {template ? 'Update Template' : 'Create Template'}
+                    </Button>
+                </div>
             </div>
 
             {/* Right panel — A4 landscape canvas */}
-            <div
-                ref={canvasRef}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                style={{
-                    aspectRatio: '297 / 210',
-                    width: '100%',
-                    maxWidth: 800,
-                    background: bgUrl ? `url(${bgUrl}) center/cover no-repeat` : 'var(--bg-void)',
-                    border: '1px solid var(--border-glass)',
-                    borderRadius: 'var(--r-lg)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    cursor: dragging ? 'grabbing' : 'default',
-                }}
-            >
-                {fields.map(f => (
-                    <div
-                        key={f.id}
-                        onMouseDown={(e) => handleMouseDown(f.id, e)}
-                        onClick={() => setSelectedFieldId(f.id)}
-                        style={{
-                            position: 'absolute',
-                            left: `${f.x - f.width / 2}%`,
-                            top: `${f.y}%`,
-                            width: `${f.width}%`,
-                            transform: 'translateY(-50%)',
-                            fontSize: f.fontSize * 0.6,
-                            fontFamily: f.fontFamily,
-                            fontWeight: f.bold ? 700 : 400,
-                            fontStyle: f.italic ? 'italic' : 'normal',
-                            color: f.color,
-                            textAlign: f.align,
-                            cursor: 'grab',
-                            padding: '2px 4px',
-                            border: selectedFieldId === f.id ? '1px dashed var(--accent)' : '1px dashed transparent',
-                            borderRadius: 2,
-                            userSelect: 'none',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                        }}
-                    >
-                        {getFieldLabel(f)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} />
+                        Live Preview (A4 Landscape)
                     </div>
-                ))}
+                    {bgUrl && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                            Drag elements to reposition
+                        </div>
+                    )}
+                </div>
+
+                <div
+                    ref={canvasRef}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    style={{
+                        aspectRatio: '297 / 210',
+                        width: '100%',
+                        maxWidth: 900,
+                        backgroundColor: 'var(--bg-void)',
+                        backgroundImage: bgUrl ? `url(${bgUrl})` : 'linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+                        backgroundSize: bgUrl ? 'cover' : '20px 20px',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        border: selectedFieldId ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 'var(--r-md)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        cursor: dragging ? 'grabbing' : 'default',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02), inset 0 0 0 1px rgba(255,255,255,0.05)',
+                        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+                    }}
+                >
+                    {!bgUrl && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>
+                            <ImageIcon size={48} style={{ opacity: 0.2 }} />
+                            <p style={{ fontSize: '1rem', fontWeight: 500 }}>Upload a background image to start designing</p>
+                            <p style={{ fontSize: '0.8125rem', maxWidth: 300, textAlign: 'center', opacity: 0.7 }}>We recommend a 297mm × 210mm (A4 Landscape) image for optimal results.</p>
+                        </div>
+                    )}
+
+                    {fields.map(f => {
+                        const isSelected = selectedFieldId === f.id
+                        return (
+                            <div
+                                key={f.id}
+                                onMouseDown={(e) => handleMouseDown(f.id, e)}
+                                onClick={() => setSelectedFieldId(f.id)}
+                                style={{
+                                    position: 'absolute',
+                                    left: `${f.x - f.width / 2}%`,
+                                    top: `${f.y}%`,
+                                    width: `${f.width}%`,
+                                    transform: 'translateY(-50%)',
+                                    fontSize: f.fontSize * 0.6,
+                                    fontFamily: f.fontFamily,
+                                    fontWeight: f.bold ? 700 : 400,
+                                    fontStyle: f.italic ? 'italic' : 'normal',
+                                    color: f.color,
+                                    textAlign: f.align,
+                                    cursor: dragging === f.id ? 'grabbing' : 'grab',
+                                    padding: '8px',
+                                    border: isSelected ? '2px solid var(--accent)' : '1px dashed transparent',
+                                    background: isSelected ? 'rgba(0, 201, 255, 0.08)' : 'transparent',
+                                    backdropFilter: isSelected ? 'blur(2px)' : 'none',
+                                    borderRadius: 'var(--r-sm)',
+                                    userSelect: 'none',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    transition: isSelected ? 'none' : 'border-color 0.2s ease, background-color 0.2s ease',
+                                    boxShadow: isSelected ? '0 0 15px rgba(0, 201, 255, 0.3)' : 'none',
+                                    zIndex: isSelected ? 10 : 1,
+                                }}
+                                onMouseEnter={e => {
+                                    if (!isSelected && dragging !== f.id) {
+                                        e.currentTarget.style.border = '1px dashed rgba(255,255,255,0.3)'
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (!isSelected && dragging !== f.id) {
+                                        e.currentTarget.style.border = '1px dashed transparent'
+                                        e.currentTarget.style.background = 'transparent'
+                                    }
+                                }}
+                            >
+                                {/* Drag Indicator Context */}
+                                {isSelected && (
+                                    <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', background: 'var(--accent)', color: 'var(--bg-void)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.2)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                                        {getFieldLabel(f)}
+                                    </div>
+                                )}
+
+                                {/* Resize dots (visual only) */}
+                                {isSelected && (
+                                    <>
+                                        <div style={{ position: 'absolute', top: -3, left: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
+                                        <div style={{ position: 'absolute', top: -3, right: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
+                                        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
+                                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
+                                    </>
+                                )}
+
+                                {getFieldLabel(f)}
+                            </div>
+                        )
+                    })}
+                </div>
             </div>
         </div>
     )

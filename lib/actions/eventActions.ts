@@ -15,6 +15,8 @@ export async function createEventAction(data: {
     faculty_ids: string[]
     categories?: Array<{
         category_name: string
+        description?: string
+        event_date?: string
         participant_type: 'single' | 'multiple'
         team_size?: number
         faculty_ids?: string[]
@@ -70,11 +72,15 @@ export async function createEventAction(data: {
                 const { data: catRow, error: catError } = await admin.from('event_categories').insert({
                     event_id: event.id,
                     category_name: cat.category_name,
+                    description: cat.description || null,
+                    event_date: cat.event_date || null,
                     participant_type: cat.participant_type,
                     team_size: cat.participant_type === 'multiple' ? cat.team_size : null,
                 }).select('id').single()
 
-                if (catError || !catRow) continue
+                if (catError || !catRow) {
+                    return { success: false, error: catError?.message ?? 'Failed to create category' }
+                }
 
                 // Category-level faculty
                 if (cat.faculty_ids && cat.faculty_ids.length > 0) {
@@ -118,6 +124,7 @@ export async function updateEventAction(
 
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
+        revalidatePath(`/student/events/${eventId}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -150,12 +157,21 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({ results_published: true }).eq('id', eventId)
+        const { error } = await admin.from('events').update({
+            results_published: true,
+            status: 'completed'
+        }).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
+        revalidatePath(`/student/events/${eventId}`)
+        revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
         revalidatePath('/student/events')
+        revalidatePath('/admin')
+        revalidatePath('/teacher')
+        revalidatePath('/student')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -272,12 +288,13 @@ export async function addParticipantAfterCloseAction(data: {
             event_id: data.event_id,
             category_id: data.category_id || null,
             team_id: data.team_id || null,
-            attendance_status: 'not_marked',
+            attendance_status: 'registered',
         })
         if (error) return { success: false, error: error.message }
 
         revalidatePath(`/admin/events/${data.event_id}`)
         revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidatePath(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

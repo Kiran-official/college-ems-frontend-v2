@@ -37,7 +37,7 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
     // Categories
     const [catEnabled, setCatEnabled] = useState(false)
     const [categories, setCategories] = useState<Array<{
-        id: string; category_name: string; participant_type: 'single' | 'multiple'
+        id: string; category_name: string; description: string; event_date: string; participant_type: 'single' | 'multiple'
         team_size: number | ''; faculty: Array<{ id: string; name: string }>
     }>>([])
 
@@ -58,6 +58,8 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                 faculty_ids: faculty.map(f => f.id),
                 categories: catEnabled ? categories.map(c => ({
                     category_name: c.category_name,
+                    description: c.description || undefined,
+                    event_date: c.event_date || undefined,
                     participant_type: c.participant_type,
                     team_size: c.participant_type === 'multiple' ? (c.team_size as number) : undefined,
                     faculty_ids: c.faculty.map(f => f.id),

@@ -1,0 +1,25 @@
+{
+  "teams": [
+    {
+      "id": "61c44f73-180e-4247-8697-2b427cc6a663",
+      "category_id": null,
+      "team_name": "12",
+      "created_by": "7e6060f8-ea41-4892-9e74-baee8d296e14",
+      "created_at": "2026-03-08T06:24:14.767178+00:00",
+      "is_disqualified": false,
+      "event_id": "fd557437-689b-41ec-bd20-76d6aaaa721d"
+    }
+  ],
+  "regs": [
+    {
+      "id": "d518f1b8-c214-4089-891b-03cc5ddf2a69",
+      "student_id": "7e6060f8-ea41-4892-9e74-baee8d296e14",
+      "category_id": null,
+      "attendance_status": "registered",
+      "registered_at": "2026-03-08T06:24:14.966983+00:00",
+      "updated_at": "2026-03-08T06:24:14.966983+00:00",
+      "team_id": "61c44f73-180e-4247-8697-2b427cc6a663",
+      "event_id": "fd557437-689b-41ec-bd20-76d6aaaa721d"
+    }
+  ]
+}

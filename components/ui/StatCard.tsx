@@ -10,6 +10,10 @@ interface StatCardProps {
 export function StatCard({ label, value, icon: Icon, imageIcon }: StatCardProps) {
     return (
         <div className="glass stat-card">
+            <div className="stat-card__content">
+                <div className="stat-card__value">{value}</div>
+                <div className="stat-card__label">{label}</div>
+            </div>
             <div className="stat-card__icon">
                 {imageIcon ? (
                     <img src={imageIcon} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -17,8 +21,7 @@ export function StatCard({ label, value, icon: Icon, imageIcon }: StatCardProps)
                     <Icon size={24} />
                 ) : null}
             </div>
-            <div className="stat-card__value">{value}</div>
-            <div className="stat-card__label">{label}</div>
+            <div className="stat-card__glow" />
         </div>
     )
 }

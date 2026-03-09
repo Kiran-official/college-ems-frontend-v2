@@ -11,6 +11,7 @@ interface AttendancePanelProps {
     event: Event
     registrations: IndividualRegistration[]
     categories: EventCategory[]
+    categoryId?: string
 }
 
 function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; eventStatus: string }) {
@@ -18,7 +19,7 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     const [pending, startTransition] = useTransition()
     const isEditable = eventStatus === 'closed'
 
-    function mark(newStatus: 'present' | 'absent' | 'not_marked') {
+    function mark(newStatus: 'attended' | 'absent' | 'registered') {
         if (!isEditable) return
         startTransition(async () => {
             const result = await updateAttendanceAction({ registration_id: reg.id, status: newStatus })
@@ -34,10 +35,14 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
                 {isEditable ? (
                     <div style={{ display: 'flex', gap: 6 }}>
                         <button
-                            className={`btn btn--sm ${status === 'present' ? 'btn--primary' : 'btn--ghost'}`}
-                            onClick={() => mark('present')}
+                            className={`btn btn--sm ${status === 'attended' ? 'btn--success' : 'btn--ghost'}`}
+                            onClick={() => mark('attended')}
                             disabled={pending}
-                            style={status === 'present' ? { background: 'var(--success)', color: 'var(--bg-void)' } : {}}
+                            style={{
+                                background: status === 'attended' ? 'var(--success)' : 'var(--success-bg)',
+                                color: status === 'attended' ? 'var(--bg-void)' : 'var(--success)',
+                                borderColor: 'var(--success)',
+                            }}
                         >
                             Present
                         </button>
@@ -45,21 +50,33 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
                             className={`btn btn--sm ${status === 'absent' ? 'btn--danger' : 'btn--ghost'}`}
                             onClick={() => mark('absent')}
                             disabled={pending}
+                            style={{
+                                background: status === 'absent' ? 'var(--error)' : 'var(--error-bg)',
+                                color: status === 'absent' ? 'var(--bg-void)' : 'var(--error)',
+                                borderColor: 'var(--error)',
+                            }}
                         >
                             Absent
                         </button>
                     </div>
                 ) : (
-                    <Badge variant={status === 'not_marked' ? 'not-marked' : status}>
-                        {status.replace('_', ' ')}
+                    <Badge variant={status === 'registered' ? 'pending' : status === 'attended' ? 'generated' : 'failed'}>
+                        {status === 'attended' ? 'present' : status}
                     </Badge>
+                )}
+            </td>
+            <td>
+                {status !== 'registered' ? (
+                    <Badge variant="generated">✓ Marked</Badge>
+                ) : (
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>Pending</span>
                 )}
             </td>
         </tr>
     )
 }
 
-export function AttendancePanel({ event, registrations, categories }: AttendancePanelProps) {
+export function AttendancePanel({ event, registrations, categories, categoryId }: AttendancePanelProps) {
     const [bulkPending, startBulk] = useTransition()
 
     // Locked states
@@ -84,14 +101,14 @@ export function AttendancePanel({ event, registrations, categories }: Attendance
 
     function markAllPresent(categoryId?: string) {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'present', category_id: categoryId })
+            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'attended', category_id: categoryId })
             window.location.reload()
         })
     }
 
     function resetAll(categoryId?: string) {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'not_marked', category_id: categoryId })
+            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'registered', category_id: categoryId })
             window.location.reload()
         })
     }
@@ -114,6 +131,7 @@ export function AttendancePanel({ event, registrations, categories }: Attendance
                                 <th>Name</th>
                                 <th>Department</th>
                                 <th>Attendance</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -125,6 +143,18 @@ export function AttendancePanel({ event, registrations, categories }: Attendance
                 </div>
             </div>
         )
+    }
+
+    if (categoryId) {
+        const catRegs = registrations.filter(r => r.category_id === categoryId)
+        if (catRegs.length === 0) {
+            return (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                    No registrations in this category.
+                </div>
+            )
+        }
+        return renderTable(catRegs, categoryId)
     }
 
     if (!hasCategories) {

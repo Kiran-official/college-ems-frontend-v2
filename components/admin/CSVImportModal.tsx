@@ -15,7 +15,7 @@ const VALID_PROGS = ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA', 'BCA',
 function validateRowFields(row: Record<string, string>, role: 'student' | 'teacher') {
     const fieldErrors: Record<string, string> = {}
     if (!row.name?.trim()) fieldErrors.name = 'Name required'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email ?? '')) fieldErrors.email = 'Invalid email'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((row.email ?? '').trim())) fieldErrors.email = 'Invalid email'
 
     const dept = row.department?.trim().toLowerCase()
     if (!VALID_DEPTS.some(d => d.toLowerCase() === dept)) {
@@ -26,6 +26,10 @@ function validateRowFields(row: Record<string, string>, role: 'student' | 'teach
         const prog = row.programme?.trim().toLowerCase()
         if (!VALID_PROGS.some(p => p.toLowerCase() === prog)) {
             fieldErrors.programme = 'Invalid programme'
+        }
+        const sem = parseInt(row.semester?.trim() ?? '', 10)
+        if (isNaN(sem) || sem < 1 || sem > 8) {
+            fieldErrors.semester = 'Semester must be 1–8'
         }
     }
     return fieldErrors
@@ -43,11 +47,11 @@ type ValidatedRow = {
     rowErrors: string[] // e.g. duplicate email
 }
 
-const FIELDS_STUDENT = ['name', 'email', 'phone_number', 'department', 'programme'] as const
+const FIELDS_STUDENT = ['name', 'email', 'phone_number', 'department', 'programme', 'semester'] as const
 const FIELDS_TEACHER = ['name', 'email', 'phone_number', 'department'] as const
 const FIELD_LABELS: Record<string, string> = {
     name: 'Name', email: 'Email', phone_number: 'Phone',
-    department: 'Dept', programme: 'Programme',
+    department: 'Dept', programme: 'Programme', semester: 'Semester',
 }
 
 export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
@@ -76,10 +80,10 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
 
     function downloadSample() {
         const headers = role === 'student'
-            ? 'name,email,phone_number,department,programme'
+            ? 'name,email,phone_number,department,programme,semester'
             : 'name,email,phone_number,department'
         const sample = role === 'student'
-            ? '\nJohn Doe,john@example.com,9876543210,Commerce,BCom'
+            ? '\nJohn Doe,john@example.com,9876543210,Commerce,BCom,1'
             : '\nJane Smith,jane@example.com,9876543210,Computer Science'
         const blob = new Blob([headers + sample], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
@@ -160,7 +164,7 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                     <div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
                             {role === 'student'
-                                ? 'Headers: name, email, phone_number, department, programme'
+                                ? 'Headers: name, email, phone_number, department, programme, semester'
                                 : 'Headers: name, email, phone_number, department'}
                         </div>
                     </div>

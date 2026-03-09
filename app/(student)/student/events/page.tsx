@@ -34,50 +34,47 @@ export default async function StudentEventsPage() {
 
     return (
         <div className="page">
+            <div className="mesh-bg">
+                <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', left: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
+                <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', right: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
+            </div>
+
             <div className="page-header">
                 <h1 className="page-title">Events</h1>
                 <p className="page-sub">Discover, register, and track events</p>
             </div>
 
             {/* Section 1: Open for Registration */}
-            <section style={{ marginBottom: 40 }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>
-                    🟢 Open for Registration
-                </h2>
+            <section style={{ marginBottom: 64 }}>
+                <div className="section-header">
+                    <div className="status-indicator status-indicator--open" />
+                    <h2 className="section-title">Open for Registration</h2>
+                </div>
                 {visibleUpcoming.length === 0 ? (
                     <EmptyState icon={Calendar} title="No open events" subtitle="Check back later for new events." />
                 ) : (
-                    <div className="card-grid">
+                    <div className="event-card-grid">
                         {visibleUpcoming.map(e => (
-                            <div key={e.id} style={{ position: 'relative' }}>
-                                {registeredIds.has(e.id) && (
-                                    <span style={{
-                                        position: 'absolute', top: 12, right: 12, zIndex: 2,
-                                        padding: '4px 10px', borderRadius: 'var(--r-pill)',
-                                        background: 'var(--success-bg)', color: 'var(--success)',
-                                        fontSize: '0.75rem', fontWeight: 600,
-                                    }}>✓ Registered</span>
-                                )}
-                                <EventCard event={e} basePath="/student/events" />
-                            </div>
+                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
                         ))}
                     </div>
                 )}
             </section>
 
             {/* Section 2: Ongoing / Closed */}
-            <section style={{ marginBottom: 40 }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>
-                    🔴 Ongoing / Closed
-                </h2>
+            <section style={{ marginBottom: 64 }}>
+                <div className="section-header">
+                    <div className="status-indicator status-indicator--closed" />
+                    <h2 className="section-title">Ongoing / Closed</h2>
+                </div>
                 {visibleClosed.length === 0 ? (
-                    <div style={{ padding: 20, color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                    <div style={{ padding: 40, textAlign: 'center', background: 'var(--bg-glass)', borderRadius: 'var(--r-xl)', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
                         No ongoing events right now.
                     </div>
                 ) : (
-                    <div className="card-grid">
+                    <div className="event-card-grid">
                         {visibleClosed.map(e => (
-                            <EventCard key={e.id} event={e} basePath="/student/events" />
+                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
                         ))}
                     </div>
                 )}
@@ -85,17 +82,18 @@ export default async function StudentEventsPage() {
 
             {/* Section 3: Completed */}
             <section>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>
-                    ✅ Completed
-                </h2>
+                <div className="section-header">
+                    <div className="status-indicator status-indicator--completed" />
+                    <h2 className="section-title">Completed</h2>
+                </div>
                 {visibleCompleted.length === 0 ? (
-                    <div style={{ padding: 20, color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                    <div style={{ padding: 40, textAlign: 'center', background: 'var(--bg-glass)', borderRadius: 'var(--r-xl)', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
                         No completed events yet.
                     </div>
                 ) : (
-                    <div className="card-grid">
+                    <div className="event-card-grid">
                         {visibleCompleted.map(e => (
-                            <EventCard key={e.id} event={e} basePath="/student/events" />
+                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
                         ))}
                     </div>
                 )}

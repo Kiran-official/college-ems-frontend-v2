@@ -30,9 +30,9 @@ export async function getAttendanceStats(eventId: string) {
 
     const rows = data ?? []
     return {
-        present: rows.filter(r => r.attendance_status === 'present').length,
+        present: rows.filter(r => r.attendance_status === 'attended').length,
         absent: rows.filter(r => r.attendance_status === 'absent').length,
-        notMarked: rows.filter(r => r.attendance_status === 'not_marked').length,
+        notMarked: rows.filter(r => r.attendance_status === 'registered').length,
         total: rows.length,
     }
 }

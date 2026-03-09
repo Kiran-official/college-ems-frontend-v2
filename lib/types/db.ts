@@ -7,7 +7,7 @@ export type StudentType = 'internal' | 'external'
 export type EventStatus = 'open' | 'closed' | 'completed'
 export type EventVisibility = 'public_all' | 'internal_only' | 'external_only'
 export type ParticipantType = 'single' | 'multiple'
-export type AttendanceStatus = 'present' | 'absent' | 'not_marked'
+export type AttendanceStatus = 'registered' | 'attended' | 'absent'
 export type CertificateType = 'participation' | 'winner'
 export type CertificateStatus = 'pending' | 'processing' | 'generated' | 'failed'
 export type WinnerType = 'student' | 'team'
@@ -67,6 +67,8 @@ export interface EventCategory {
     id: string
     event_id: string
     category_name: string
+    description?: string
+    event_date?: string
     participant_type: ParticipantType
     team_size?: number
     created_at: string
@@ -116,7 +118,9 @@ export interface TeamMember {
     id: string
     team_id: string
     student_id: string
+    status: 'pending' | 'approved'
     joined_at: string
+    invited_by?: string | null
     // Joined fields
     student?: User
 }

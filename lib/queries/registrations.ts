@@ -38,7 +38,16 @@ export async function getStudentRegistrationForEvent(
     const supabase = await createSSRClient()
     let query = supabase
         .from('individual_registrations')
-        .select('*, team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email)))')
+        .select(`
+            *,
+            team:teams!individual_registrations_team_id_fkey(
+                id,
+                team_name,
+                created_by,
+                category_id,
+                event_id
+            )
+        `)
         .eq('student_id', studentId)
         .eq('event_id', eventId)
 
@@ -48,7 +57,12 @@ export async function getStudentRegistrationForEvent(
         query = query.is('category_id', null)
     }
 
-    const { data } = await query.maybeSingle()
+    const { data, error } = await query.maybeSingle()
+
+    if (error) {
+        console.error('[getStudentRegistrationForEvent] query error:', error)
+    }
+
     return data
 }
 
@@ -56,13 +70,18 @@ export async function getTeamsByEvent(eventId: string, categoryId?: string): Pro
     const supabase = await createSSRClient()
     let query = supabase
         .from('teams')
-        .select('*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email)), creator:users!teams_created_by_fkey(id, name)')
+        .select(`
+            *,
+            members:team_members(
+                *,
+                student:users!team_members_student_id_fkey(id, name, email)
+            ),
+            creator:users!teams_created_by_fkey(id, name)
+        `)
         .eq('event_id', eventId)
 
-    if (categoryId) {
+    if (categoryId !== undefined) {
         query = query.eq('category_id', categoryId)
-    } else {
-        query = query.is('category_id', null)
     }
 
     const { data } = await query.order('created_at')

@@ -71,85 +71,93 @@ function LoginContent() {
 
     return (
         <div className="login-page">
-            {/* Left brand panel */}
-            <div className="login-brand">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src="/sicm-logo.png"
-                    alt="SICM Logo"
-                    className="login-logo"
-                />
-                <div className="login-college">Seshadripuram Institute of<br />Commerce and Management</div>
-                <div className="login-system">Event Management System</div>
-                <div className="login-tagline">MANAGE · ORGANIZE · EXCEL</div>
+            <div className="auth-bg">
+                <div className="auth-bg__blob auth-bg__blob--1"></div>
+                <div className="auth-bg__blob auth-bg__blob--2"></div>
+                <div className="auth-bg__blob auth-bg__blob--3"></div>
+                <div className="auth-bg__blob auth-bg__blob--4"></div>
             </div>
+            <div className="login-content-wrap">
+                {/* Left brand panel */}
+                <div className="login-brand">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/assets/logo.png"
+                        alt="SICM Logo"
+                        className="login-logo"
+                    />
+                    <div className="login-college">Seshadripuram Institute of<br />Commerce and Management</div>
+                    <div className="login-system">Event Management System</div>
+                    <div className="login-tagline">MANAGE · ORGANIZE · EXCEL</div>
+                </div>
 
-            {/* Right form panel */}
-            <div className="login-form-panel">
-                <div className="login-card glass">
-                    <div className="login-title">Welcome back</div>
-                    <div className="login-sub">Sign in to your SICM account</div>
+                {/* Right form panel */}
+                <div className="login-form-panel">
+                    <div className="login-card">
+                        <div className="login-title">Welcome back</div>
+                        <div className="login-sub">Sign in to your account</div>
 
-                    {error && (
-                        <div className="alert alert--error" style={{ marginBottom: 24 }}>
-                            {error}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        <div className="form-group">
-                            <label className="form-label form-label--required" htmlFor="email">Email</label>
-                            <input
-                                id="email"
-                                type="email"
-                                className={`form-input ${error ? 'form-input--error' : ''}`}
-                                placeholder="your.email@sicm.edu.in"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                autoFocus
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label form-label--required" htmlFor="password">Password</label>
-                            <div className="password-wrap">
-                                <input
-                                    id="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    className="form-input"
-                                    placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    className="password-toggle"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
+                        {error && (
+                            <div className="alert alert--error" style={{ marginBottom: 24 }}>
+                                {error}
                             </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="email">Email Address</label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    className={`form-input ${error ? 'form-input--error' : ''}`}
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" htmlFor="password">Password</label>
+                                <div className="password-wrap">
+                                    <input
+                                        id="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        className="form-input"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className={`btn btn--primary btn--lg btn--full ${loading ? 'btn--loading' : ''}`}
+                                disabled={loading}
+                            >
+                                {loading ? 'Accessing...' : 'Sign In'}
+                            </button>
+                        </form>
+
+                        <div style={{ textAlign: 'center', marginTop: 32 }}>
+                            <span style={{ color: '#94A3B8', fontSize: '0.875rem' }}>
+                                New member?{' '}
+                            </span>
+                            <Link href="/register" className="link" style={{ fontSize: '0.875rem', color: '#6366F1' }}>
+                                Register here →
+                            </Link>
                         </div>
-
-                        <button
-                            type="submit"
-                            className={`btn btn--primary btn--lg btn--full ${loading ? 'btn--loading' : ''}`}
-                            disabled={loading}
-                        >
-                            {loading ? 'Signing in...' : 'Sign In'}
-                        </button>
-                    </form>
-
-                    <div style={{ textAlign: 'center', marginTop: 24 }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                            Don&apos;t have an account?{' '}
-                        </span>
-                        <Link href="/register" className="link" style={{ fontSize: '0.875rem' }}>
-                            Create one →
-                        </Link>
                     </div>
                 </div>
             </div>

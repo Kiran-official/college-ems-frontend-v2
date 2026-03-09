@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +15,7 @@ interface RegistrationsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
     categories: EventCategory[]
+    categoryId?: string
 }
 
 function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
@@ -37,7 +38,7 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
                             <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
                             <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
                             <td>{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                            <td><Badge variant={r.attendance_status === 'not_marked' ? 'not-marked' : r.attendance_status}>{r.attendance_status.replace('_', ' ')}</Badge></td>
+                            <td><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
                         </tr>
                     ))}
                 </tbody>
@@ -62,12 +63,12 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                 </thead>
                 <tbody>
                     {entries.map(([teamId, team], idx) => (
-                        <tbody key={teamId}>
+                        <React.Fragment key={teamId}>
                             {idx > 0 && (
                                 <tr className="team-group-gap"><td colSpan={5} /></tr>
                             )}
                             <tr className="team-group-header">
-                                <td colSpan={5}>🏆 {team.name}</td>
+                                <td colSpan={5}>{team.name}</td>
                             </tr>
                             {team.members.map(r => (
                                 <tr key={r.id}>
@@ -75,10 +76,10 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                                     <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
                                     <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
                                     <td>{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                                    <td><Badge variant={r.attendance_status === 'not_marked' ? 'not-marked' : r.attendance_status}>{r.attendance_status.replace('_', ' ')}</Badge></td>
+                                    <td><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
                                 </tr>
                             ))}
-                        </tbody>
+                        </React.Fragment>
                     ))}
                 </tbody>
             </table>
@@ -86,7 +87,7 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
     )
 }
 
-export function RegistrationsPanel({ event, registrations, categories }: RegistrationsPanelProps) {
+export function RegistrationsPanel({ event, registrations, categories, categoryId }: RegistrationsPanelProps) {
     const [showFilters, setShowFilters] = useState(false)
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
@@ -151,6 +152,34 @@ export function RegistrationsPanel({ event, registrations, categories }: Registr
     )
 
     const content = () => {
+        // Single Category Mode
+        if (categoryId) {
+            const cat = categories.find(c => c.id === categoryId)
+            const catRegs = filtered.filter(r => r.category_id === categoryId)
+            const catIsTeam = cat?.participant_type === 'multiple'
+
+            if (catRegs.length === 0) {
+                return (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                        No registrations found for this category.
+                    </div>
+                )
+            }
+
+            if (catIsTeam) {
+                const teamMap = new Map<string, { name: string; members: IndividualRegistration[] }>()
+                for (const r of catRegs) {
+                    const tid = r.team_id ?? 'ungrouped'
+                    const tname = (r.team as { team_name?: string } | undefined)?.team_name ?? 'Ungrouped'
+                    if (!teamMap.has(tid)) teamMap.set(tid, { name: tname, members: [] })
+                    teamMap.get(tid)!.members.push(r)
+                }
+                return <TeamGroupTable teams={teamMap} />
+            }
+
+            return <RegistrationTable rows={catRegs} />
+        }
+
         // Case A: no categories, single participant
         if (!hasCategories && !isTeam) {
             return <RegistrationTable rows={filtered} />
@@ -168,7 +197,7 @@ export function RegistrationsPanel({ event, registrations, categories }: Registr
             return <TeamGroupTable teams={teamMap} />
         }
 
-        // Case C and D: has categories
+        // Case C and D: has categories (Global View)
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                 {categories.map(cat => {

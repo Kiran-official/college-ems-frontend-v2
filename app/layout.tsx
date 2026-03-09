@@ -1,10 +1,17 @@
-import { Space_Grotesk } from 'next/font/google'
+import { Space_Grotesk, Outfit } from 'next/font/google'
 import './globals.css'
 
-const font = Space_Grotesk({
+const fontBody = Space_Grotesk({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-body',
+  display: 'swap',
+})
+
+const fontHeading = Outfit({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-heading',
   display: 'swap',
 })
 
@@ -15,7 +22,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={font.variable} suppressHydrationWarning>
+    <html lang="en" className={`${fontBody.variable} ${fontHeading.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{
           __html: `

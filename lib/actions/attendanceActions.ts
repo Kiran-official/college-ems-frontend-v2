@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function updateAttendanceAction(data: {
     registration_id: string
-    status: 'present' | 'absent' | 'not_marked'
+    status: 'attended' | 'absent' | 'registered'
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -52,7 +52,7 @@ export async function updateAttendanceAction(data: {
 
 export async function bulkUpdateAttendanceAction(data: {
     event_id: string
-    status: 'present' | 'not_marked'
+    status: 'attended' | 'registered'
     category_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {

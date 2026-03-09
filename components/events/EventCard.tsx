@@ -38,57 +38,48 @@ const VISIBILITY_LABEL: Record<string, string> = {
     external_only: 'External Only',
 }
 
-export function EventCard({ event, basePath }: EventCardProps) {
-    const eventDate = format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')
-    const deadline = format(new Date(event.registration_deadline), 'dd/MM/yyyy, hh:mm a')
+export function EventCard({ event, basePath, isRegistered }: EventCardProps & { isRegistered?: boolean }) {
+    const eventDate = format(new Date(event.event_date), 'dd/MM, hh:mm a')
     const hasCategories = (event.categories?.length ?? 0) > 0
+    const participantLabel = event.participant_type.charAt(0).toUpperCase() + event.participant_type.slice(1)
 
     return (
-        <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {event.title}
-                </h3>
-                <Badge variant={event.status}>{event.status}</Badge>
-            </div>
-
-            {event.faculty_in_charge && <FacultyPills fic={event.faculty_in_charge} />}
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                <Badge variant={event.visibility === 'internal_only' ? 'internal' : event.visibility === 'external_only' ? 'external' : 'info'}>
-                    <Eye size={11} /> {VISIBILITY_LABEL[event.visibility] ?? event.visibility}
-                </Badge>
-                <Badge variant={event.participant_type === 'single' ? 'individual' : 'team'}>
-                    {event.participant_type === 'single'
-                        ? <><UserIcon size={11} /> Individual</>
-                        : <><Users2 size={11} /> Team{event.team_size ? ` (${event.team_size})` : ''}</>
-                    }
-                </Badge>
-                {hasCategories && (
-                    <Badge variant="processing">
-                        {event.categories!.length} {event.categories!.length === 1 ? 'Category' : 'Categories'}
+        <Link href={`${basePath}/${event.id}`} className="glass event-card-premium">
+            <div className="event-card__header">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Badge variant={event.status} className="event-card__status">
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                     </Badge>
-                )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={13} /> {eventDate}
+                    {isRegistered && (
+                        <Badge variant="success" className="event-card__status">Registered</Badge>
+                    )}
                 </div>
-                {event.status === 'open' && (
-                    <div style={{ color: 'var(--warning)', fontSize: '0.75rem' }}>
-                        Deadline: {deadline}
-                    </div>
-                )}
+                {hasCategories && <span className="event-card__meta">Multiple Categories</span>}
             </div>
 
-            <Link
-                href={`${basePath}/${event.id}`}
-                className="btn btn--outline btn--sm"
-                style={{ alignSelf: 'flex-start', marginTop: 4 }}
-            >
-                View Event →
-            </Link>
-        </div>
+            <div className="event-card__main">
+                <h3 className="event-card__title">{event.title}</h3>
+                {event.faculty_in_charge && <FacultyPills fic={event.faculty_in_charge} />}
+            </div>
+
+            <div className="event-card__footer">
+                <div className="event-card__info-row">
+                    <div className="event-card__info">
+                        <Calendar size={14} className="text-secondary" />
+                        <span>{eventDate}</span>
+                    </div>
+                    <div className="event-card__info">
+                        <Users2 size={14} className="text-secondary" />
+                        <span>{participantLabel}</span>
+                    </div>
+                </div>
+
+                <div className="event-card__action">
+                    Explore <Eye size={16} />
+                </div>
+            </div>
+
+            <div className="stat-card__glow" />
+        </Link>
     )
 }

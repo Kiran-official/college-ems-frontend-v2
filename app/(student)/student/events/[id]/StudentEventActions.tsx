@@ -1,29 +1,53 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { registerForEventAction, cancelRegistrationAction, createTeamAction, joinTeamAction } from '@/lib/actions/registrationActions'
-import { Trophy, Users2 } from 'lucide-react'
+import { format } from 'date-fns'
+import {
+    registerForEventAction,
+    cancelRegistrationAction,
+    createTeamAction,
+    joinTeamAction,
+    approveJoinRequestAction,
+    rejectJoinRequestAction,
+    deleteTeamAction,
+    leaveTeamAction,
+    removeMemberAction,
+    sendInviteAction,
+    acceptInviteAction,
+    declineInviteAction,
+} from '@/lib/actions/registrationActions'
+import { searchStudentsForInviteAction } from '@/lib/actions/userActions'
+import { Users2, Trash2, Check, X, Search, Loader2, UserPlus, LogOut, UserMinus } from 'lucide-react'
 import type { Event, EventCategory, Team, Winner } from '@/lib/types/db'
+
+type StudentSearchResult = {
+    id: string
+    name: string
+    email: string
+    programme?: string
+    semester?: number
+}
 
 interface StudentEventActionsProps {
     event: Event
     categories: EventCategory[]
-    registrationMap: Record<string, any> // category_id or '__event__' → registration
+    registrationMap: Record<string, any>
     teams: Team[]
     winners: Winner[]
     studentId: string
     isDeadlinePassed: boolean
 }
 
+// ── Winners display ────────────────────────────────────────────
+
 function WinnersDisplay({ winners }: { winners: Winner[] }) {
     if (winners.length === 0) return null
     return (
-        <div className="glass" style={{ padding: 20, marginTop: 24 }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 12 }}>🏆 Results</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="glass-premium" style={{ padding: 24, marginTop: 32 }}>
+            <h3 className="section-title" style={{ fontSize: '1.25rem', marginBottom: 20 }}>Results</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {winners.map(w => (
                     <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Badge variant="winner">{w.position_label}</Badge>
@@ -32,9 +56,7 @@ function WinnersDisplay({ winners }: { winners: Winner[] }) {
                         </span>
                         {w.tags && w.tags.length > 0 && (
                             <div style={{ display: 'flex', gap: 4 }}>
-                                {w.tags.map(tag => (
-                                    <span key={tag} className="winner-tag">{tag}</span>
-                                ))}
+                                {w.tags.map(tag => <span key={tag} className="winner-tag">{tag}</span>)}
                             </div>
                         )}
                     </div>
@@ -44,15 +66,167 @@ function WinnersDisplay({ winners }: { winners: Winner[] }) {
     )
 }
 
+// ── Shared student search input ────────────────────────────────
+
+interface StudentSearchInputProps {
+    excludeId: string
+    excludeIds?: string[]
+    placeholder?: string
+    onSelect: (student: StudentSearchResult) => void
+}
+
+function StudentSearchInput({ excludeId, excludeIds = [], placeholder = 'Search by name or email...', onSelect }: StudentSearchInputProps) {
+    const [query, setQuery] = useState('')
+    const [results, setResults] = useState<StudentSearchResult[]>([])
+    const [searching, setSearching] = useState(false)
+    const [showDropdown, setShowDropdown] = useState(false)
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+    const allExcluded = [excludeId, ...excludeIds]
+
+    const search = useCallback((val: string) => {
+        clearTimeout(debounceRef.current)
+        if (!val.trim() || val.trim().length < 2) { setResults([]); setShowDropdown(false); return }
+        debounceRef.current = setTimeout(async () => {
+            setSearching(true)
+            const res = await searchStudentsForInviteAction(val, excludeId)
+            setResults(res.filter(r => !allExcluded.includes(r.id)))
+            setShowDropdown(true)
+            setSearching(false)
+        }, 300)
+    }, [excludeId, allExcluded])
+
+    function handleSelect(student: StudentSearchResult) {
+        onSelect(student)
+        setQuery('')
+        setResults([])
+        setShowDropdown(false)
+    }
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }}>
+                <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                <input
+                    className="form-input"
+                    value={query}
+                    onChange={e => { setQuery(e.target.value); search(e.target.value) }}
+                    onFocus={() => results.length > 0 && setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    placeholder={placeholder}
+                    style={{ paddingLeft: 32 }}
+                />
+                {searching && <Loader2 size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />}
+            </div>
+
+            {showDropdown && results.length > 0 && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden',
+                }}>
+                    {results.map(s => (
+                        <button key={s.id} type="button" onMouseDown={() => handleSelect(s)} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer',
+                            textAlign: 'left', borderBottom: '1px solid var(--border)', transition: 'background 0.1s',
+                        }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-surface)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                        >
+                            <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                    {s.email}{s.programme && ` · ${s.programme}`}{s.semester && ` · Sem ${s.semester}`}
+                                </div>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 500 }}>+ Invite</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {showDropdown && !searching && query.length >= 2 && results.length === 0 && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-md)', padding: '10px 14px',
+                    fontSize: '0.875rem', color: 'var(--text-tertiary)',
+                }}>
+                    No students found for &quot;{query}&quot;
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ── Member search for team creation (with chips) ───────────────
+
+interface MemberSearchProps {
+    excludeId: string
+    selectedMembers: StudentSearchResult[]
+    onAdd: (student: StudentSearchResult) => void
+    onRemove: (studentId: string) => void
+    maxMembers?: number
+}
+
+function MemberSearch({ excludeId, selectedMembers, onAdd, onRemove, maxMembers }: MemberSearchProps) {
+    const atMax = maxMembers !== undefined && selectedMembers.length >= maxMembers - 1
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Invite Members <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+            </label>
+            {selectedMembers.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {selectedMembers.map(m => (
+                        <span key={m.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '3px 8px 3px 10px', borderRadius: 9999,
+                            background: 'var(--accent-subtle, rgba(99,102,241,0.12))',
+                            color: 'var(--accent)', fontSize: '0.8125rem', fontWeight: 500,
+                            border: '1px solid var(--accent-border, rgba(99,102,241,0.25))',
+                        }}>
+                            <UserPlus size={11} />
+                            {m.name}
+                            <button type="button" onClick={() => onRemove(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 0, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                                <X size={12} />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+            {!atMax ? (
+                <StudentSearchInput
+                    excludeId={excludeId}
+                    excludeIds={selectedMembers.map(m => m.id)}
+                    onSelect={onAdd}
+                />
+            ) : (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Team is full — remove an invitee to add someone else.</p>
+            )}
+        </div>
+    )
+}
+
+// ── Per-category/event registration action block ───────────────
+
 function RegistrationAction({
-    event, categoryId, categoryName, participantType, teamSize,
+    event, categoryId, categoryName, categoryDescription,
+    categoryDate,
+    participantType,
+    teamSize,
     existingReg, teams, studentId, isDeadlinePassed,
 }: {
     event: Event
     categoryId?: string
     categoryName?: string
+    categoryDescription?: string
+    categoryDate?: string
     participantType: 'single' | 'multiple'
-    teamSize?: number | null
+    teamSize?: number
+    | null
     existingReg: any
     teams: Team[]
     studentId: string
@@ -61,102 +235,113 @@ function RegistrationAction({
     const [pending, startTransition] = useTransition()
     const [teamName, setTeamName] = useState('')
     const [showCreateTeam, setShowCreateTeam] = useState(false)
+    const [selectedMembers, setSelectedMembers] = useState<StudentSearchResult[]>([])
     const [error, setError] = useState<string | null>(null)
 
     const canRegister = event.status === 'open' && !isDeadlinePassed
     const isRegistered = !!existingReg
 
-    function register() {
-        setError(null)
-        startTransition(async () => {
-            const result = await registerForEventAction({ event_id: event.id, category_id: categoryId })
-            if (!result.success) {
-                setError(result.error ?? 'Registration failed')
-                return
-            }
-            window.location.reload()
-        })
-    }
-
-    function cancel() {
-        if (!existingReg) return
-        setError(null)
-        startTransition(async () => {
-            const result = await cancelRegistrationAction(existingReg.id)
-            if (!result.success) {
-                setError(result.error ?? 'Cancellation failed')
-                return
-            }
-            window.location.reload()
-        })
-    }
-
-    function handleCreateTeam() {
-        if (!teamName.trim()) return
-        setError(null)
-        startTransition(async () => {
-            const result = await createTeamAction({
-                event_id: event.id,
-                category_id: categoryId,
-                team_name: teamName.trim(),
-                member_ids: [],
-            })
-            if (!result.success) {
-                setError(result.error ?? 'Failed to create team')
-                return
-            }
-            window.location.reload()
-        })
-    }
-
-    function handleJoinTeam(teamId: string) {
-        setError(null)
-        startTransition(async () => {
-            const result = await joinTeamAction({ team_id: teamId, event_id: event.id, category_id: categoryId })
-            if (!result.success) {
-                setError(result.error ?? 'Failed to join team')
-                return
-            }
-            window.location.reload()
-        })
-    }
-
+    // Category-filtered teams
     const categoryTeams = teams.filter(t =>
         categoryId ? t.category_id === categoryId : !t.category_id
     )
+    const studentCreatedTeam = categoryTeams.find(t => t.created_by === studentId)
+    const studentMemberTeam = !studentCreatedTeam
+        ? categoryTeams.find(t => t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
+        : undefined
+
+    // Pending join request THIS student sent (student-initiated = invited_by is null)
+    const pendingJoinEntry = !studentCreatedTeam && !studentMemberTeam
+        ? (() => {
+            for (const t of categoryTeams) {
+                const m = t.members?.find(m => m.student_id === studentId && m.status === 'pending' && !m.invited_by)
+                if (m) return { teamMemberId: m.id, teamName: t.team_name }
+            }
+            return null
+        })()
+        : null
+
+    // Incoming invites for this student (creator-initiated = invited_by is set)
+    const incomingInvites = !studentCreatedTeam && !studentMemberTeam
+        ? categoryTeams.flatMap(t =>
+            (t.members ?? [])
+                .filter(m => m.student_id === studentId && m.status === 'pending' && !!m.invited_by)
+                .map(m => ({ teamMemberId: m.id, teamName: t.team_name, teamId: t.id }))
+        )
+        : []
+
+    // Other teams (not created by this student)
+    const otherTeams = categoryTeams.filter(t => t.created_by !== studentId)
+
+    // IDs already in / pending for creator's team (for invite exclusion)
+    const creatorTeamMemberIds = studentCreatedTeam?.members?.map(m => m.student_id) ?? []
+
+    function wrap(fn: () => Promise<{ success: boolean; error?: string }>) {
+        setError(null)
+        startTransition(async () => {
+            const result = await fn()
+            if (!result.success) setError(result.error ?? 'Something went wrong')
+            else window.location.reload()
+        })
+    }
+
+    function handleSendInvite(student: StudentSearchResult) {
+        if (!studentCreatedTeam) return
+        wrap(() => sendInviteAction({ team_id: studentCreatedTeam.id, student_id: student.id, event_id: event.id }))
+    }
+
+    function cancelCreateTeam() {
+        setShowCreateTeam(false)
+        setTeamName('')
+        setSelectedMembers([])
+        setError(null)
+    }
 
     return (
-        <div className="glass" style={{ padding: 20 }}>
+        <div className="glass-premium" style={{ padding: 24 }}>
             {error && (
                 <div style={{
-                    padding: '10px 14px', marginBottom: 12, borderRadius: 'var(--r-md)',
-                    background: 'var(--danger-bg, #fef2f2)', color: 'var(--danger, #dc2626)',
-                    fontSize: '0.875rem', fontWeight: 500,
-                    border: '1px solid var(--danger, #dc2626)',
+                    padding: '12px 16px', marginBottom: 20, borderRadius: 'var(--r-md)',
+                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                    fontSize: '0.875rem', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.2)',
                 }}>
-                    ⚠ {error}
+                    {error}
                 </div>
             )}
+
             {categoryName && (
-                <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 12, color: 'var(--accent)' }}>
-                    {categoryName}
-                </h4>
+                <div style={{ marginBottom: 20 }}>
+                    <h4 className="section-title" style={{ fontSize: '1.25rem', marginBottom: 4, color: 'var(--accent)' }}>
+                        {categoryName}
+                    </h4>
+                    {categoryDescription && (
+                        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+                            {categoryDescription}
+                        </p>
+                    )}
+                    {categoryDate && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Category Start:</span>
+                            {format(new Date(categoryDate), 'dd MMM yyyy, hh:mm a')}
+                        </div>
+                    )}
+                </div>
             )}
 
-            {/* Single participant */}
+            {/* ── Single participant ── */}
             {participantType === 'single' && (
                 <div>
                     {isRegistered ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <Badge variant="generated">✓ Registered</Badge>
+                            <Badge variant="success">Registered</Badge>
                             {canRegister && (
-                                <Button size="sm" variant="danger" onClick={cancel} loading={pending}>
+                                <Button size="sm" variant="danger" onClick={() => wrap(() => cancelRegistrationAction(existingReg.id))} loading={pending}>
                                     Cancel Registration
                                 </Button>
                             )}
                         </div>
                     ) : canRegister ? (
-                        <Button onClick={register} loading={pending}>
+                        <Button onClick={() => wrap(() => registerForEventAction({ event_id: event.id, category_id: categoryId }))} loading={pending}>
                             Register Now
                         </Button>
                     ) : (
@@ -167,81 +352,310 @@ function RegistrationAction({
                 </div>
             )}
 
-            {/* Team / Multiple participants */}
+            {/* ── Team / Multiple participants ── */}
             {participantType === 'multiple' && (
-                <div>
-                    {isRegistered ? (
-                        <div>
-                            <Badge variant="generated">✓ Registered</Badge>
-                            {existingReg.team && (
-                                <span style={{ marginLeft: 8, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                    Team: {(existingReg.team as any)?.team_name}
-                                </span>
-                            )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                    {/* Non-creator member status + leave */}
+                    {!studentCreatedTeam && studentMemberTeam && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <Badge variant="success">Registered</Badge>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                Team: {studentMemberTeam.team_name}
+                            </span>
                             {canRegister && (
-                                <Button size="sm" variant="danger" onClick={cancel} loading={pending} style={{ marginLeft: 12 }}>
-                                    Leave / Cancel
+                                <Button size="sm" variant="danger"
+                                    onClick={() => {
+                                        if (!confirm('Are you sure you want to leave this team?')) return
+                                        wrap(() => leaveTeamAction({ team_id: studentMemberTeam.id, event_id: event.id }))
+                                    }}
+                                    loading={pending}>
+                                    <LogOut size={14} /> Leave Team
                                 </Button>
                             )}
                         </div>
-                    ) : canRegister ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {/* Existing teams to join */}
-                            {categoryTeams.length > 0 && (
-                                <div>
-                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                                        Join an existing team:
+                    )}
+
+                    {/* Incoming invites from creators */}
+                    {incomingInvites.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Team Invitations
+                            </div>
+                            {incomingInvites.map(inv => (
+                                <div key={inv.teamMemberId} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '10px 14px', borderRadius: 'var(--r-md)',
+                                    border: '1px solid var(--accent-border, rgba(99,102,241,0.3))',
+                                    background: 'var(--accent-subtle, rgba(99,102,241,0.06))',
+                                }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                                            You&apos;ve been invited to join <span style={{ color: 'var(--accent)' }}>{inv.teamName}</span>
+                                        </span>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {categoryTeams.map(team => {
-                                            const isFull = teamSize ? (team.members?.length ?? 0) >= teamSize : false
-                                            return (
-                                                <div key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{team.team_name}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                                            {team.members?.length ?? 0}{teamSize ? `/${teamSize}` : ''} members
-                                                        </div>
-                                                    </div>
-                                                    <Button size="sm" variant="outline" onClick={() => handleJoinTeam(team.id)} loading={pending} disabled={isFull}>
-                                                        {isFull ? 'Full' : 'Join'}
-                                                    </Button>
-                                                </div>
-                                            )
-                                        })}
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <Button size="sm"
+                                            onClick={() => wrap(() => acceptInviteAction({ team_member_id: inv.teamMemberId, event_id: event.id }))}
+                                            loading={pending}>
+                                            <Check size={14} /> Accept
+                                        </Button>
+                                        <Button size="sm" variant="danger"
+                                            onClick={() => wrap(() => declineInviteAction({ team_member_id: inv.teamMemberId, event_id: event.id }))}
+                                            loading={pending}>
+                                            <X size={14} /> Decline
+                                        </Button>
                                     </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Creator's team management panel */}
+                    {studentCreatedTeam && (
+                        <div style={{ padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>
+                                    Manage Team: {studentCreatedTeam.team_name}
+                                </div>
+                                <Button size="sm" variant="danger"
+                                    onClick={() => {
+                                        if (!confirm('Are you sure you want to delete this team? All members will be removed.')) return
+                                        wrap(() => deleteTeamAction({ team_id: studentCreatedTeam.id, event_id: event.id }))
+                                    }}
+                                    loading={pending}>
+                                    <Trash2 size={14} /> Delete Team
+                                </Button>
+                            </div>
+
+                            {/* Approved members */}
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                                Members ({studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0}{teamSize ? `/${teamSize}` : ''})
+                            </div>
+                            {studentCreatedTeam.members?.filter(m => m.status === 'approved').map(m => (
+                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.875rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Badge variant="success">Approved</Badge>
+                                        <span>{m.student?.name ?? m.student_id}</span>
+                                        {m.student_id === studentId && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>(you)</span>}
+                                    </div>
+                                    {m.student_id !== studentId && canRegister && (
+                                        <button type="button"
+                                            onClick={() => {
+                                                if (!confirm(`Remove ${m.student?.name ?? 'this member'} from the team?`)) return
+                                                wrap(() => removeMemberAction({ team_member_id: m.id, event_id: event.id }))
+                                            }}
+                                            disabled={pending} title="Remove member"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4, display: 'flex', alignItems: 'center', opacity: pending ? 0.5 : 1 }}>
+                                            <UserMinus size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+
+                            {/* Pending join requests (student-initiated) */}
+                            {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).length ?? 0) > 0 && (
+                                <div style={{ marginTop: 12 }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warning)', marginBottom: 6 }}>
+                                        Join Requests
+                                    </div>
+                                    {studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).map(m => (
+                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
+                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>{m.student.email}</span>}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <Button size="sm" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id, category_id: categoryId }))} loading={pending}>
+                                                    <Check size={14} /> Approve
+                                                </Button>
+                                                <Button size="sm" variant="danger" onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
+                                                    <X size={14} /> Reject
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
-                            {/* Create team */}
+                            {/* Pending outgoing invites (creator-initiated) */}
+                            {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !!m.invited_by).length ?? 0) > 0 && (
+                                <div style={{ marginTop: 12 }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                                        Invite Sent — Awaiting Response
+                                    </div>
+                                    {studentCreatedTeam.members?.filter(m => m.status === 'pending' && !!m.invited_by).map(m => (
+                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
+                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>{m.student.email}</span>}
+                                            </div>
+                                            <button type="button"
+                                                onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))}
+                                                disabled={pending} title="Cancel invite"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4, display: 'flex', alignItems: 'center', opacity: pending ? 0.5 : 1 }}>
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Invite new member search (only if team not full) */}
+                            {canRegister && (() => {
+                                const approvedCount = studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0
+                                const isFull = teamSize ? approvedCount >= teamSize : false
+                                return !isFull
+                            })() && (
+                                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                                            Invite a Student
+                                        </div>
+                                        <StudentSearchInput
+                                            excludeId={studentId}
+                                            excludeIds={creatorTeamMemberIds}
+                                            placeholder="Search student to invite..."
+                                            onSelect={handleSendInvite}
+                                        />
+                                    </div>
+                                )}
+                        </div>
+                    )}
+
+                    {/* All other teams — always visible */}
+                    {otherTeams.length > 0 && (
+                        <div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                                {!studentMemberTeam && !studentCreatedTeam && canRegister ? 'Join an existing team:' : 'Other teams:'}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {otherTeams.map(team => {
+                                    const approvedCount = team.members?.filter(m => m.status === 'approved').length ?? 0
+                                    const isFull = teamSize ? approvedCount >= teamSize : false
+                                    const myEntry = team.members?.find(m => m.student_id === studentId && m.status === 'pending')
+                                    const hasPendingJoin = myEntry && !myEntry.invited_by
+                                    const hasIncomingInvite = myEntry && !!myEntry.invited_by
+                                    const canJoin = !studentMemberTeam && !studentCreatedTeam && canRegister && !isFull && !pendingJoinEntry
+
+                                    return (
+                                        <div key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{team.team_name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                    {approvedCount}{teamSize ? `/${teamSize}` : ''} member{approvedCount !== 1 ? 's' : ''}
+                                                </div>
+                                            </div>
+
+                                            {hasPendingJoin ? (
+                                                <Badge variant="pending">Request Pending</Badge>
+                                            ) : hasIncomingInvite ? (
+                                                <Badge variant="pending">Invited</Badge>
+                                            ) : !studentMemberTeam && !studentCreatedTeam && canRegister ? (
+                                                isFull ? (
+                                                    <Badge variant="failed">Full</Badge>
+                                                ) : (
+                                                    <Button size="sm" variant="outline"
+                                                        onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id, category_id: categoryId }))}
+                                                        loading={pending} disabled={!canJoin}>
+                                                        Request to Join
+                                                    </Button>
+                                                )
+                                            ) : (
+                                                isFull ? <Badge variant="failed">Full</Badge> : <Badge variant="pending">{approvedCount === 0 ? 'Vacant' : 'Open'}</Badge>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Create team — available even if student has a pending join request */}
+                    {!studentCreatedTeam && !studentMemberTeam && canRegister && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Pending join notice */}
+                            {pendingJoinEntry && (
+                                <div style={{
+                                    padding: '10px 14px', borderRadius: 'var(--r-md)',
+                                    background: 'var(--warning-bg)', color: 'var(--warning)',
+                                    fontSize: '0.875rem', fontWeight: 500,
+                                    border: '1px solid rgba(245, 166, 35, 0.3)',
+                                }}>
+                                    Your join request to <strong>{pendingJoinEntry.teamName}</strong> is pending.
+                                    Creating a team will automatically cancel it.
+                                </div>
+                            )}
+
                             {!showCreateTeam ? (
                                 <Button variant="outline" onClick={() => setShowCreateTeam(true)}>
                                     <Users2 size={16} /> Create New Team
                                 </Button>
                             ) : (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                    <input
-                                        className="form-input"
-                                        value={teamName}
-                                        onChange={e => setTeamName(e.target.value)}
-                                        placeholder="Enter team name…"
-                                        style={{ flex: 1, minWidth: '200px' }}
-                                    />
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <Button onClick={handleCreateTeam} loading={pending} disabled={!teamName.trim()}>
-                                            Create
-                                        </Button>
-                                        <Button variant="outline" onClick={() => { setShowCreateTeam(false); setTeamName(''); }}>
-                                            Cancel
-                                        </Button>
+                                <div style={{
+                                    display: 'flex', flexDirection: 'column', gap: 12,
+                                    padding: 16, borderRadius: 'var(--r-md)',
+                                    border: '1px solid var(--border)', background: 'var(--bg-surface)',
+                                }}>
+                                    <div className="registration-action__details">
+                                        <div className="registration-action__info">
+                                            <h3 className="registration-action__title">
+                                                {categoryName || event.title}
+                                            </h3>
+                                            {categoryDescription && (
+                                                <p className="registration-action__description" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                                                    {categoryDescription}
+                                                </p>
+                                            )}
+                                            <div className="registration-action__meta">
+                                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>
+                                                    Team Name <span style={{ color: 'var(--error)' }}>*</span>
+                                                </label>
+                                                <input
+                                                    className="form-input"
+                                                    value={teamName}
+                                                    onChange={e => setTeamName(e.target.value)}
+                                                    placeholder="Enter team name..."
+                                                />
+                                            </div>
+                                            <MemberSearch
+                                                excludeId={studentId}
+                                                selectedMembers={selectedMembers}
+                                                onAdd={s => setSelectedMembers(prev => [...prev, s])}
+                                                onRemove={id => setSelectedMembers(prev => prev.filter(m => m.id !== id))}
+                                                maxMembers={teamSize ?? undefined}
+                                            />
+                                            {selectedMembers.length > 0 && (
+                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>
+                                                    Invited members will see the invite and can accept or decline.
+                                                </p>
+                                            )}
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <Button
+                                                    onClick={() => wrap(() => createTeamAction({
+                                                        event_id: event.id,
+                                                        category_id: categoryId,
+                                                        team_name: teamName.trim(),
+                                                        member_ids: selectedMembers.map(m => m.id),
+                                                    }))}
+                                                    loading={pending} disabled={!teamName.trim()}>
+                                                    Create Team
+                                                </Button>
+                                                <Button variant="outline" onClick={cancelCreateTeam} disabled={pending}>
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
+
+                            {/* Closed / past deadline */}
+                            {!studentMemberTeam && !studentCreatedTeam && !canRegister && (
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+                                    Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                            Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
-                        </span>
                     )}
                 </div>
             )}
@@ -249,9 +663,12 @@ function RegistrationAction({
     )
 }
 
+// ── Root export ────────────────────────────────────────────────
+
 export function StudentEventActions({ event, categories, registrationMap, teams, winners, studentId, isDeadlinePassed }: StudentEventActionsProps) {
     const hasCategories = categories.length > 0
-
+    const displayDateString = event.event_date
+    const displayDate = format(new Date(displayDateString), 'MMMM d, h:mm a')
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {hasCategories ? (
@@ -261,6 +678,8 @@ export function StudentEventActions({ event, categories, registrationMap, teams,
                         event={event}
                         categoryId={cat.id}
                         categoryName={cat.category_name}
+                        categoryDescription={cat.description}
+                        categoryDate={cat.event_date}
                         participantType={cat.participant_type}
                         teamSize={cat.team_size}
                         existingReg={registrationMap[cat.id]}
@@ -280,7 +699,6 @@ export function StudentEventActions({ event, categories, registrationMap, teams,
                     isDeadlinePassed={isDeadlinePassed}
                 />
             )}
-
             {event.results_published && <WinnersDisplay winners={winners} />}
         </div>
     )

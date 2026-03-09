@@ -100,7 +100,7 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
                 <div className="sidebar__header">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src="/sicm-logo.png"
+                        src="/assets/logo.png"
                         alt="SICM Logo"
                         className="sidebar__logo"
                     />

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button'
 interface CategoryRow {
     id: string
     category_name: string
+    description: string
+    event_date: string
     participant_type: 'single' | 'multiple'
     team_size: number | ''
     faculty: Array<{ id: string; name: string }>
@@ -37,7 +39,7 @@ export function CategoryToggleForm({ enabled, categories, onToggle, onChange }: 
     function addRow() {
         onChange([
             ...categories,
-            { id: makeId(), category_name: '', participant_type: 'single', team_size: '', faculty: [] },
+            { id: makeId(), category_name: '', description: '', event_date: '', participant_type: 'single', team_size: '', faculty: [] },
         ])
     }
 
@@ -94,6 +96,25 @@ export function CategoryToggleForm({ enabled, categories, onToggle, onChange }: 
                                             placeholder="e.g. Science Quiz, Art Competition"
                                         />
                                     </FormGroup>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <FormGroup label="Category Description">
+                                            <input
+                                                className="form-input"
+                                                value={cat.description}
+                                                onChange={(e) => updateRow(cat.id, 'description', e.target.value)}
+                                                placeholder="Brief description for this category"
+                                            />
+                                        </FormGroup>
+                                        <FormGroup label="Category Start Time">
+                                            <input
+                                                type="datetime-local"
+                                                className="form-input"
+                                                value={cat.event_date}
+                                                onChange={(e) => updateRow(cat.id, 'event_date', e.target.value)}
+                                            />
+                                        </FormGroup>
+                                    </div>
 
                                     <FormGroup label="Participant Type">
                                         <div style={{ display: 'flex', gap: 16 }}>
