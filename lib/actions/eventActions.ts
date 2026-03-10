@@ -254,10 +254,7 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         // 6. Delete certificate templates
         await admin.from('certificate_templates').delete().eq('event_id', eventId)
 
-        // 7. Delete event categories (just in case any remain)
-        await admin.from('event_categories').delete().eq('event_id', eventId)
-
-        // 8. Finally delete the event itself
+        // 7. Finally delete the event itself
         const { error } = await admin.from('events').delete().eq('id', eventId)
         if (error) return { success: false, error: error.message }
 

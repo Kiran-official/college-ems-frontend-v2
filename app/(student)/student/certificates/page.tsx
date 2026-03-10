@@ -33,11 +33,6 @@ export default async function StudentCertificatesPage() {
                             <h3 className="section-title" style={{ fontSize: '1.125rem', marginBottom: 8 }}>
                                 {cert.event?.title ?? 'Event'}
                             </h3>
-                            {(cert.category as { category_name?: string } | undefined)?.category_name && (
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-                                    {(cert.category as { category_name?: string }).category_name}
-                                </div>
-                            )}
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                                 <Badge variant={cert.certificate_type === 'winner' ? 'success' : 'info'}>
                                     {cert.certificate_type.charAt(0).toUpperCase() + cert.certificate_type.slice(1)}

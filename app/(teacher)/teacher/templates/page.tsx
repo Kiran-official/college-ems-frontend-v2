@@ -74,12 +74,6 @@ export default async function TeacherTemplatesPage() {
                                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
                                         Event: <span style={{ color: 'var(--text-primary)' }}>{t.event?.title ?? '—'}</span>
                                     </div>
-                                    {t.category && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                                            Category: <span style={{ color: 'var(--text-primary)' }}>{t.category.category_name}</span>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>

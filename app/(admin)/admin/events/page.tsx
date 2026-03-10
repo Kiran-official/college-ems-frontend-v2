@@ -52,7 +52,7 @@ export default async function AdminEventsPage() {
                                     <td><Badge variant={e.participant_type === 'single' ? 'individual' : 'team'}>{e.participant_type}</Badge></td>
                                     <td>
                                         <div className="faculty-pills">
-                                            {e.faculty_in_charge?.filter(f => !f.category_id).map(f => (
+                                            {e.faculty_in_charge?.map(f => (
                                                 <span key={f.teacher_id} className="faculty-pill">{f.teacher?.name}</span>
                                             ))}
                                         </div>

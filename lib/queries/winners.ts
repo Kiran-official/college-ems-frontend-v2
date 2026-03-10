@@ -7,8 +7,8 @@ export async function getWinnersByEvent(eventId: string): Promise<Winner[]> {
         .from('winners')
         .select(`
             *,
-            student:users!winners_student_id_fkey(id, name, email),
-            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email)))
+            student:users!winners_student_id_fkey(id, name, email, programme, semester),
+            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email, programme, semester)))
         `)
         .eq('event_id', eventId)
         .order('created_at')

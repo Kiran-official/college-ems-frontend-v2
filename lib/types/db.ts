@@ -60,26 +60,13 @@ export interface Event {
     department?: Department
     creator?: User
     faculty_in_charge?: FacultyInCharge[]
-    categories?: any[] // DEPRECATED: Categories have been removed. This remains for partial compatibility.
 }
 
-export interface EventCategory {
-    id: string
-    event_id: string
-    category_name: string
-    description?: string
-    event_date?: string
-    participant_type: ParticipantType
-    team_size?: number
-    created_at: string
-    updated_at?: string
-}
 
 export interface FacultyInCharge {
     id?: string
     event_id: string
     teacher_id: string
-    category_id?: string
     // Joined fields
     teacher?: User
 }
@@ -90,7 +77,6 @@ export interface IndividualRegistration {
     id: string
     student_id: string
     event_id: string
-    category_id?: string
     team_id?: string
     attendance_status: AttendanceStatus
     registered_at: string
@@ -98,7 +84,6 @@ export interface IndividualRegistration {
     student?: User
     event?: Event
     team?: Team
-    category?: EventCategory
 }
 
 export interface Team {
@@ -128,17 +113,16 @@ export interface TeamMember {
 export interface Winner {
     id: string
     event_id: string
-    category_id?: string
     winner_type: WinnerType
     student_id?: string
     team_id?: string
     position_label: string
     tags: string[]             // stored as text[] in Supabase
+    created_by: string
     created_at: string
     // Joined fields
     student?: User
     team?: Team
-    category?: EventCategory
 }
 
 // ── Certificates ───────────────────────────────────────────────

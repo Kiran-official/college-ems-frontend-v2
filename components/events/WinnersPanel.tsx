@@ -88,6 +88,7 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
     const [tagInput, setTagInput] = useState('')
     const [tags, setTags] = useState<string[]>([])
     const [pending, startTransition] = useTransition()
+    const [error, setError] = useState<string | null>(null)
 
     function addTag() {
         const t = tagInput.trim()
@@ -108,18 +109,24 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
         }
 
         startTransition(async () => {
-            await declareWinnerAction({
+            setError(null)
+            const result = await declareWinnerAction({
                 event_id: eventId,
                 winner_type: isTeam ? 'team' : 'student',
                 winner_id: winnerId,
                 position_label: positionLabel.trim(),
                 tags: finalTags,
             })
-            setWinnerId('')
-            setPositionLabel('')
-            setTagInput('')
-            setTags([])
-            onDeclared()
+            
+            if (result.success) {
+                setWinnerId('')
+                setPositionLabel('')
+                setTagInput('')
+                setTags([])
+                onDeclared()
+            } else {
+                setError(result.error ?? 'Failed to declare winner')
+            }
         })
     }
 
@@ -176,6 +183,12 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
             <Button size="sm" onClick={submit} loading={pending} disabled={!winnerId || !positionLabel.trim()}>
                 Declare Winner
             </Button>
+
+            {error && (
+                <div style={{ color: 'var(--error)', fontSize: '0.8125rem', marginTop: 4, fontWeight: 500 }}>
+                    ⚠️ {error}
+                </div>
+            )}
         </div>
     )
 }

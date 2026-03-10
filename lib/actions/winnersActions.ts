@@ -26,6 +26,7 @@ export async function declareWinnerAction(data: {
             winner_type: data.winner_type,
             position_label: data.position_label,
             tags: data.tags ?? [],
+            created_by: user.id,
         }
 
         if (data.winner_type === 'student') {

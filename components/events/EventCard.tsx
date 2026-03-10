@@ -11,8 +11,7 @@ interface EventCardProps {
 
 function FacultyPills({ fic }: { fic: FacultyInCharge[] }) {
     // Unique event-level faculty only
-    const eventLevel = fic.filter(f => !f.category_id)
-    const teachers = eventLevel.map(f => f.teacher).filter(Boolean)
+    const teachers = fic.map(f => f.teacher).filter(Boolean)
     if (teachers.length === 0) return null
 
     const show = teachers.slice(0, 2)
@@ -40,7 +39,6 @@ const VISIBILITY_LABEL: Record<string, string> = {
 
 export function EventCard({ event, basePath, isRegistered }: EventCardProps & { isRegistered?: boolean }) {
     const eventDate = format(new Date(event.event_date), 'dd/MM, hh:mm a')
-    const hasCategories = (event.categories?.length ?? 0) > 0
     const participantLabel = event.participant_type.charAt(0).toUpperCase() + event.participant_type.slice(1)
 
     return (
@@ -54,7 +52,6 @@ export function EventCard({ event, basePath, isRegistered }: EventCardProps & { 
                         <Badge variant="success" className="event-card__status">Registered</Badge>
                     )}
                 </div>
-                {hasCategories && <span className="event-card__meta">Multiple Categories</span>}
             </div>
 
             <div className="event-card__main">
