@@ -9,7 +9,6 @@ export async function getCertificatesByEvent(eventId: string): Promise<Certifica
             *,
             student:users!certificates_student_id_fkey(id, name, email),
             event:events(id, title),
-            category:event_categories(id, category_name),
             winner:winners(id, position_label, tags)
         `)
         .eq('event_id', eventId)
@@ -24,7 +23,6 @@ export async function getCertificatesByStudent(studentId: string): Promise<Certi
         .select(`
             *,
             event:events(id, title),
-            category:event_categories(id, category_name),
             winner:winners(id, position_label)
         `)
         .eq('student_id', studentId)
@@ -40,8 +38,7 @@ export async function getAllCertificates(): Promise<Certificate[]> {
         .select(`
             *,
             student:users!certificates_student_id_fkey(id, name, email),
-            event:events(id, title),
-            category:event_categories(id, category_name)
+            event:events(id, title)
         `)
         .order('created_at', { ascending: false })
     return data ?? []
@@ -88,4 +85,14 @@ export async function getStudentCertificateCount(studentId: string): Promise<num
         .eq('student_id', studentId)
         .eq('status', 'generated')
     return count ?? 0
+}
+
+export async function getTemplatesByEvent(eventId: string): Promise<any[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('certificate_templates')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('is_active', true)
+    return data ?? []
 }

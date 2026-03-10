@@ -6,8 +6,7 @@ const EVENT_SELECT = `
     *,
     department:departments(*),
     creator:users!events_created_by_fkey(id, name, email, role),
-    faculty_in_charge:faculty_in_charge!faculty_in_charge_event_id_fkey(*, teacher:users!fic_teacher_fkey(id, name, email)),
-    categories:event_categories!event_categories_event_id_fkey(*)
+    faculty_in_charge:faculty_in_charge!faculty_in_charge_event_id_fkey(*, teacher:users!fic_teacher_fkey(id, name, email))
 `
 
 export async function getAllEvents(): Promise<Event[]> {
@@ -155,4 +154,14 @@ export async function getTeacherEventStats(teacherId: string) {
         activeEvents: activeEvents ?? 0,
         completedEvents: completedEvents ?? 0,
     }
+}
+
+export async function getUpcomingEventsCount(): Promise<number> {
+    const supabase = await createSSRClient()
+    const { count } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'open')
+        .eq('is_active', true)
+    return count ?? 0
 }

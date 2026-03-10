@@ -8,7 +8,6 @@ export async function getRegistrationsByEvent(eventId: string): Promise<Individu
         .select(`
             *,
             student:users!individual_registrations_student_id_fkey(id, name, email, phone_number, department_id, department:departments(name)),
-            category:event_categories(*),
             team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email, phone_number, department_id, department:departments(name))))
         `)
         .eq('event_id', eventId)
@@ -22,8 +21,7 @@ export async function getRegistrationsByStudent(studentId: string): Promise<Indi
         .from('individual_registrations')
         .select(`
             *,
-            event:events(*, department:departments(*)),
-            category:event_categories(*)
+            event:events(*, department:departments(*))
         `)
         .eq('student_id', studentId)
         .order('registered_at', { ascending: false })
@@ -32,11 +30,10 @@ export async function getRegistrationsByStudent(studentId: string): Promise<Indi
 
 export async function getStudentRegistrationForEvent(
     studentId: string,
-    eventId: string,
-    categoryId?: string
+    eventId: string
 ): Promise<IndividualRegistration | null> {
     const supabase = await createSSRClient()
-    let query = supabase
+    const { data, error } = await supabase
         .from('individual_registrations')
         .select(`
             *,
@@ -44,20 +41,12 @@ export async function getStudentRegistrationForEvent(
                 id,
                 team_name,
                 created_by,
-                category_id,
                 event_id
             )
         `)
         .eq('student_id', studentId)
         .eq('event_id', eventId)
-
-    if (categoryId) {
-        query = query.eq('category_id', categoryId)
-    } else {
-        query = query.is('category_id', null)
-    }
-
-    const { data, error } = await query.maybeSingle()
+        .maybeSingle()
 
     if (error) {
         console.error('[getStudentRegistrationForEvent] query error:', error)
@@ -66,9 +55,9 @@ export async function getStudentRegistrationForEvent(
     return data
 }
 
-export async function getTeamsByEvent(eventId: string, categoryId?: string): Promise<Team[]> {
+export async function getTeamsByEvent(eventId: string): Promise<Team[]> {
     const supabase = await createSSRClient()
-    let query = supabase
+    const { data } = await supabase
         .from('teams')
         .select(`
             *,
@@ -79,12 +68,7 @@ export async function getTeamsByEvent(eventId: string, categoryId?: string): Pro
             creator:users!teams_created_by_fkey(id, name)
         `)
         .eq('event_id', eventId)
-
-    if (categoryId !== undefined) {
-        query = query.eq('category_id', categoryId)
-    }
-
-    const { data } = await query.order('created_at')
+        .order('created_at')
     return data ?? []
 }
 
@@ -104,16 +88,4 @@ export async function getStudentRegistrationCount(studentId: string): Promise<nu
         .select('*', { count: 'exact', head: true })
         .eq('student_id', studentId)
     return count ?? 0
-}
-
-export async function getStudentUpcomingCount(studentId: string): Promise<number> {
-    const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('individual_registrations')
-        .select('event:events!inner(status)')
-        .eq('student_id', studentId)
-    return data?.filter(r => {
-        const event = r.event as unknown as { status: string }
-        return event?.status === 'open'
-    }).length ?? 0
 }

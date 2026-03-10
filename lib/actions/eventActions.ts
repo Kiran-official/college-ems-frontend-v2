@@ -13,14 +13,6 @@ export async function createEventAction(data: {
     participant_type: 'single' | 'multiple'
     team_size?: number
     faculty_ids: string[]
-    categories?: Array<{
-        category_name: string
-        description?: string
-        event_date?: string
-        participant_type: 'single' | 'multiple'
-        team_size?: number
-        faculty_ids?: string[]
-    }>
 }): Promise<{ success: boolean; event_id?: string; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -44,7 +36,7 @@ export async function createEventAction(data: {
             visibility: data.visibility,
             participant_type: data.participant_type,
             team_size: data.participant_type === 'multiple' ? data.team_size : null,
-            status: 'open',
+            status: 'draft',
             is_active: true,
             results_published: false,
             created_by: user.id,
@@ -61,36 +53,11 @@ export async function createEventAction(data: {
             const ficRows = facultyIds.map(tid => ({
                 event_id: event.id,
                 teacher_id: tid,
-                category_id: null as string | null,
             }))
-            await admin.from('faculty_in_charge').insert(ficRows)
-        }
-
-        // Create categories if provided
-        if (data.categories && data.categories.length > 0) {
-            for (const cat of data.categories) {
-                const { data: catRow, error: catError } = await admin.from('event_categories').insert({
-                    event_id: event.id,
-                    category_name: cat.category_name,
-                    description: cat.description || null,
-                    event_date: cat.event_date || null,
-                    participant_type: cat.participant_type,
-                    team_size: cat.participant_type === 'multiple' ? cat.team_size : null,
-                }).select('id').single()
-
-                if (catError || !catRow) {
-                    return { success: false, error: catError?.message ?? 'Failed to create category' }
-                }
-
-                // Category-level faculty
-                if (cat.faculty_ids && cat.faculty_ids.length > 0) {
-                    const catFicRows = cat.faculty_ids.map(tid => ({
-                        event_id: event.id,
-                        teacher_id: tid,
-                        category_id: catRow.id,
-                    }))
-                    await admin.from('faculty_in_charge').insert(catFicRows)
-                }
+            const { error: ficError } = await admin.from('faculty_in_charge').insert(ficRows)
+            if (ficError) {
+                console.error('Faculty assignment error:', ficError)
+                return { success: false, error: 'Event created but faculty assignment failed: ' + ficError.message }
             }
         }
 
@@ -125,6 +92,27 @@ export async function updateEventAction(
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath(`/student/events/${eventId}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function openEventAction(eventId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { error } = await admin.from('events').update({ status: 'open' }).eq('id', eventId)
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/admin/events/${eventId}`)
+        revalidatePath(`/teacher/events/${eventId}`)
+        revalidatePath('/student/events')
+        revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -247,6 +235,29 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         }
 
         const admin = createAdminClient()
+
+        // 1. Delete certificates
+        await admin.from('certificates').delete().eq('event_id', eventId)
+
+        // 2. Delete winners
+        await admin.from('winners').delete().eq('event_id', eventId)
+
+        // 3. Delete individual registrations
+        await admin.from('individual_registrations').delete().eq('event_id', eventId)
+
+        // 4. Delete teams (cascades to team_members)
+        await admin.from('teams').delete().eq('event_id', eventId)
+
+        // 5. Delete faculty in charge
+        await admin.from('faculty_in_charge').delete().eq('event_id', eventId)
+
+        // 6. Delete certificate templates
+        await admin.from('certificate_templates').delete().eq('event_id', eventId)
+
+        // 7. Delete event categories (just in case any remain)
+        await admin.from('event_categories').delete().eq('event_id', eventId)
+
+        // 8. Finally delete the event itself
         const { error } = await admin.from('events').delete().eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
@@ -263,7 +274,6 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
 export async function addParticipantAfterCloseAction(data: {
     event_id: string
     student_id: string
-    category_id?: string
     team_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
@@ -286,7 +296,6 @@ export async function addParticipantAfterCloseAction(data: {
         const { error } = await admin.from('individual_registrations').insert({
             student_id: data.student_id,
             event_id: data.event_id,
-            category_id: data.category_id || null,
             team_id: data.team_id || null,
             attendance_status: 'registered',
         })

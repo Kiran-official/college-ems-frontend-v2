@@ -53,7 +53,6 @@ export async function updateAttendanceAction(data: {
 export async function bulkUpdateAttendanceAction(data: {
     event_id: string
     status: 'attended' | 'registered'
-    category_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -67,16 +66,11 @@ export async function bulkUpdateAttendanceAction(data: {
         }
 
         const admin = createAdminClient()
-        let query = admin
+        const { error } = await admin
             .from('individual_registrations')
             .update({ attendance_status: data.status })
             .eq('event_id', data.event_id)
 
-        if (data.category_id) {
-            query = query.eq('category_id', data.category_id)
-        }
-
-        const { error } = await query
         if (error) return { success: false, error: error.message }
 
         revalidatePath(`/admin/events/${data.event_id}`)

@@ -3,18 +3,20 @@
 import { CalendarCheck, Lock, Loader2, Eye, CheckCircle2, Check } from 'lucide-react'
 
 const STEPS = [
-    { key: 'open', label: 'Open', icon: CalendarCheck },
+    { key: 'draft', label: 'Draft', icon: CalendarCheck },
+    { key: 'open', label: 'Open', icon: CheckCircle2 },
     { key: 'closed', label: 'Closed', icon: Lock },
     { key: 'processing', label: 'Processing', icon: Loader2 },
     { key: 'published', label: 'Published', icon: Eye },
-    { key: 'completed', label: 'Completed', icon: CheckCircle2 },
+    { key: 'completed', label: 'Completed', icon: Check },
 ]
 
 function getActiveStep(status: string, resultsPublished: boolean): number {
-    if (status === 'open') return 0
-    if (status === 'closed' && !resultsPublished) return 2
-    if (status === 'closed' && resultsPublished) return 3
-    if (status === 'completed') return 4
+    if (status === 'draft') return 0
+    if (status === 'open') return 1
+    if (status === 'closed' && !resultsPublished) return 3
+    if (status === 'closed' && resultsPublished) return 4
+    if (status === 'completed') return 5
     return 0
 }
 

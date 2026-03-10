@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { Calendar, Award, Hourglass, Activity } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { getCurrentUser } from '@/lib/queries/users'
-import { getStudentRegistrationCount, getStudentUpcomingCount } from '@/lib/queries/registrations'
+import { getStudentRegistrationCount } from '@/lib/queries/registrations'
+import { getUpcomingEventsCount } from '@/lib/queries/events'
 import { getStudentCertificateCount } from '@/lib/queries/certificates'
 import { getStudentPendingResults } from '@/lib/queries/winners'
 
@@ -12,7 +13,7 @@ export default async function StudentDashboard() {
 
     const [regCount, upcomingCount, certCount, pendingResults] = await Promise.all([
         getStudentRegistrationCount(user.id),
-        getStudentUpcomingCount(user.id),
+        getUpcomingEventsCount(),
         getStudentCertificateCount(user.id),
         getStudentPendingResults(user.id),
     ])

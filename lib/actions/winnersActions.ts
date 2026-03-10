@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache'
 
 export async function declareWinnerAction(data: {
     event_id: string
-    category_id?: string
     winner_type: 'student' | 'team'
     winner_id: string
     position_label: string
@@ -24,11 +23,9 @@ export async function declareWinnerAction(data: {
 
         const insertData: Record<string, unknown> = {
             event_id: data.event_id,
-            category_id: data.category_id || null,
             winner_type: data.winner_type,
             position_label: data.position_label,
             tags: data.tags ?? [],
-            created_by: user.id,
         }
 
         if (data.winner_type === 'student') {

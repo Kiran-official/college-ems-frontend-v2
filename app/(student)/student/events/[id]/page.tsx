@@ -1,7 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getEventById } from '@/lib/queries/events'
-import { getCategoriesByEvent } from '@/lib/queries/categories'
 import { getStudentRegistrationForEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { Badge } from '@/components/ui/Badge'
@@ -20,20 +19,8 @@ export default async function StudentEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
-    const categories = await getCategoriesByEvent(id)
-    const hasCategories = categories.length > 0
-
-    // Get registration status per category or event-level
-    const registrationMap = new Map<string, any>()
-    if (hasCategories) {
-        for (const cat of categories) {
-            const reg = await getStudentRegistrationForEvent(user.id, id, cat.id)
-            if (reg) registrationMap.set(cat.id, reg)
-        }
-    } else {
-        const reg = await getStudentRegistrationForEvent(user.id, id)
-        if (reg) registrationMap.set('__event__', reg)
-    }
+    // Get registration status
+    const registration = await getStudentRegistrationForEvent(user.id, id)
 
     // Get teams and winners for display
     const teams = await getTeamsByEvent(id)
@@ -83,7 +70,6 @@ export default async function StudentEventDetailPage({ params }: Props) {
                             <div className="stat-card__label" style={{ marginBottom: 8 }}>Organised By</div>
                             <div className="stat-card__value" style={{ fontSize: '1.125rem', fontWeight: 600 }}>
                                 {event.faculty_in_charge
-                                    .filter(f => !f.category_id)
                                     .map(f => f.teacher?.name)
                                     .filter(Boolean)
                                     .join(', ')}
@@ -101,8 +87,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
                 </div>
                 <StudentEventActions
                     event={event}
-                    categories={categories}
-                    registrationMap={Object.fromEntries(registrationMap)}
+                    registration={registration}
                     teams={teams}
                     winners={winners}
                     studentId={user.id}

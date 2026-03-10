@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache'
 
 export async function registerForEventAction(data: {
     event_id: string
-    category_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -17,17 +16,17 @@ export async function registerForEventAction(data: {
         if (event.status !== 'open') return { success: false, error: 'Registration is closed' }
         if (new Date() >= new Date(event.registration_deadline)) return { success: false, error: 'Registration deadline has passed' }
 
-        let existCheck = ssr.from('individual_registrations').select('id').eq('student_id', user.id).eq('event_id', data.event_id)
-        if (data.category_id) existCheck = existCheck.eq('category_id', data.category_id)
-        else existCheck = existCheck.is('category_id', null)
-        const { data: existing } = await existCheck.maybeSingle()
+        const { data: existing } = await ssr.from('individual_registrations')
+            .select('id')
+            .eq('student_id', user.id)
+            .eq('event_id', data.event_id)
+            .maybeSingle()
         if (existing) return { success: false, error: 'Already registered' }
 
         const admin = createAdminClient()
         const { error } = await admin.from('individual_registrations').insert({
             student_id: user.id,
             event_id: data.event_id,
-            category_id: data.category_id || null,
             attendance_status: 'registered',
         })
         if (error) return { success: false, error: error.message }
@@ -76,7 +75,6 @@ export async function cancelRegistrationAction(
 
 export async function createTeamAction(data: {
     event_id: string
-    category_id?: string
     team_name: string
     member_ids: string[]
 }): Promise<{ success: boolean; team_id?: string; error?: string }> {
@@ -87,21 +85,23 @@ export async function createTeamAction(data: {
 
         const admin = createAdminClient()
 
-        // 1. Check if student already created a team for this event/category
-        let createdTeamCheck = admin.from('teams').select('id').eq('created_by', user.id).eq('event_id', data.event_id)
-        if (data.category_id) createdTeamCheck = createdTeamCheck.eq('category_id', data.category_id)
-        else createdTeamCheck = createdTeamCheck.is('category_id', null)
-        const { data: existingCreatedTeam } = await createdTeamCheck.maybeSingle()
+        // 1. Check if student already created a team for this event
+        const { data: existingCreatedTeam } = await admin.from('teams')
+            .select('id')
+            .eq('created_by', user.id)
+            .eq('event_id', data.event_id)
+            .maybeSingle()
         if (existingCreatedTeam) return { success: false, error: 'You have already created a team for this event' }
 
         // 2. Check if student is already an approved member of another team
-        let existTeamCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', user.id).eq('event_id', data.event_id)
-        if (data.category_id) existTeamCheck = existTeamCheck.eq('category_id', data.category_id)
-        else existTeamCheck = existTeamCheck.is('category_id', null)
-        const { data: existingReg } = await existTeamCheck.maybeSingle()
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', user.id)
+            .eq('event_id', data.event_id)
+            .maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
-        // 3. Auto-cancel any pending join requests the student sent (student-initiated, invited_by IS NULL)
+        // 3. Auto-cancel any pending join requests the student sent
         await admin.from('team_members')
             .delete()
             .eq('student_id', user.id)
@@ -114,7 +114,6 @@ export async function createTeamAction(data: {
         // 4. Create the team
         const { data: team, error: teamError } = await admin.from('teams').insert({
             event_id: data.event_id,
-            category_id: data.category_id || null,
             team_name: data.team_name.trim(),
             created_by: user.id,
         }).select('id').single()
@@ -143,7 +142,6 @@ export async function createTeamAction(data: {
             const { error: regError } = await admin.from('individual_registrations').insert({
                 student_id: user.id,
                 event_id: data.event_id,
-                category_id: data.category_id || null,
                 team_id: team.id,
                 attendance_status: 'registered',
             })
@@ -154,7 +152,7 @@ export async function createTeamAction(data: {
             }
         }
 
-        // 7. Auto-invite selected members as pending invites (creator-initiated)
+        // 7. Auto-invite selected members
         const otherMembers = (data.member_ids ?? []).filter(id => id !== user.id)
         if (otherMembers.length > 0) {
             await admin.from('team_members').insert(
@@ -178,7 +176,6 @@ export async function createTeamAction(data: {
 export async function joinTeamAction(data: {
     team_id: string
     event_id: string
-    category_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -193,10 +190,11 @@ export async function joinTeamAction(data: {
             return { success: false, error: 'You are already a member of this team' }
         }
 
-        let regCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', user.id).eq('event_id', data.event_id)
-        if (data.category_id) regCheck = regCheck.eq('category_id', data.category_id)
-        else regCheck = regCheck.is('category_id', null)
-        const { data: existingReg } = await regCheck.maybeSingle()
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', user.id)
+            .eq('event_id', data.event_id)
+            .maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
         // Insert as student-initiated request (invited_by = null)
@@ -229,19 +227,14 @@ export async function sendInviteAction(data: {
         const admin = createAdminClient()
 
         // Verify caller is the team creator
-        const { data: team } = await admin.from('teams').select('id, created_by, event_id, category_id').eq('id', data.team_id).single()
+        const { data: team } = await admin.from('teams').select('id, created_by, event_id').eq('id', data.team_id).single()
         if (!team) return { success: false, error: 'Team not found' }
         if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can send invites' }
 
         // Check team size
-        let maxSize: number | null = null
-        if (team.category_id) {
-            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', team.category_id).single()
-            maxSize = cat?.team_size ?? null
-        } else {
-            const { data: evt } = await admin.from('events').select('team_size').eq('id', team.event_id).single()
-            maxSize = evt?.team_size ?? null
-        }
+        const { data: event } = await admin.from('events').select('team_size').eq('id', data.event_id).single()
+        const maxSize = event?.team_size ?? null
+
         if (maxSize) {
             const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', data.team_id).eq('status', 'approved')
             if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is already full' }
@@ -255,10 +248,11 @@ export async function sendInviteAction(data: {
         }
 
         // Check student not already in another team for this event
-        let regCheck = admin.from('individual_registrations').select('id, team_id').eq('student_id', data.student_id).eq('event_id', data.event_id)
-        if (team.category_id) regCheck = regCheck.eq('category_id', team.category_id)
-        else regCheck = regCheck.is('category_id', null)
-        const { data: existingReg } = await regCheck.maybeSingle()
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', data.student_id)
+            .eq('event_id', data.event_id)
+            .maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'Student is already in a team for this event' }
 
         // Insert invite (invited_by = creator)
@@ -290,7 +284,7 @@ export async function acceptInviteAction(data: {
         const admin = createAdminClient()
 
         const { data: tm } = await admin.from('team_members')
-            .select('*, team:teams!inner(created_by, event_id, category_id)')
+            .select('*, team:teams!inner(created_by, event_id)')
             .eq('id', data.team_member_id)
             .single()
         if (!tm) return { success: false, error: 'Invite not found' }
@@ -299,17 +293,11 @@ export async function acceptInviteAction(data: {
 
         const team = tm.team as any
         const eventId: string = team.event_id
-        const categoryId: string | null = team.category_id ?? null
 
         // Check team still has space
-        let maxSize: number | null = null
-        if (categoryId) {
-            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', categoryId).single()
-            maxSize = cat?.team_size ?? null
-        } else {
-            const { data: evt } = await admin.from('events').select('team_size').eq('id', eventId).single()
-            maxSize = evt?.team_size ?? null
-        }
+        const { data: event } = await admin.from('events').select('team_size').eq('id', eventId).single()
+        const maxSize = event?.team_size ?? null
+
         if (maxSize) {
             const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', tm.team_id).eq('status', 'approved')
             if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is now full' }
@@ -330,8 +318,11 @@ export async function acceptInviteAction(data: {
         await admin.from('team_members').update({ status: 'approved' }).eq('id', data.team_member_id)
 
         // Create or update individual_registration
-        const existingRegQuery = admin.from('individual_registrations').select('id').eq('student_id', user.id).eq('event_id', eventId)
-        const { data: existingReg } = await (categoryId ? existingRegQuery.eq('category_id', categoryId) : existingRegQuery.is('category_id', null)).maybeSingle()
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id')
+            .eq('student_id', user.id)
+            .eq('event_id', eventId)
+            .maybeSingle()
 
         if (existingReg) {
             await admin.from('individual_registrations').update({ team_id: tm.team_id }).eq('id', existingReg.id)
@@ -339,7 +330,6 @@ export async function acceptInviteAction(data: {
             await admin.from('individual_registrations').insert({
                 student_id: user.id,
                 event_id: eventId,
-                category_id: categoryId,
                 team_id: tm.team_id,
                 attendance_status: 'registered',
             })
@@ -380,7 +370,6 @@ export async function declineInviteAction(data: {
 export async function approveJoinRequestAction(data: {
     team_member_id: string
     event_id: string
-    category_id?: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -390,7 +379,7 @@ export async function approveJoinRequestAction(data: {
         const admin = createAdminClient()
 
         const { data: tm } = await admin.from('team_members')
-            .select('*, team:teams!inner(created_by, event_id, category_id)')
+            .select('*, team:teams!inner(created_by, event_id)')
             .eq('id', data.team_member_id)
             .single()
         if (!tm) return { success: false, error: 'Request not found' }
@@ -399,16 +388,10 @@ export async function approveJoinRequestAction(data: {
         if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can approve requests' }
 
         const eventId: string = team.event_id
-        const categoryId: string | null = team.category_id ?? null
 
-        let maxSize: number | null = null
-        if (categoryId) {
-            const { data: cat } = await admin.from('event_categories').select('team_size').eq('id', categoryId).single()
-            maxSize = cat?.team_size ?? null
-        } else {
-            const { data: evt } = await admin.from('events').select('team_size').eq('id', eventId).single()
-            maxSize = evt?.team_size ?? null
-        }
+        const { data: event } = await admin.from('events').select('team_size').eq('id', eventId).single()
+        const maxSize = event?.team_size ?? null
+
         if (maxSize) {
             const { count } = await admin.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', tm.team_id).eq('status', 'approved')
             if ((count ?? 0) >= maxSize) return { success: false, error: 'Team is already full' }
@@ -416,8 +399,11 @@ export async function approveJoinRequestAction(data: {
 
         await admin.from('team_members').update({ status: 'approved' }).eq('id', data.team_member_id)
 
-        const existingRegQuery = admin.from('individual_registrations').select('id').eq('student_id', tm.student_id).eq('event_id', eventId)
-        const { data: existingReg } = await (categoryId ? existingRegQuery.eq('category_id', categoryId) : existingRegQuery.is('category_id', null)).maybeSingle()
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id')
+            .eq('student_id', tm.student_id)
+            .eq('event_id', eventId)
+            .maybeSingle()
 
         if (existingReg) {
             await admin.from('individual_registrations').update({ team_id: tm.team_id }).eq('id', existingReg.id)
@@ -425,7 +411,6 @@ export async function approveJoinRequestAction(data: {
             await admin.from('individual_registrations').insert({
                 student_id: tm.student_id,
                 event_id: eventId,
-                category_id: categoryId,
                 team_id: tm.team_id,
                 attendance_status: 'registered',
             })

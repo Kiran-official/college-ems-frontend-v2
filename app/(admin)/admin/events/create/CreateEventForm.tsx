@@ -4,19 +4,20 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
-import { TeacherSearchInput } from '@/components/forms/TeacherSearchInput'
-import { CategoryToggleForm } from '@/components/forms/CategoryToggleForm'
+import { MultiSelect } from '@/components/forms/MultiSelect'
+import { DateTimeInput } from '@/components/forms/DateTimeInput'
 import { createEventAction } from '@/lib/actions/eventActions'
 import type { Department, User } from '@/lib/types/db'
 
 interface CreateEventFormProps {
     departments: Department[]
     currentUser: User
+    teachers: Pick<User, 'id' | 'name' | 'email' | 'role' | 'department_id'>[]
     basePath: string
     isAdmin: boolean
 }
 
-export function CreateEventForm({ departments, currentUser, basePath, isAdmin }: CreateEventFormProps) {
+export function CreateEventForm({ departments, currentUser, teachers, basePath, isAdmin }: CreateEventFormProps) {
     const router = useRouter()
     const [pending, startTransition] = useTransition()
     const [error, setError] = useState('')
@@ -34,13 +35,6 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
     const initialFaculty = isAdmin ? [] : [{ id: currentUser.id, name: currentUser.name }]
     const [faculty, setFaculty] = useState<Array<{ id: string; name: string }>>(initialFaculty)
 
-    // Categories
-    const [catEnabled, setCatEnabled] = useState(false)
-    const [categories, setCategories] = useState<Array<{
-        id: string; category_name: string; description: string; event_date: string; participant_type: 'single' | 'multiple'
-        team_size: number | ''; faculty: Array<{ id: string; name: string }>
-    }>>([])
-
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setError('')
@@ -53,17 +47,9 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                 registration_deadline: regDeadline,
                 department_id: departmentId || undefined,
                 visibility,
-                participant_type: catEnabled ? 'single' : participantType,
-                team_size: !catEnabled && participantType === 'multiple' ? (teamSize as number) : undefined,
+                participant_type: participantType,
+                team_size: participantType === 'multiple' ? (teamSize as number) : undefined,
                 faculty_ids: faculty.map(f => f.id),
-                categories: catEnabled ? categories.map(c => ({
-                    category_name: c.category_name,
-                    description: c.description || undefined,
-                    event_date: c.event_date || undefined,
-                    participant_type: c.participant_type,
-                    team_size: c.participant_type === 'multiple' ? (c.team_size as number) : undefined,
-                    faculty_ids: c.faculty.map(f => f.id),
-                })) : undefined,
             })
 
             if (result.success) {
@@ -78,8 +64,8 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
         <form onSubmit={handleSubmit}>
             {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Event Details</h2>
 
                     <FormGroup label="Event Title" required>
@@ -92,10 +78,10 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <FormGroup label="Event Date & Time" required>
-                            <input type="datetime-local" className="form-input" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+                            <DateTimeInput value={eventDate} onChange={setEventDate} placeholder="Event date & time" />
                         </FormGroup>
                         <FormGroup label="Registration Deadline" required>
-                            <input type="datetime-local" className="form-input" value={regDeadline} onChange={e => setRegDeadline(e.target.value)} />
+                            <DateTimeInput value={regDeadline} onChange={setRegDeadline} placeholder="Last day to register" />
                         </FormGroup>
                     </div>
 
@@ -130,68 +116,65 @@ export function CreateEventForm({ departments, currentUser, basePath, isAdmin }:
                     </FormGroup>
                 </div>
 
-                <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Participation & Faculty</h2>
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', opacity: 0.1 }} />
 
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <FormGroup label="Faculty in Charge">
-                        <TeacherSearchInput
-                            selectedTeachers={faculty}
-                            onChange={setFaculty}
-                            lockedIds={isAdmin ? [] : [currentUser.id]}
+                        <MultiSelect
+                            options={teachers}
+                            selectedIds={faculty.map(f => f.id)}
+                            onChange={(selected: any[]) => {
+                                if (!isAdmin) {
+                                    // Ensure currentUser stays selected for non-admins
+                                    if (!selected.find((s: any) => s.id === currentUser.id)) {
+                                        const teacher = teachers.find(t => t.id === currentUser.id);
+                                        if (teacher) selected = [teacher as any, ...selected];
+                                    }
+                                }
+                                setFaculty(selected.map((s: any) => ({ id: s.id, name: s.name })))
+                            }}
+                            placeholder="Search and select faculty members..."
                         />
                     </FormGroup>
 
-                    {!catEnabled && (
-                        <>
-                            <FormGroup label="Participant Type" required>
-                                <div style={{ display: 'flex', gap: 16 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
-                                        <input
-                                            type="radio"
-                                            name="participantType"
-                                            checked={participantType === 'single'}
-                                            onChange={() => setParticipantType('single')}
-                                            style={{ accentColor: 'var(--accent)' }}
-                                        />
-                                        Single Participant
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
-                                        <input
-                                            type="radio"
-                                            name="participantType"
-                                            checked={participantType === 'multiple'}
-                                            onChange={() => setParticipantType('multiple')}
-                                            style={{ accentColor: 'var(--accent)' }}
-                                        />
-                                        Multiple Participants (Team)
-                                    </label>
-                                </div>
-                            </FormGroup>
+                    <FormGroup label="Participant Type" required>
+                        <div style={{ display: 'flex', gap: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                                <input
+                                    type="radio"
+                                    name="participantType"
+                                    checked={participantType === 'single'}
+                                    onChange={() => setParticipantType('single')}
+                                    style={{ accentColor: 'var(--accent)' }}
+                                />
+                                Single Participant
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                                <input
+                                    type="radio"
+                                    name="participantType"
+                                    checked={participantType === 'multiple'}
+                                    onChange={() => setParticipantType('multiple')}
+                                    style={{ accentColor: 'var(--accent)' }}
+                                />
+                                Multiple Participants (Team)
+                            </label>
+                        </div>
+                    </FormGroup>
 
-                            {participantType === 'multiple' && (
-                                <FormGroup label="Team Size" required>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        value={teamSize}
-                                        onChange={e => setTeamSize(e.target.value ? Number(e.target.value) : '')}
-                                        min={2}
-                                        placeholder="Exactly N members"
-                                        style={{ maxWidth: 200 }}
-                                    />
-                                </FormGroup>
-                            )}
-                        </>
+                    {participantType === 'multiple' && (
+                        <FormGroup label="Team Size" required>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={teamSize}
+                                onChange={e => setTeamSize(e.target.value ? Number(e.target.value) : '')}
+                                min={2}
+                                placeholder="Exactly N members"
+                                style={{ maxWidth: 200 }}
+                            />
+                        </FormGroup>
                     )}
-
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                        <CategoryToggleForm
-                            enabled={catEnabled}
-                            categories={categories}
-                            onToggle={setCatEnabled}
-                            onChange={setCategories}
-                        />
-                    </div>
                 </div>
             </div>
 

@@ -20,7 +20,7 @@ import {
 } from '@/lib/actions/registrationActions'
 import { searchStudentsForInviteAction } from '@/lib/actions/userActions'
 import { Users2, Trash2, Check, X, Search, Loader2, UserPlus, LogOut, UserMinus } from 'lucide-react'
-import type { Event, EventCategory, Team, Winner } from '@/lib/types/db'
+import type { Event, Team, Winner } from '@/lib/types/db'
 
 type StudentSearchResult = {
     id: string
@@ -32,8 +32,7 @@ type StudentSearchResult = {
 
 interface StudentEventActionsProps {
     event: Event
-    categories: EventCategory[]
-    registrationMap: Record<string, any>
+    registration: any
     teams: Team[]
     winners: Winner[]
     studentId: string
@@ -49,22 +48,40 @@ function WinnersDisplay({ winners }: { winners: Winner[] }) {
             <h3 className="section-title" style={{ fontSize: '1.25rem', marginBottom: 20 }}>Results</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {winners.map(w => (
-                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Badge variant="winner">{w.position_label}</Badge>
-                        <span style={{ fontWeight: 600 }}>
-                            {w.winner_type === 'student' ? w.student?.name : (w.team as any)?.team_name}
-                        </span>
-                        {w.tags && w.tags.length > 0 && (
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                {w.tags.map(tag => <span key={tag} className="winner-tag">{tag}</span>)}
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ marginTop: 2 }}>
+                            <Badge variant="winner">{w.position_label}</Badge>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '1rem', fontWeight: 600 }}>
+                                    {w.winner_type === 'student' ? w.student?.name : (w.team as any)?.team_name}
+                                </span>
+                                {w.winner_type === 'student' && w.student && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                                        {w.student.programme}{w.student.semester ? ` · Sem ${w.student.semester}` : ''}
+                                    </span>
+                                )}
                             </div>
-                        )}
+                            {w.winner_type === 'team' && (w.team as any)?.members && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4, fontStyle: 'italic' }}>
+                                    Members: {(w.team as any).members.map((m: any) => m.student?.name).filter(Boolean).join(', ')}
+                                </div>
+                            )}
+                            {w.tags && w.tags.length > 0 && (
+                                <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                                    {w.tags.map(tag => <span key={tag} className="winner-tag">{tag}</span>)}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>
         </div>
     )
 }
+
+// ... [restoring StudentSearchInput and MemberSearch] ...
 
 // ── Shared student search input ────────────────────────────────
 
@@ -210,23 +227,17 @@ function MemberSearch({ excludeId, selectedMembers, onAdd, onRemove, maxMembers 
     )
 }
 
-// ── Per-category/event registration action block ───────────────
+// ── Registration action block ──────────────────────────────────
 
 function RegistrationAction({
-    event, categoryId, categoryName, categoryDescription,
-    categoryDate,
+    event,
     participantType,
     teamSize,
     existingReg, teams, studentId, isDeadlinePassed,
 }: {
     event: Event
-    categoryId?: string
-    categoryName?: string
-    categoryDescription?: string
-    categoryDate?: string
     participantType: 'single' | 'multiple'
-    teamSize?: number
-    | null
+    teamSize?: number | null
     existingReg: any
     teams: Team[]
     studentId: string
@@ -241,19 +252,17 @@ function RegistrationAction({
     const canRegister = event.status === 'open' && !isDeadlinePassed
     const isRegistered = !!existingReg
 
-    // Category-filtered teams
-    const categoryTeams = teams.filter(t =>
-        categoryId ? t.category_id === categoryId : !t.category_id
-    )
-    const studentCreatedTeam = categoryTeams.find(t => t.created_by === studentId)
+    // Event-level teams
+    const eventTeams = teams
+    const studentCreatedTeam = eventTeams.find(t => t.created_by === studentId)
     const studentMemberTeam = !studentCreatedTeam
-        ? categoryTeams.find(t => t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
+        ? eventTeams.find(t => t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
         : undefined
 
-    // Pending join request THIS student sent (student-initiated = invited_by is null)
+    // Pending join request THIS student sent
     const pendingJoinEntry = !studentCreatedTeam && !studentMemberTeam
         ? (() => {
-            for (const t of categoryTeams) {
+            for (const t of eventTeams) {
                 const m = t.members?.find(m => m.student_id === studentId && m.status === 'pending' && !m.invited_by)
                 if (m) return { teamMemberId: m.id, teamName: t.team_name }
             }
@@ -261,19 +270,19 @@ function RegistrationAction({
         })()
         : null
 
-    // Incoming invites for this student (creator-initiated = invited_by is set)
+    // Incoming invites for this student
     const incomingInvites = !studentCreatedTeam && !studentMemberTeam
-        ? categoryTeams.flatMap(t =>
+        ? eventTeams.flatMap(t =>
             (t.members ?? [])
                 .filter(m => m.student_id === studentId && m.status === 'pending' && !!m.invited_by)
                 .map(m => ({ teamMemberId: m.id, teamName: t.team_name, teamId: t.id }))
         )
         : []
 
-    // Other teams (not created by this student)
-    const otherTeams = categoryTeams.filter(t => t.created_by !== studentId)
+    // Other teams
+    const otherTeams = eventTeams.filter(t => t.created_by !== studentId)
 
-    // IDs already in / pending for creator's team (for invite exclusion)
+    // IDs already in / pending for creator's team
     const creatorTeamMemberIds = studentCreatedTeam?.members?.map(m => m.student_id) ?? []
 
     function wrap(fn: () => Promise<{ success: boolean; error?: string }>) {
@@ -309,25 +318,6 @@ function RegistrationAction({
                 </div>
             )}
 
-            {categoryName && (
-                <div style={{ marginBottom: 20 }}>
-                    <h4 className="section-title" style={{ fontSize: '1.25rem', marginBottom: 4, color: 'var(--accent)' }}>
-                        {categoryName}
-                    </h4>
-                    {categoryDescription && (
-                        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-                            {categoryDescription}
-                        </p>
-                    )}
-                    {categoryDate && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Category Start:</span>
-                            {format(new Date(categoryDate), 'dd MMM yyyy, hh:mm a')}
-                        </div>
-                    )}
-                </div>
-            )}
-
             {/* ── Single participant ── */}
             {participantType === 'single' && (
                 <div>
@@ -341,7 +331,7 @@ function RegistrationAction({
                             )}
                         </div>
                     ) : canRegister ? (
-                        <Button onClick={() => wrap(() => registerForEventAction({ event_id: event.id, category_id: categoryId }))} loading={pending}>
+                        <Button onClick={() => wrap(() => registerForEventAction({ event_id: event.id }))} loading={pending}>
                             Register Now
                         </Button>
                     ) : (
@@ -356,7 +346,6 @@ function RegistrationAction({
             {participantType === 'multiple' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                    {/* Non-creator member status + leave */}
                     {!studentCreatedTeam && studentMemberTeam && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                             <Badge variant="success">Registered</Badge>
@@ -376,7 +365,6 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {/* Incoming invites from creators */}
                     {incomingInvites.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -411,7 +399,6 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {/* Creator's team management panel */}
                     {studentCreatedTeam && (
                         <div style={{ padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -428,7 +415,6 @@ function RegistrationAction({
                                 </Button>
                             </div>
 
-                            {/* Approved members */}
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
                                 Members ({studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0}{teamSize ? `/${teamSize}` : ''})
                             </div>
@@ -453,7 +439,6 @@ function RegistrationAction({
                                 </div>
                             ))}
 
-                            {/* Pending join requests (student-initiated) */}
                             {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).length ?? 0) > 0 && (
                                 <div style={{ marginTop: 12 }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warning)', marginBottom: 6 }}>
@@ -466,7 +451,7 @@ function RegistrationAction({
                                                 {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>{m.student.email}</span>}
                                             </div>
                                             <div style={{ display: 'flex', gap: 6 }}>
-                                                <Button size="sm" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id, category_id: categoryId }))} loading={pending}>
+                                                <Button size="sm" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
                                                     <Check size={14} /> Approve
                                                 </Button>
                                                 <Button size="sm" variant="danger" onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
@@ -478,7 +463,6 @@ function RegistrationAction({
                                 </div>
                             )}
 
-                            {/* Pending outgoing invites (creator-initiated) */}
                             {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !!m.invited_by).length ?? 0) > 0 && (
                                 <div style={{ marginTop: 12 }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
@@ -501,7 +485,6 @@ function RegistrationAction({
                                 </div>
                             )}
 
-                            {/* Invite new member search (only if team not full) */}
                             {canRegister && (() => {
                                 const approvedCount = studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0
                                 const isFull = teamSize ? approvedCount >= teamSize : false
@@ -522,7 +505,6 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {/* All other teams — always visible */}
                     {otherTeams.length > 0 && (
                         <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
@@ -555,7 +537,7 @@ function RegistrationAction({
                                                     <Badge variant="failed">Full</Badge>
                                                 ) : (
                                                     <Button size="sm" variant="outline"
-                                                        onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id, category_id: categoryId }))}
+                                                        onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id }))}
                                                         loading={pending} disabled={!canJoin}>
                                                         Request to Join
                                                     </Button>
@@ -570,10 +552,8 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {/* Create team — available even if student has a pending join request */}
                     {!studentCreatedTeam && !studentMemberTeam && canRegister && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {/* Pending join notice */}
                             {pendingJoinEntry && (
                                 <div style={{
                                     padding: '10px 14px', borderRadius: 'var(--r-md)',
@@ -599,13 +579,8 @@ function RegistrationAction({
                                     <div className="registration-action__details">
                                         <div className="registration-action__info">
                                             <h3 className="registration-action__title">
-                                                {categoryName || event.title}
+                                                {event.title}
                                             </h3>
-                                            {categoryDescription && (
-                                                <p className="registration-action__description" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                                                    {categoryDescription}
-                                                </p>
-                                            )}
                                             <div className="registration-action__meta">
                                                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>
                                                     Team Name <span style={{ color: 'var(--error)' }}>*</span>
@@ -633,7 +608,6 @@ function RegistrationAction({
                                                 <Button
                                                     onClick={() => wrap(() => createTeamAction({
                                                         event_id: event.id,
-                                                        category_id: categoryId,
                                                         team_name: teamName.trim(),
                                                         member_ids: selectedMembers.map(m => m.id),
                                                     }))}
@@ -649,7 +623,6 @@ function RegistrationAction({
                                 </div>
                             )}
 
-                            {/* Closed / past deadline */}
                             {!studentMemberTeam && !studentCreatedTeam && !canRegister && (
                                 <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
                                     Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
@@ -665,40 +638,18 @@ function RegistrationAction({
 
 // ── Root export ────────────────────────────────────────────────
 
-export function StudentEventActions({ event, categories, registrationMap, teams, winners, studentId, isDeadlinePassed }: StudentEventActionsProps) {
-    const hasCategories = categories.length > 0
-    const displayDateString = event.event_date
-    const displayDate = format(new Date(displayDateString), 'MMMM d, h:mm a')
+export function StudentEventActions({ event, registration, teams, winners, studentId, isDeadlinePassed }: StudentEventActionsProps) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {hasCategories ? (
-                categories.map(cat => (
-                    <RegistrationAction
-                        key={cat.id}
-                        event={event}
-                        categoryId={cat.id}
-                        categoryName={cat.category_name}
-                        categoryDescription={cat.description}
-                        categoryDate={cat.event_date}
-                        participantType={cat.participant_type}
-                        teamSize={cat.team_size}
-                        existingReg={registrationMap[cat.id]}
-                        teams={teams}
-                        studentId={studentId}
-                        isDeadlinePassed={isDeadlinePassed}
-                    />
-                ))
-            ) : (
-                <RegistrationAction
-                    event={event}
-                    participantType={event.participant_type}
-                    teamSize={event.team_size}
-                    existingReg={registrationMap['__event__']}
-                    teams={teams}
-                    studentId={studentId}
-                    isDeadlinePassed={isDeadlinePassed}
-                />
-            )}
+            <RegistrationAction
+                event={event}
+                participantType={event.participant_type}
+                teamSize={event.team_size}
+                existingReg={registration}
+                teams={teams}
+                studentId={studentId}
+                isDeadlinePassed={isDeadlinePassed}
+            />
             {event.results_published && <WinnersDisplay winners={winners} />}
         </div>
     )

@@ -70,7 +70,6 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
 
 export async function createTemplateAction(data: {
     event_id: string
-    category_id?: string
     template_name: string
     certificate_type: 'participation' | 'winner'
     layout_json: TemplateLayout
@@ -84,7 +83,6 @@ export async function createTemplateAction(data: {
         const admin = createAdminClient()
         const { data: template, error } = await admin.from('certificate_templates').insert({
             ...data,
-            category_id: data.category_id || null,
             is_active: true,
             created_by: user.id,
         }).select('id').single()

@@ -25,8 +25,7 @@ export default async function TeacherCertificatesPage() {
             .select(`
                 *,
                 student:users!certificates_student_id_fkey(id, name, email),
-                event:events(id, title),
-                category:event_categories(id, category_name)
+                event:events(id, title)
             `)
             .in('event_id', eventIds)
             .order('created_at', { ascending: false })
@@ -49,7 +48,6 @@ export default async function TeacherCertificatesPage() {
                             <tr>
                                 <th>Student</th>
                                 <th>Event</th>
-                                <th>Category</th>
                                 <th>Type</th>
                                 <th>Status</th>
                                 <th>Generated At</th>
@@ -60,7 +58,6 @@ export default async function TeacherCertificatesPage() {
                                 <tr key={cert.id}>
                                     <td>{cert.student?.name ?? '—'}</td>
                                     <td>{cert.event?.title ?? '—'}</td>
-                                    <td>{cert.category?.category_name ?? '—'}</td>
                                     <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
                                     <td><Badge variant={cert.status}>{cert.status}</Badge></td>
                                     <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>

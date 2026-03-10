@@ -1,12 +1,13 @@
 import { CreateEventForm } from '@/app/(admin)/admin/events/create/CreateEventForm'
 import { getDepartments } from '@/lib/queries/departments'
-import { getCurrentUser } from '@/lib/queries/users'
+import { getCurrentUser, getActiveTeachers } from '@/lib/queries/users'
 import { redirect } from 'next/navigation'
 
 export default async function TeacherCreateEventPage() {
-    const [departments, currentUser] = await Promise.all([
+    const [departments, currentUser, teachers] = await Promise.all([
         getDepartments(),
         getCurrentUser(),
+        getActiveTeachers()
     ])
     if (!currentUser) redirect('/login')
 
@@ -19,6 +20,7 @@ export default async function TeacherCreateEventPage() {
             <CreateEventForm
                 departments={departments}
                 currentUser={currentUser}
+                teachers={teachers}
                 basePath="/teacher/events"
                 isAdmin={false}
             />

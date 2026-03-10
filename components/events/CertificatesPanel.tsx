@@ -7,27 +7,20 @@ import { retryCertificateAction } from '@/lib/actions/certificateActions'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Award, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
-import type { Certificate } from '@/lib/types/db'
+import type { Certificate, CertificateTemplate } from '@/lib/types/db'
+import Link from 'next/link'
+import { FileWarning, Check } from 'lucide-react'
 
 interface CertificatesPanelProps {
     certificates: Certificate[]
     stats: { pending: number; processing: number; generated: number; failed: number }
-    categoryId?: string
+    templates: CertificateTemplate[]
+    eventId: string
+    createTemplatePath: string
 }
 
-export function CertificatesPanel({ certificates, stats, categoryId }: CertificatesPanelProps) {
+export function CertificatesPanel({ certificates, stats, templates, eventId, createTemplatePath }: CertificatesPanelProps) {
     const [pending, startTransition] = useTransition()
-
-    const filteredCerts = categoryId
-        ? certificates.filter(c => c.category_id === categoryId)
-        : certificates
-
-    const displayStats = categoryId ? {
-        pending: filteredCerts.filter(c => c.status === 'pending').length,
-        processing: filteredCerts.filter(c => c.status === 'processing').length,
-        generated: filteredCerts.filter(c => c.status === 'generated').length,
-        failed: filteredCerts.filter(c => c.status === 'failed').length,
-    } : stats
 
     function retry(certId: string) {
         startTransition(async () => {
@@ -36,15 +29,53 @@ export function CertificatesPanel({ certificates, stats, categoryId }: Certifica
         })
     }
 
-    const hasCategories = Array.from(new Set(certificates.map(c => c.category_id).filter(Boolean))).length > 0
+    const hasParticipation = templates.some(t => t.certificate_type === 'participation')
+    const hasWinner = templates.some(t => t.certificate_type === 'winner')
+
+    const renderTemplateStatus = () => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasParticipation ? 'var(--success-bg)' : 'var(--warning-bg)'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasParticipation ? 'var(--success-bg)' : 'var(--warning-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {hasParticipation ? <Check size={16} color="var(--success)" /> : <FileWarning size={16} color="var(--warning)" />}
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Participation Template</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{hasParticipation ? 'Template attached' : 'Template missing'}</div>
+                    </div>
+                </div>
+                {!hasParticipation && (
+                    <Link href={createTemplatePath}>
+                        <Button size="sm" variant="outline">Create</Button>
+                    </Link>
+                )}
+            </div>
+
+            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasWinner ? 'var(--success-bg)' : 'var(--warning-bg)'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasWinner ? 'var(--success-bg)' : 'var(--warning-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {hasWinner ? <Check size={16} color="var(--success)" /> : <FileWarning size={16} color="var(--warning)" />}
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Winner Template</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{hasWinner ? 'Template attached' : 'Template missing'}</div>
+                    </div>
+                </div>
+                {!hasWinner && (
+                    <Link href={createTemplatePath}>
+                        <Button size="sm" variant="outline">Create</Button>
+                    </Link>
+                )}
+            </div>
+        </div>
+    )
 
     const renderTable = (certs: Certificate[]) => (
-        <div className="table-wrap">
+        <div className="table-wrap" style={{ marginTop: 12 }}>
             <table className="data-table">
                 <thead>
                     <tr>
                         <th>Student</th>
-                        <th>Category</th>
                         <th>Type</th>
                         <th>Status</th>
                         <th>Generated At</th>
@@ -55,7 +86,6 @@ export function CertificatesPanel({ certificates, stats, categoryId }: Certifica
                     {certs.map(cert => (
                         <tr key={cert.id}>
                             <td>{cert.student?.name ?? '—'}</td>
-                            <td>{(cert.category as { category_name?: string } | undefined)?.category_name ?? '—'}</td>
                             <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
                             <td><Badge variant={cert.status}>{cert.status}</Badge></td>
                             <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
@@ -73,63 +103,34 @@ export function CertificatesPanel({ certificates, stats, categoryId }: Certifica
         </div>
     )
 
-    if (filteredCerts.length === 0) {
+    if (certificates.length === 0) {
         return (
             <div>
+                {renderTemplateStatus()}
                 {/* Summary strip */}
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                    <Badge variant="pending">{displayStats.pending} Pending</Badge>
-                    <Badge variant="processing">{displayStats.processing} Processing</Badge>
-                    <Badge variant="generated">{displayStats.generated} Generated</Badge>
-                    <Badge variant="failed">{displayStats.failed} Failed</Badge>
+                    <Badge variant="pending">{stats.pending} Pending</Badge>
+                    <Badge variant="processing">{stats.processing} Processing</Badge>
+                    <Badge variant="generated">{stats.generated} Generated</Badge>
+                    <Badge variant="failed">{stats.failed} Failed</Badge>
                 </div>
-                <EmptyState icon={Award} title="No certificates" subtitle={categoryId ? "No certificates found for this category." : "No certificates have been created for this event yet."} />
-            </div>
-        )
-    }
-
-    const content = () => {
-        if (categoryId || !hasCategories) {
-            return renderTable(filteredCerts)
-        }
-
-        // Global view with categories
-        const categoriesInCerts = Array.from(new Set(certificates.map(c => c.category_id).filter(Boolean)))
-
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                {categoriesInCerts.map(catId => {
-                    const catCerts = certificates.filter(c => c.category_id === catId)
-                    const catName = (catCerts[0]?.category as { category_name?: string } | undefined)?.category_name ?? 'Other'
-                    return (
-                        <div key={catId ?? 'none'}>
-                            <div className="category-section-header">{catName}</div>
-                            {renderTable(catCerts)}
-                        </div>
-                    )
-                })}
-                {/* Also show certificates without category if any */}
-                {certificates.filter(c => !c.category_id).length > 0 && (
-                    <div>
-                        <div className="category-section-header">General / No Category</div>
-                        {renderTable(certificates.filter(c => !c.category_id))}
-                    </div>
-                )}
+                <EmptyState icon={Award} title="No certificates" subtitle="No certificates have been created for this event yet." />
             </div>
         )
     }
 
     return (
         <div>
+            {renderTemplateStatus()}
             {/* Summary strip */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Badge variant="pending">{displayStats.pending} Pending</Badge>
-                <Badge variant="processing">{displayStats.processing} Processing</Badge>
-                <Badge variant="generated">{displayStats.generated} Generated</Badge>
-                <Badge variant="failed">{displayStats.failed} Failed</Badge>
+                <Badge variant="pending">{stats.pending} Pending</Badge>
+                <Badge variant="processing">{stats.processing} Processing</Badge>
+                <Badge variant="generated">{stats.generated} Generated</Badge>
+                <Badge variant="failed">{stats.failed} Failed</Badge>
             </div>
 
-            {content()}
+            {renderTable(certificates)}
         </div>
     )
 }

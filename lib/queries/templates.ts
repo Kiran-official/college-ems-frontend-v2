@@ -8,7 +8,6 @@ export async function getAllTemplates(): Promise<CertificateTemplate[]> {
         .select(`
             *,
             event:events(id, title),
-            category:event_categories(id, category_name),
             creator:users!certificate_templates_created_by_fkey(id, name, email)
         `)
         .order('created_at', { ascending: false })
@@ -22,7 +21,6 @@ export async function getTemplatesByCreator(userId: string): Promise<Certificate
         .select(`
             *,
             event:events(id, title),
-            category:event_categories(id, category_name),
             creator:users!certificate_templates_created_by_fkey(id, name, email)
         `)
         .eq('created_by', userId)
@@ -36,8 +34,7 @@ export async function getTemplateById(id: string): Promise<CertificateTemplate |
         .from('certificate_templates')
         .select(`
             *,
-            event:events(id, title, categories:event_categories(id, category_name)),
-            category:event_categories(id, category_name),
+            event:events(id, title),
             creator:users!certificate_templates_created_by_fkey(id, name, email)
         `)
         .eq('id', id)

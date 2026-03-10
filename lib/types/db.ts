@@ -4,7 +4,7 @@
 
 export type UserRole = 'admin' | 'teacher' | 'student'
 export type StudentType = 'internal' | 'external'
-export type EventStatus = 'open' | 'closed' | 'completed'
+export type EventStatus = 'draft' | 'open' | 'closed' | 'completed'
 export type EventVisibility = 'public_all' | 'internal_only' | 'external_only'
 export type ParticipantType = 'single' | 'multiple'
 export type AttendanceStatus = 'registered' | 'attended' | 'absent'
@@ -60,7 +60,7 @@ export interface Event {
     department?: Department
     creator?: User
     faculty_in_charge?: FacultyInCharge[]
-    categories?: EventCategory[]
+    categories?: any[] // DEPRECATED: Categories have been removed. This remains for partial compatibility.
 }
 
 export interface EventCategory {
@@ -72,15 +72,14 @@ export interface EventCategory {
     participant_type: ParticipantType
     team_size?: number
     created_at: string
-    // Joined fields
-    faculty_in_charge?: FacultyInCharge[]
+    updated_at?: string
 }
 
 export interface FacultyInCharge {
     id?: string
     event_id: string
     teacher_id: string
-    category_id?: string  // null = event-level, UUID = category-level
+    category_id?: string
     // Joined fields
     teacher?: User
 }
@@ -98,14 +97,13 @@ export interface IndividualRegistration {
     // Joined fields
     student?: User
     event?: Event
-    category?: EventCategory
     team?: Team
+    category?: EventCategory
 }
 
 export interface Team {
     id: string
     event_id: string
-    category_id?: string
     team_name: string
     created_by: string
     created_at: string
@@ -148,7 +146,6 @@ export interface Winner {
 export interface CertificateTemplate {
     id: string
     event_id: string
-    category_id?: string
     template_name: string
     certificate_type: CertificateType
     layout_json: TemplateLayout
@@ -159,7 +156,6 @@ export interface CertificateTemplate {
     updated_at?: string
     // Joined fields
     event?: Event
-    category?: EventCategory
     creator?: User
 }
 
@@ -169,7 +165,7 @@ export interface TemplateLayout {
 
 export interface TemplateField {
     id: string
-    field_type: string  // 'student_name' | 'event_name' | 'category_name' | 'position' | 'date' | 'certificate_type' | 'custom'
+    field_type: string  // 'student_name' | 'event_name' | 'position' | 'date' | 'certificate_type' | 'custom'
     x: number           // percentage 0-100
     y: number           // percentage 0-100
     width: number       // percentage 0-100
@@ -187,7 +183,6 @@ export interface Certificate {
     winner_id?: string
     student_id: string
     event_id: string
-    category_id?: string
     certificate_type: CertificateType
     status: CertificateStatus
     file_path?: string
@@ -199,7 +194,6 @@ export interface Certificate {
     // Joined fields
     student?: User
     event?: Event
-    category?: EventCategory
     winner?: Winner
 }
 
@@ -220,7 +214,6 @@ export type Database = {
             users: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
             departments: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
             events: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            event_categories: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
             faculty_in_charge: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
             individual_registrations: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
             teams: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }

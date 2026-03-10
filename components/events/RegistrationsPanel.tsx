@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { ClipboardList, Filter } from 'lucide-react'
 import { format } from 'date-fns'
-import type { IndividualRegistration, Event, EventCategory } from '@/lib/types/db'
+import type { IndividualRegistration, Event } from '@/lib/types/db'
 
 const DEPT_PROGRAMMES: Record<string, string[]> = {
     'Commerce': ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA'],
@@ -14,8 +14,6 @@ const DEPT_PROGRAMMES: Record<string, string[]> = {
 interface RegistrationsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
-    categories: EventCategory[]
-    categoryId?: string
 }
 
 function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
@@ -87,7 +85,7 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
     )
 }
 
-export function RegistrationsPanel({ event, registrations, categories, categoryId }: RegistrationsPanelProps) {
+export function RegistrationsPanel({ event, registrations }: RegistrationsPanelProps) {
     const [showFilters, setShowFilters] = useState(false)
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
@@ -111,7 +109,6 @@ export function RegistrationsPanel({ event, registrations, categories, categoryI
         return matchesDept && matchesProg && matchesSem
     })
 
-    const hasCategories = categories.length > 0
     const isTeam = event.participant_type === 'multiple'
 
     const renderActionHeader = () => (
@@ -152,41 +149,7 @@ export function RegistrationsPanel({ event, registrations, categories, categoryI
     )
 
     const content = () => {
-        // Single Category Mode
-        if (categoryId) {
-            const cat = categories.find(c => c.id === categoryId)
-            const catRegs = filtered.filter(r => r.category_id === categoryId)
-            const catIsTeam = cat?.participant_type === 'multiple'
-
-            if (catRegs.length === 0) {
-                return (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                        No registrations found for this category.
-                    </div>
-                )
-            }
-
-            if (catIsTeam) {
-                const teamMap = new Map<string, { name: string; members: IndividualRegistration[] }>()
-                for (const r of catRegs) {
-                    const tid = r.team_id ?? 'ungrouped'
-                    const tname = (r.team as { team_name?: string } | undefined)?.team_name ?? 'Ungrouped'
-                    if (!teamMap.has(tid)) teamMap.set(tid, { name: tname, members: [] })
-                    teamMap.get(tid)!.members.push(r)
-                }
-                return <TeamGroupTable teams={teamMap} />
-            }
-
-            return <RegistrationTable rows={catRegs} />
-        }
-
-        // Case A: no categories, single participant
-        if (!hasCategories && !isTeam) {
-            return <RegistrationTable rows={filtered} />
-        }
-
-        // Case B: no categories, team
-        if (!hasCategories && isTeam) {
+        if (isTeam) {
             const teamMap = new Map<string, { name: string; members: IndividualRegistration[] }>()
             for (const r of filtered) {
                 const tid = r.team_id ?? 'ungrouped'
@@ -197,39 +160,7 @@ export function RegistrationsPanel({ event, registrations, categories, categoryI
             return <TeamGroupTable teams={teamMap} />
         }
 
-        // Case C and D: has categories (Global View)
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                {categories.map(cat => {
-                    const catRegs = filtered.filter(r => r.category_id === cat.id)
-                    const catIsTeam = cat.participant_type === 'multiple'
-
-                    return (
-                        <div key={cat.id}>
-                            <div className="category-section-header">{cat.category_name}</div>
-                            {catRegs.length === 0 ? (
-                                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                                    No registrations match filters
-                                </div>
-                            ) : catIsTeam ? (
-                                (() => {
-                                    const teamMap = new Map<string, { name: string; members: IndividualRegistration[] }>()
-                                    for (const r of catRegs) {
-                                        const tid = r.team_id ?? 'ungrouped'
-                                        const tname = (r.team as { team_name?: string } | undefined)?.team_name ?? 'Ungrouped'
-                                        if (!teamMap.has(tid)) teamMap.set(tid, { name: tname, members: [] })
-                                        teamMap.get(tid)!.members.push(r)
-                                    }
-                                    return <TeamGroupTable teams={teamMap} />
-                                })()
-                            ) : (
-                                <RegistrationTable rows={catRegs} />
-                            )}
-                        </div>
-                    )
-                })}
-            </div>
-        )
+        return <RegistrationTable rows={filtered} />
     }
 
     return (

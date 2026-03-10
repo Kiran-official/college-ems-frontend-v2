@@ -8,25 +8,9 @@ export async function getWinnersByEvent(eventId: string): Promise<Winner[]> {
         .select(`
             *,
             student:users!winners_student_id_fkey(id, name, email),
-            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email))),
-            category:event_categories(id, category_name)
+            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email)))
         `)
         .eq('event_id', eventId)
-        .order('created_at')
-    return data ?? []
-}
-
-export async function getWinnersByCategory(categoryId: string): Promise<Winner[]> {
-    const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('winners')
-        .select(`
-            *,
-            student:users!winners_student_id_fkey(id, name, email),
-            team:teams(*, members:team_members(*, student:users!team_members_student_id_fkey(id, name, email))),
-            category:event_categories(id, category_name)
-        `)
-        .eq('category_id', categoryId)
         .order('created_at')
     return data ?? []
 }

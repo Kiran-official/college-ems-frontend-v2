@@ -6,27 +6,23 @@ import { FormGroup } from '@/components/forms/FormGroup'
 import { createTemplateAction, updateTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Move, GripVertical, Upload, Loader2, AlignLeft, AlignCenter, AlignRight, Type, Bold, Italic, Settings2, LayoutTemplate, Paintbrush, Image as ImageIcon } from 'lucide-react'
-import type { TemplateField, TemplateLayout, CertificateTemplate, Event, EventCategory } from '@/lib/types/db'
+import type { TemplateField, TemplateLayout, CertificateTemplate, Event } from '@/lib/types/db'
 
 const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
     { id: 'default-1', field_type: 'student_name', x: 50, y: 35, width: 60, fontSize: 32, fontFamily: 'Space Grotesk', color: '#FFFFFF', bold: true, italic: false, align: 'center' },
     { id: 'default-2', field_type: 'event_name', x: 50, y: 50, width: 70, fontSize: 18, fontFamily: 'Space Grotesk', color: '#A0AECB', bold: false, italic: false, align: 'center' },
-    { id: 'default-3', field_type: 'category_name', x: 50, y: 57, width: 50, fontSize: 16, fontFamily: 'Space Grotesk', color: '#00C9FF', bold: false, italic: false, align: 'center' },
     { id: 'default-4', field_type: 'position', x: 50, y: 63, width: 50, fontSize: 16, fontFamily: 'Space Grotesk', color: '#F5A623', bold: true, italic: false, align: 'center' },
     { id: 'default-5', field_type: 'date', x: 50, y: 72, width: 40, fontSize: 14, fontFamily: 'Space Grotesk', color: '#5B6B8A', bold: false, italic: false, align: 'center' },
     { id: 'default-6', field_type: 'certificate_type', x: 85, y: 85, width: 20, fontSize: 12, fontFamily: 'Space Grotesk', color: '#5B6B8A', bold: false, italic: false, align: 'right' },
 ]
 
-function initFields(hasCategories: boolean): TemplateField[] {
-    return DEFAULT_TEMPLATE_FIELDS.filter(f =>
-        f.field_type !== 'category_name' || hasCategories
-    )
+function initFields(): TemplateField[] {
+    return DEFAULT_TEMPLATE_FIELDS
 }
 
 const FIELD_TYPES = [
     { value: 'student_name', label: 'Student Name' },
     { value: 'event_name', label: 'Event Name' },
-    { value: 'category_name', label: 'Category Name' },
     { value: 'position', label: 'Position / Award' },
     { value: 'date', label: 'Date' },
     { value: 'certificate_type', label: 'Certificate Type' },
@@ -47,25 +43,21 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [eventId, setEventId] = useState(template?.event_id ?? '')
-    const [categoryId, setCategoryId] = useState(template?.category_id ?? '')
     const [templateName, setTemplateName] = useState(template?.template_name ?? '')
     const [certType, setCertType] = useState<'participation' | 'winner'>(template?.certificate_type ?? 'participation')
     const [bgUrl, setBgUrl] = useState(template?.background_image_url ?? '')
 
     const selectedEvent = events.find(e => e.id === eventId)
-    const hasCategories = (selectedEvent?.categories?.length ?? 0) > 0
 
     const [fields, setFields] = useState<TemplateField[]>(
-        template?.layout_json?.fields ?? initFields(hasCategories)
+        template?.layout_json?.fields ?? initFields()
     )
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
     const [dragging, setDragging] = useState<string | null>(null)
 
     const selectedField = fields.find(f => f.id === selectedFieldId) ?? null
 
-    const availableFieldTypes = FIELD_TYPES.filter(ft =>
-        ft.value !== 'category_name' || hasCategories
-    )
+    const availableFieldTypes = FIELD_TYPES
 
     function addField(fieldType: string) {
         const newField: TemplateField = {
@@ -158,7 +150,6 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
             } else {
                 const result = await createTemplateAction({
                     event_id: eventId,
-                    category_id: categoryId || undefined,
                     template_name: templateName.trim(),
                     certificate_type: certType,
                     layout_json: layout,
@@ -191,19 +182,11 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         <input className="form-input" value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Participation Certificate" />
                     </FormGroup>
                     <FormGroup label="Event" required>
-                        <select className="form-select" value={eventId} onChange={e => { setEventId(e.target.value); setCategoryId('') }} disabled={!!template}>
+                        <select className="form-select" value={eventId} onChange={e => setEventId(e.target.value)} disabled={!!template}>
                             <option value="">Select event…</option>
                             {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
                         </select>
                     </FormGroup>
-                    {hasCategories && (
-                        <FormGroup label="Category">
-                            <select className="form-select" value={categoryId} onChange={e => setCategoryId(e.target.value)} disabled={!!template}>
-                                <option value="">Whole Event</option>
-                                {selectedEvent!.categories!.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
-                            </select>
-                        </FormGroup>
-                    )}
                     <FormGroup label="Certificate Type">
                         <select className="form-select" value={certType} onChange={e => setCertType(e.target.value as 'participation' | 'winner')} disabled={!!template}>
                             <option value="participation">Participation</option>

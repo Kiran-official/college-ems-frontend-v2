@@ -1,17 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { updateAttendanceAction, bulkUpdateAttendanceAction } from '@/lib/actions/attendanceActions'
 import { Lock } from 'lucide-react'
-import type { IndividualRegistration, Event, EventCategory } from '@/lib/types/db'
+import type { IndividualRegistration, Event } from '@/lib/types/db'
 
 interface AttendancePanelProps {
     event: Event
     registrations: IndividualRegistration[]
-    categories: EventCategory[]
-    categoryId?: string
 }
 
 function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; eventStatus: string }) {
@@ -76,7 +75,13 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     )
 }
 
-export function AttendancePanel({ event, registrations, categories, categoryId }: AttendancePanelProps) {
+interface AttendancePanelProps {
+    event: Event
+    registrations: IndividualRegistration[]
+}
+
+export function AttendancePanel({ event, registrations }: AttendancePanelProps) {
+    const router = useRouter()
     const [bulkPending, startBulk] = useTransition()
 
     // Locked states
@@ -97,87 +102,47 @@ export function AttendancePanel({ event, registrations, categories, categoryId }
         )
     }
 
-    const hasCategories = categories.length > 0
-
-    function markAllPresent(categoryId?: string) {
+    function markAllPresent() {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'attended', category_id: categoryId })
-            window.location.reload()
+            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'attended' })
+            router.refresh()
         })
     }
 
-    function resetAll(categoryId?: string) {
+    function resetAll() {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'registered', category_id: categoryId })
-            window.location.reload()
+            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'registered' })
+            router.refresh()
         })
-    }
-
-    function renderTable(rows: IndividualRegistration[], categoryId?: string) {
-        return (
-            <div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <Button size="sm" variant="outline" onClick={() => markAllPresent(categoryId)} loading={bulkPending}>
-                        Mark All Present
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => resetAll(categoryId)} loading={bulkPending}>
-                        Reset All
-                    </Button>
-                </div>
-                <div className="table-wrap">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Department</th>
-                                <th>Attendance</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map(r => (
-                                <AttendanceRow key={r.id} reg={r} eventStatus={event.status} />
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )
-    }
-
-    if (categoryId) {
-        const catRegs = registrations.filter(r => r.category_id === categoryId)
-        if (catRegs.length === 0) {
-            return (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                    No registrations in this category.
-                </div>
-            )
-        }
-        return renderTable(catRegs, categoryId)
-    }
-
-    if (!hasCategories) {
-        return renderTable(registrations)
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {categories.map(cat => {
-                const catRegs = registrations.filter(r => r.category_id === cat.id)
-                return (
-                    <div key={cat.id}>
-                        <div className="category-section-header">{cat.category_name}</div>
-                        {catRegs.length === 0 ? (
-                            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                                No registrations in this category
-                            </div>
-                        ) : (
-                            renderTable(catRegs, cat.id)
-                        )}
-                    </div>
-                )
-            })}
+        <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending}>
+                    Mark All Present
+                </Button>
+                <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending}>
+                    Reset All
+                </Button>
+            </div>
+            <div className="table-wrap">
+                <table className="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Attendance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {registrations.map(r => (
+                            <AttendanceRow key={r.id} reg={r} eventStatus={event.status} />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     )
 }

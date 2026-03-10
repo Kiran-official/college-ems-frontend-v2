@@ -1,11 +1,12 @@
 import { CreateEventForm } from './CreateEventForm'
 import { getDepartments } from '@/lib/queries/departments'
-import { getCurrentUser } from '@/lib/queries/users'
+import { getCurrentUser, getActiveTeachers } from '@/lib/queries/users'
 
 export default async function AdminCreateEventPage() {
-    const [departments, currentUser] = await Promise.all([
+    const [departments, currentUser, teachers] = await Promise.all([
         getDepartments(),
         getCurrentUser(),
+        getActiveTeachers()
     ])
 
     return (
@@ -17,6 +18,7 @@ export default async function AdminCreateEventPage() {
             <CreateEventForm
                 departments={departments}
                 currentUser={currentUser!}
+                teachers={teachers}
                 basePath="/admin/events"
                 isAdmin={true}
             />

@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getEventById } from '@/lib/queries/events'
-import { getCategoriesByEvent } from '@/lib/queries/categories'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
-import { getCertificatesByEvent, getCertificateStatsByEvent } from '@/lib/queries/certificates'
+import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent } from '@/lib/queries/certificates'
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
@@ -18,13 +17,13 @@ export default async function TeacherEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
-    const [categories, registrations, teams, winners, certificates, certStats] = await Promise.all([
-        getCategoriesByEvent(id),
+    const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
         getWinnersByEvent(id),
         getCertificatesByEvent(id),
         getCertificateStatsByEvent(id),
+        getTemplatesByEvent(id),
     ])
 
     return (
@@ -46,12 +45,12 @@ export default async function TeacherEventDetailPage({ params }: Props) {
 
             <TeacherEventTabs
                 event={event}
-                categories={categories}
                 registrations={registrations}
                 teams={teams}
                 winners={winners}
                 certificates={certificates}
                 certStats={certStats}
+                templates={templates}
             />
         </div>
     )

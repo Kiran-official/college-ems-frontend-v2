@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getEventById } from '@/lib/queries/events'
-import { getCategoriesByEvent } from '@/lib/queries/categories'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
-import { getCertificatesByEvent, getCertificateStatsByEvent } from '@/lib/queries/certificates'
+import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent } from '@/lib/queries/certificates'
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
@@ -18,13 +17,13 @@ export default async function AdminEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
-    const [categories, registrations, teams, winners, certificates, certStats] = await Promise.all([
-        getCategoriesByEvent(id),
+    const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
         getWinnersByEvent(id),
         getCertificatesByEvent(id),
         getCertificateStatsByEvent(id),
+        getTemplatesByEvent(id),
     ])
 
     return (
@@ -55,7 +54,7 @@ export default async function AdminEventDetailPage({ params }: Props) {
             {/* Faculty strip */}
             {event.faculty_in_charge && event.faculty_in_charge.length > 0 && (
                 <div className="faculty-pills" style={{ marginBottom: 24 }}>
-                    {event.faculty_in_charge.filter(f => !f.category_id).map(f => (
+                    {event.faculty_in_charge.map(f => (
                         <span key={f.teacher_id} className="faculty-pill">{f.teacher?.name}</span>
                     ))}
                 </div>
@@ -63,12 +62,12 @@ export default async function AdminEventDetailPage({ params }: Props) {
 
             <EventDetailTabs
                 event={event}
-                categories={categories}
                 registrations={registrations}
                 teams={teams}
                 winners={winners}
                 certificates={certificates}
                 certStats={certStats}
+                templates={templates}
             />
         </div>
     )

@@ -34,7 +34,6 @@ export default async function AdminEventsPage() {
                                 <th>Title</th>
                                 <th>Date</th>
                                 <th>Status</th>
-                                <th>Categories</th>
                                 <th>Type</th>
                                 <th>Faculty</th>
                                 <th>Actions</th>
@@ -50,7 +49,6 @@ export default async function AdminEventsPage() {
                                     </td>
                                     <td>{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
                                     <td><Badge variant={e.status}>{e.status}</Badge></td>
-                                    <td>{e.categories?.length ?? 0}</td>
                                     <td><Badge variant={e.participant_type === 'single' ? 'individual' : 'team'}>{e.participant_type}</Badge></td>
                                     <td>
                                         <div className="faculty-pills">
