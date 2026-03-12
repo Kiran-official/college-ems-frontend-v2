@@ -1,6 +1,7 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function clearMustChangePasswordAction(): Promise<{ success: boolean; error?: string }> {
     try {

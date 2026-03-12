@@ -5,19 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { registerStudentAction } from '@/lib/actions/authActions'
-
-function getPasswordStrength(pw: string): 'weak' | 'fair' | 'strong' {
-    if (pw.length < 8) return 'weak'
-    let score = 0
-    if (/[A-Z]/.test(pw)) score++
-    if (/[a-z]/.test(pw)) score++
-    if (/[0-9]/.test(pw)) score++
-    if (/[^A-Za-z0-9]/.test(pw)) score++
-    if (pw.length >= 12) score++
-    if (score >= 4) return 'strong'
-    if (score >= 2) return 'fair'
-    return 'weak'
-}
+import { getPasswordStrength } from '@/lib/validators'
+import { Button } from '@/components/ui/Button'
+import { FormGroup } from '@/components/forms/FormGroup'
 
 export default function RegisterPage() {
     const router = useRouter()
@@ -52,7 +42,7 @@ export default function RegisterPage() {
             const result = await registerStudentAction({
                 name: name.trim(),
                 email: email.trim(),
-                phone_number: phoneNumber.trim() || undefined,
+                phone_number: phoneNumber.trim(),
                 password,
 
             })
@@ -114,8 +104,7 @@ export default function RegisterPage() {
                         )}
 
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="name">Full Name</label>
+                            <FormGroup label="Full Name" htmlFor="name">
                                 <input
                                     id="name"
                                     type="text"
@@ -126,10 +115,9 @@ export default function RegisterPage() {
                                     required
                                     autoFocus
                                 />
-                            </div>
+                            </FormGroup>
 
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="reg-email">Email Address</label>
+                            <FormGroup label="Email Address" htmlFor="reg-email">
                                 <input
                                     id="reg-email"
                                     type="email"
@@ -139,10 +127,21 @@ export default function RegisterPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                 />
-                            </div>
+                            </FormGroup>
 
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="reg-password">Password</label>
+                            <FormGroup label="Phone Number" htmlFor="reg-phone">
+                                <input
+                                    id="reg-phone"
+                                    type="tel"
+                                    className="form-input"
+                                    placeholder="Enter your phone number"
+                                    value={phoneNumber}
+                                    onChange={(e) => setPhoneNumber(e.target.value)}
+                                    required
+                                />
+                            </FormGroup>
+
+                            <FormGroup label="Password" htmlFor="reg-password">
                                 <div className="password-wrap">
                                     <input
                                         id="reg-password"
@@ -163,10 +162,28 @@ export default function RegisterPage() {
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
-                            </div>
+                                {password.length > 0 && (
+                                    <div className="strength-container" style={{ marginTop: 8 }}>
+                                        <div className="strength-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Security Strength</span>
+                                            <span style={{ 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 600,
+                                                color: strength === 'strong' ? '#10E09A' : strength === 'fair' ? '#F5A623' : '#FF4D6A'
+                                            }}>
+                                                {strength.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="strength-meter" style={{ height: 4, display: 'flex', gap: 4 }}>
+                                            <div style={{ flex: 1, borderRadius: 2, background: '#FF4D6A' }}></div>
+                                            <div style={{ flex: 1, borderRadius: 2, background: strength === 'fair' || strength === 'strong' ? '#F5A623' : 'rgba(255,255,255,0.1)' }}></div>
+                                            <div style={{ flex: 1, borderRadius: 2, background: strength === 'strong' ? '#10E09A' : 'rgba(255,255,255,0.1)' }}></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </FormGroup>
 
-                            <div className="form-group">
-                                <label className="form-label" htmlFor="confirm-password">Confirm Password</label>
+                            <FormGroup label="Confirm Password" htmlFor="confirm-password">
                                 <input
                                     id="confirm-password"
                                     type="password"
@@ -176,15 +193,16 @@ export default function RegisterPage() {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
                                 />
-                            </div>
+                            </FormGroup>
 
-                            <button
+                            <Button
                                 type="submit"
-                                className={`btn btn--primary btn--lg btn--full ${loading ? 'btn--loading' : ''}`}
+                                className="btn--lg btn--full"
+                                loading={loading}
                                 disabled={loading || (password.length > 0 && strength === 'weak') || (confirmPassword.length > 0 && !passwordsMatch)}
                             >
                                 {loading ? 'Initializing...' : 'Create Account'}
-                            </button>
+                            </Button>
                         </form>
 
                         <div style={{ textAlign: 'center', marginTop: 32 }}>

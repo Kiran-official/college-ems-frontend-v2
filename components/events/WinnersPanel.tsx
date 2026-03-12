@@ -140,7 +140,7 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 0' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormGroup label={isTeam ? 'Select Team' : 'Select Student'} required>
                     <select className="form-select" value={winnerId} onChange={e => setWinnerId(e.target.value)}>
                         <option value="">Choose…</option>
@@ -180,7 +180,7 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
                 </div>
             </FormGroup>
 
-            <Button size="sm" onClick={submit} loading={pending} disabled={!winnerId || !positionLabel.trim()}>
+            <Button size="sm" onClick={submit} loading={pending} disabled={!winnerId || !positionLabel.trim()} className="w-full sm:w-auto">
                 Declare Winner
             </Button>
 
@@ -207,7 +207,12 @@ export function WinnersPanel({ event, winners, registrations, teams }: WinnersPa
                     ✓ Results published for this event. No further changes can be made to finalist results.
                 </div>
             )}
-            {!event.results_published && (
+            {!event.results_published && event.status !== 'closed' && (
+                <div className="glass" style={{ padding: 16, textAlign: 'center', color: 'var(--warning)', fontSize: '0.875rem', fontWeight: 500, border: '1px solid rgba(245,166,35,0.1)', marginBottom: 16 }}>
+                    ⚠️ Event must be closed before declaring winners.
+                </div>
+            )}
+            {!event.results_published && event.status === 'closed' && (
                 <WinnerForm
                     eventId={event.id}
                     isTeam={isTeam}

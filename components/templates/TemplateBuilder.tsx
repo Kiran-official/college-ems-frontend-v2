@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useTransition } from 'react'
 import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
 import { createTemplateAction, updateTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Trash2, Move, GripVertical, Upload, Loader2, AlignLeft, AlignCenter, AlignRight, Type, Bold, Italic, Settings2, LayoutTemplate, Paintbrush, Image as ImageIcon } from 'lucide-react'
 import type { TemplateField, TemplateLayout, CertificateTemplate, Event } from '@/lib/types/db'
 
@@ -42,9 +42,17 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     const canvasRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const [eventId, setEventId] = useState(template?.event_id ?? '')
+    const searchParams = useSearchParams()
+    
+    // Prefill logic
+    const queryEventId = searchParams.get('eventId')
+    const queryType = searchParams.get('type') as 'participation' | 'winner' | null
+
+    const [eventId, setEventId] = useState(template?.event_id ?? queryEventId ?? '')
     const [templateName, setTemplateName] = useState(template?.template_name ?? '')
-    const [certType, setCertType] = useState<'participation' | 'winner'>(template?.certificate_type ?? 'participation')
+    const [certType, setCertType] = useState<'participation' | 'winner'>(
+        template?.certificate_type ?? queryType ?? 'participation'
+    )
     const [bgUrl, setBgUrl] = useState(template?.background_image_url ?? '')
 
     const selectedEvent = events.find(e => e.id === eventId)
@@ -166,9 +174,9 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 32, minHeight: 'calc(100vh - 140px)', alignItems: 'start' }}>
+        <div className="flex flex-col lg:grid lg:grid-cols-[400px_1fr] gap-8 items-start min-h-[calc(100vh-140px)]">
             {/* Left panel — toolbar and field properties */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingRight: 8, paddingBottom: 120 }}>
+            <div className="flex flex-col gap-6 lg:pr-2 lg:pb-[120px] w-full">
                 {/* Meta fields */}
                 <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-glass)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -360,86 +368,56 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                                             boxShadow: selectedField.align === align ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
                                         }}
                                     >
-                                        {align === 'left' && <AlignLeft size={16} />}
-                                        {align === 'center' && <AlignCenter size={16} />}
-                                        {align === 'right' && <AlignRight size={16} />}
-                                    </button>
-                                ))}
-                            </div>
-                        </FormGroup>
-
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                                onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
-                                style={{
-                                    flex: 1,
-                                    height: 40,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 8,
-                                    borderRadius: 'var(--r-md)',
-                                    background: selectedField.bold ? 'rgba(124, 58, 237, 0.15)' : 'rgba(0,0,0,0.2)',
-                                    border: `1px solid ${selectedField.bold ? 'var(--accent)' : 'var(--border)'}`,
-                                    color: selectedField.bold ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8125rem',
-                                    fontWeight: selectedField.bold ? 600 : 400,
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <Bold size={14} /> Bold
-                            </button>
-                            <button
-                                onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
-                                style={{
-                                    flex: 1,
-                                    height: 40,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 8,
-                                    borderRadius: 'var(--r-md)',
-                                    background: selectedField.italic ? 'rgba(124, 58, 237, 0.15)' : 'rgba(0,0,0,0.2)',
-                                    border: `1px solid ${selectedField.italic ? 'var(--accent)' : 'var(--border)'}`,
-                                    color: selectedField.italic ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8125rem',
-                                    fontStyle: selectedField.italic ? 'italic' : 'normal',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <Italic size={14} /> Italic
-                            </button>
+                                    {align === 'left' && <AlignLeft size={16} />}
+                                    {align === 'center' && <AlignCenter size={16} />}
+                                    {align === 'right' && <AlignRight size={16} />}
+                                </button>
+                            ))}
                         </div>
+                    </FormGroup>
+
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                        <button
+                            onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
+                            className={`flex-1 h-10 flex items-center justify-center gap-2 rounded-md border transition-all ${selectedField.bold ? 'bg-accent/15 border-accent text-primary font-semibold' : 'bg-black/20 border-border text-secondary'}`}
+                        >
+                            <Bold size={14} /> Bold
+                        </button>
+                        <button
+                            onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
+                            className={`flex-1 h-10 flex items-center justify-center gap-2 rounded-md border transition-all ${selectedField.italic ? 'bg-accent/15 border-accent text-primary italic' : 'bg-black/20 border-border text-secondary'}`}
+                        >
+                            <Italic size={14} /> Italic
+                        </button>
+                    </div>
 
                         <div style={{ position: 'relative', padding: '16px 0 8px', marginTop: 8 }}>
                             <div style={{ position: 'absolute', top: 0, left: -24, right: -24, height: 1, background: 'var(--border-glass)' }} />
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 12 }}>Position & Size</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                            <div className="grid grid-cols-3 gap-3">
                                 <FormGroup label="X %">
-                                    <input type="number" className="form-input" value={selectedField.x} onChange={e => updateField(selectedField.id, { x: Number(e.target.value) })} min={0} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                    <input type="number" className="form-input text-center px-2" value={selectedField.x} onChange={e => updateField(selectedField.id, { x: Number(e.target.value) })} min={0} max={100} />
                                 </FormGroup>
                                 <FormGroup label="Y %">
-                                    <input type="number" className="form-input" value={selectedField.y} onChange={e => updateField(selectedField.id, { y: Number(e.target.value) })} min={0} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                    <input type="number" className="form-input text-center px-2" value={selectedField.y} onChange={e => updateField(selectedField.id, { y: Number(e.target.value) })} min={0} max={100} />
                                 </FormGroup>
                                 <FormGroup label="Width %">
-                                    <input type="number" className="form-input" value={selectedField.width} onChange={e => updateField(selectedField.id, { width: Number(e.target.value) })} min={5} max={100} style={{ paddingLeft: 8, paddingRight: 8, textAlign: 'center' }} />
+                                    <input type="number" className="form-input text-center px-2" value={selectedField.width} onChange={e => updateField(selectedField.id, { width: Number(e.target.value) })} min={5} max={100} />
                                 </FormGroup>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <div style={{ marginTop: 'auto', paddingTop: 16, position: 'sticky', bottom: 16, zIndex: 10 }}>
-                    <Button onClick={save} loading={pending} disabled={!eventId || !templateName.trim()} full style={{ height: 48, fontSize: '0.9375rem', fontWeight: 600, boxShadow: '0 8px 16px rgba(0,201,255,0.2)' }}>
+                <div className="mt-auto pt-4 sticky bottom-4 z-10">
+                    <Button onClick={save} loading={pending} disabled={!eventId || !templateName.trim()} className="w-full h-12 text-[0.9375rem] font-semibold shadow-[0_8px_16px_rgba(0,201,255,0.2)]">
                         {template ? 'Update Template' : 'Create Template'}
                     </Button>
                 </div>
             </div>
 
             {/* Right panel — A4 landscape canvas */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="flex flex-col gap-4 w-full overflow-hidden">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} />
@@ -457,22 +435,17 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    className="w-full max-w-[900px] relative overflow-hidden transition-all duration-300 rounded-md"
                     style={{
                         aspectRatio: '297 / 210',
-                        width: '100%',
-                        maxWidth: 900,
                         backgroundColor: 'var(--bg-void)',
                         backgroundImage: bgUrl ? `url(${bgUrl})` : 'linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
                         backgroundSize: bgUrl ? 'cover' : '20px 20px',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat',
                         border: selectedFieldId ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 'var(--r-md)',
-                        position: 'relative',
-                        overflow: 'hidden',
                         cursor: dragging ? 'grabbing' : 'default',
                         boxShadow: '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02), inset 0 0 0 1px rgba(255,255,255,0.05)',
-                        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
                     }}
                 >
                     {!bgUrl && (

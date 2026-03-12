@@ -1,6 +1,7 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function updateAttendanceAction(data: {

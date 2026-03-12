@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
-import { ClipboardList, Filter } from 'lucide-react'
+import { ClipboardList, Filter, Plus } from 'lucide-react'
 import { format } from 'date-fns'
-import type { IndividualRegistration, Event } from '@/lib/types/db'
+import type { IndividualRegistration, Event, Team } from '@/lib/types/db'
+import { AddParticipantModal } from '@/components/admin/AddParticipantModal'
+import { usePathname } from 'next/navigation'
 
 const DEPT_PROGRAMMES: Record<string, string[]> = {
     'Commerce': ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA'],
@@ -14,6 +16,7 @@ const DEPT_PROGRAMMES: Record<string, string[]> = {
 interface RegistrationsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
+    teams?: Team[]
 }
 
 function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
@@ -85,11 +88,15 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
     )
 }
 
-export function RegistrationsPanel({ event, registrations }: RegistrationsPanelProps) {
+export function RegistrationsPanel({ event, registrations, teams = [] }: RegistrationsPanelProps) {
     const [showFilters, setShowFilters] = useState(false)
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
     const [filterSemester, setFilterSemester] = useState('')
+    const [showAddModal, setShowAddModal] = useState(false)
+    
+    const pathname = usePathname()
+    const isAdminOrTeacher = pathname.includes('/admin') || pathname.includes('/teacher')
 
     if (registrations.length === 0) {
         return <EmptyState icon={ClipboardList} title="No registrations yet" subtitle="No one has registered for this event yet." />
@@ -112,37 +119,44 @@ export function RegistrationsPanel({ event, registrations }: RegistrationsPanelP
     const isTeam = event.participant_type === 'multiple'
 
     const renderActionHeader = () => (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <div className="w-full sm:w-auto">
+                {isAdminOrTeacher && event.status === 'open' && (
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => setShowAddModal(true)}>
+                        <Plus size={14} /> Add Participant
+                    </Button>
+                )}
+            </div>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setShowFilters(!showFilters)}>
                 <Filter size={14} /> {showFilters ? 'Hide Filters' : 'Show Filters'}
             </Button>
         </div>
     )
 
     const renderFilterBar = () => showFilters && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--bg-elevated)', padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-            <div style={{ minWidth: 160 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Department</label>
+        <div className="flex flex-col sm:flex-row items-end flex-wrap gap-3 mb-4 p-4 rounded-xl border border-border bg-bg-elevated w-full glass">
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px]">
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Department</label>
                 <select className="form-select" value={filterDept} onChange={e => { setFilterDept(e.target.value); setFilterProgramme('') }}>
                     <option value="">All Departments</option>
                     {depts.map(d => <option key={d} value={d!}>{d}</option>)}
                 </select>
             </div>
-            <div style={{ minWidth: 160 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Programme</label>
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px]">
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Programme</label>
                 <select className="form-select" value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)}>
                     <option value="">All Programmes</option>
                     {programmes.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
             </div>
-            <div style={{ minWidth: 120 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Semester</label>
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[120px]">
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Semester</label>
                 <select className="form-select" value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
                     <option value="">All Semesters</option>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
                 </select>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester('') }}>
+            <Button variant="ghost" size="sm" className="w-full sm:w-auto justify-center" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester('') }}>
                 Clear
             </Button>
         </div>
@@ -163,11 +177,32 @@ export function RegistrationsPanel({ event, registrations }: RegistrationsPanelP
         return <RegistrationTable rows={filtered} />
     }
 
+    const mappedTeams = teams.map(t => ({
+        id: t.id,
+        team_name: t.team_name,
+        memberCount: registrations.filter(r => r.team_id === t.id).length
+    }))
+
     return (
         <div>
             {renderActionHeader()}
             {renderFilterBar()}
             {content()}
+            
+            {isAdminOrTeacher && (
+                <AddParticipantModal 
+                    eventId={event.id}
+                    eventType={isTeam ? 'team' : 'individual'}
+                    teams={mappedTeams}
+                    teamSize={event.team_size || undefined}
+                    open={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSuccess={() => {
+                        setShowAddModal(false)
+                        window.location.reload()
+                    }}
+                />
+            )}
         </div>
     )
 }

@@ -118,11 +118,11 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
 
     return (
         <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending}>
+            <div className="flex flex-wrap gap-2 mb-4">
+                <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
                     Mark All Present
                 </Button>
-                <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending}>
+                <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
                     Reset All
                 </Button>
             </div>

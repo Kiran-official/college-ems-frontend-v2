@@ -1,4 +1,5 @@
-import { createSSRClient, createAdminClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { autoClosePastEventsAction } from '@/lib/actions/eventActions';
 import type { Event } from '@/lib/types/db'
 

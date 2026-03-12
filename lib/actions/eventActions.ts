@@ -1,7 +1,11 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { sendEventNotification } from '@/lib/actions/notifications'
+import { triggerCertificateProcessingAction } from './certificateActions'
+import { issueEventCertificates } from '@/lib/certificates'
 
 export async function createEventAction(data: {
     title: string
@@ -108,6 +112,9 @@ export async function openEventAction(eventId: string): Promise<{ success: boole
         const { error } = await admin.from('events').update({ status: 'open' }).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
+        // Trigger PWA Push Notifications
+        sendEventNotification(eventId).catch(e => console.error('Push trigger failed:', e))
+
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
@@ -145,12 +152,70 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({
+        
+        // --- 1. Validation Phase ---
+
+        // Check for unmarked attendance
+        const { count: unmarkedCount, error: countError } = await admin
+            .from('individual_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', eventId)
+            .eq('attendance_status', 'registered')
+        
+        if (countError) return { success: false, error: countError.message }
+        if (unmarkedCount && unmarkedCount > 0) {
+            return { success: false, error: `Incomplete Attendance: ${unmarkedCount} students have not been marked.` }
+        }
+
+        // Fetch templates
+        const { data: templates, error: templateError } = await admin
+            .from('certificate_templates')
+            .select('certificate_type')
+            .eq('event_id', eventId)
+            .eq('is_active', true)
+        
+        if (templateError) return { success: false, error: templateError.message }
+        
+        const hasParticipationTemplate = templates?.some(t => t.certificate_type === 'participation')
+        const hasWinnerTemplate = templates?.some(t => t.certificate_type === 'winner')
+
+        // Fetch winners
+        const { data: winners, error: winnersError } = await admin
+            .from('winners')
+            .select('student_id, team_id, winner_type')
+            .eq('event_id', eventId)
+
+        if (winnersError) return { success: false, error: winnersError.message }
+
+        // Sanity check for winner templates
+        if (winners && winners.length > 0 && !hasWinnerTemplate) {
+            return { success: false, error: 'Mandatory Template Missing: Winners are declared but no Winner Certificate Template is active for this event.' }
+        }
+
+        // --- 2. Preparation & Execution Phase ---
+        
+        const certResult = await issueEventCertificates(admin, eventId)
+        if (!certResult.success) {
+            return { success: false, error: certResult.error }
+        }
+
+        if (certResult.queued > 0) {
+            // Trigger background processing
+            await triggerCertificateProcessingAction()
+        }
+
+        // Update Event Status (Only after certs are safely in the DB)
+        const { error: updateError } = await admin.from('events').update({
             results_published: true,
             status: 'completed'
         }).eq('id', eventId)
-        if (error) return { success: false, error: error.message }
+        
+        if (updateError) {
+            console.error('[publishResultsAction] Update error:', updateError)
+            return { success: false, error: `Failed to update event status: ${updateError.message}. Certificates were queued.` }
+        }
 
+        // Revalidate everywhere
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath(`/student/events/${eventId}`)
@@ -160,9 +225,11 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         revalidatePath('/admin')
         revalidatePath('/teacher')
         revalidatePath('/student')
+
         return { success: true }
-    } catch {
-        return { success: false, error: 'An unexpected error occurred' }
+    } catch (e) {
+        console.error('[publishResultsAction] Crash:', e)
+        return { success: false, error: 'An unexpected system error occurred while publishing results.' }
     }
 }
 
@@ -173,6 +240,19 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
+
+        // 0. Check if all attendance is marked
+        const { count: unmarkedCount, error: countError } = await admin
+            .from('individual_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', eventId)
+            .eq('attendance_status', 'registered')
+        
+        if (countError) return { success: false, error: countError.message }
+        if (unmarkedCount && unmarkedCount > 0) {
+            return { success: false, error: 'Cannot complete event: Attendance marking is incomplete for all registered students.' }
+        }
+
         const { error } = await admin.from('events').update({ status: 'completed' }).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 

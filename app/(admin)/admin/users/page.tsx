@@ -12,7 +12,8 @@ import { CSVImportModal } from '@/components/admin/CSVImportModal'
 import { createUserAction, toggleUserActiveAction } from '@/lib/actions/userActions'
 import { incrementSemesterAction, decrementSemesterAction } from '@/lib/actions/semesterActions'
 import { createClient } from '@/lib/supabase/client'
-import { Users, Plus, Upload, Power, Filter, ChevronUp, ChevronDown } from 'lucide-react'
+import { EditUserModal } from '@/components/admin/EditUserModal'
+import { Users, Plus, Upload, Power, Filter, ChevronUp, ChevronDown, Edit2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { User, Department } from '@/lib/types/db'
 
@@ -43,6 +44,7 @@ function UsersContent() {
     // Modals
     const [showCreate, setShowCreate] = useState(false)
     const [showCSV, setShowCSV] = useState(false)
+    const [editingUser, setEditingUser] = useState<User | null>(null)
 
     // Create form
     const [formData, setFormData] = useState({
@@ -167,30 +169,32 @@ function UsersContent() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
-                    <SearchInput value={search} onChange={setSearch} placeholder={`Search ${tabRole.toLowerCase()}s…`} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
+                    <div style={{ flex: 1 }}>
+                        <SearchInput value={search} onChange={setSearch} placeholder={`Search ${tabRole.toLowerCase()}s…`} />
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
-                        <Filter size={14} /> Filters
+                        <Filter size={14} /> <span className="hidden sm:inline">Filters</span>
                     </Button>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {tab === 'students' && (
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                             <Button variant="outline" size="sm" onClick={() => handleSemesterChange('up')} loading={semesterPending} title="Increment semester for all students">
-                                <ChevronUp size={14} /> Next Sem
+                                <ChevronUp size={14} /> <span className="hidden sm:inline">Next Sem</span>
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => handleSemesterChange('down')} loading={semesterPending} title="Undo semester increment">
-                                <ChevronDown size={14} /> Undo
+                                <ChevronDown size={14} /> <span className="hidden sm:inline">Undo</span>
                             </Button>
                         </div>
                     )}
                     {tab !== 'admins' && (
                         <Button variant="outline" size="sm" onClick={() => setShowCSV(true)}>
-                            <Upload size={14} /> Import CSV
+                            <Upload size={14} /> <span className="hidden sm:inline">Import CSV</span>
                         </Button>
                     )}
-                    <Button size="sm" onClick={() => setShowCreate(true)}>
+                    <Button size="sm" onClick={() => setShowCreate(true)} className="flex-1 sm:flex-none">
                         <Plus size={14} /> Add {tabRole}
                     </Button>
                 </div>
@@ -248,7 +252,7 @@ function UsersContent() {
             ) : filtered.length === 0 ? (
                 <EmptyState icon={Users} title={`No ${tabRole.toLowerCase()}s found`} subtitle={search ? 'Try a different search term' : `No ${tabRole.toLowerCase()}s have been added yet.`} />
             ) : (
-                <div className="table-wrap">
+                <div className="table-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -282,14 +286,21 @@ function UsersContent() {
                                         </Badge>
                                     </td>
                                     <td>{format(new Date(u.created_at), 'dd/MM/yyyy')}</td>
-                                    <td>
+                                    <td style={{ display: 'flex', gap: '8px', minWidth: 'max-content' }}>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setEditingUser(u)}
+                                        >
+                                            <Edit2 size={12} /> <span className="hidden sm:inline">Edit</span>
+                                        </Button>
                                         <Button
                                             size="sm"
                                             variant={u.is_active ? 'danger' : 'outline'}
                                             onClick={() => toggleActive(u.id, u.is_active)}
                                             loading={togglePending}
                                         >
-                                            <Power size={12} /> {u.is_active ? 'Deactivate' : 'Activate'}
+                                            <Power size={12} /> <span className="hidden sm:inline">{u.is_active ? 'Deactivate' : 'Activate'}</span>
                                         </Button>
                                     </td>
                                 </tr>
@@ -353,6 +364,17 @@ function UsersContent() {
                 open={showCSV}
                 onClose={() => { setShowCSV(false); loadData() }}
                 role={tab === 'teachers' ? 'teacher' : 'student'}
+            />
+
+            {/* Edit User Modal */}
+            <EditUserModal 
+                user={editingUser}
+                open={!!editingUser}
+                onClose={() => setEditingUser(null)}
+                onSuccess={() => {
+                    setEditingUser(null)
+                    loadData()
+                }}
             />
         </div>
     )

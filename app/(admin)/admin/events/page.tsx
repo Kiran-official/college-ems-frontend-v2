@@ -14,7 +14,7 @@ export default async function AdminEventsPage() {
 
     return (
         <div className="page">
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                     <h1 className="page-title">Events</h1>
                     <p className="page-sub">Manage all events across the system</p>
@@ -27,7 +27,7 @@ export default async function AdminEventsPage() {
             {active.length === 0 ? (
                 <EmptyState icon={Calendar} title="No events yet" subtitle="Create the first event to get started." />
             ) : (
-                <div className="table-wrap">
+                <div className="table-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -58,7 +58,7 @@ export default async function AdminEventsPage() {
                                         </div>
                                     </td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: 6 }}>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                             <Link href={`/admin/events/${e.id}`} className="btn btn--outline btn--sm">Manage</Link>
                                             <ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} />
                                             <DeleteEventButton eventId={e.id} eventTitle={e.title} />
@@ -81,7 +81,7 @@ export default async function AdminEventsPage() {
                         <Archive size={16} style={{ display: 'inline', marginRight: 8 }} />
                         Archived Events ({archived.length})
                     </summary>
-                    <div className="table-wrap" style={{ marginTop: 12, opacity: 0.7 }}>
+                    <div className="table-wrap -mx-4 px-4 sm:mx-0 sm:px-0" style={{ marginTop: 12, opacity: 0.7 }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -98,7 +98,7 @@ export default async function AdminEventsPage() {
                                         <td>{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
                                         <td><Badge variant={e.status}>{e.status}</Badge></td>
                                         <td>
-                                            <div style={{ display: 'flex', gap: 6 }}>
+                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                                 <ArchiveRestoreButtons eventId={e.id} isActive={e.is_active} />
                                                 <DeleteEventButton eventId={e.id} eventTitle={e.title} />
                                             </div>

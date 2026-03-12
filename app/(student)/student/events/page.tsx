@@ -34,7 +34,7 @@ export default async function StudentEventsPage() {
 
     return (
         <div className="page">
-            <div className="mesh-bg">
+            <div className="mesh-bg" style={{ pointerEvents: 'none' }}>
                 <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', left: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
                 <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', right: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
             </div>

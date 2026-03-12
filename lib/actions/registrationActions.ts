@@ -1,7 +1,9 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { validateTeamCapacity } from './teams'
 
 export async function registerForEventAction(data: {
     event_id: string
@@ -488,6 +490,11 @@ export async function deleteTeamAction(data: {
 
         const admin = createAdminClient()
 
+        // Check event status
+        const { data: event } = await admin.from('events').select('status').eq('id', data.event_id).single()
+        if (!event) return { success: false, error: 'Event not found' }
+        if (event.status !== 'open') return { success: false, error: 'Cannot delete team — event is no longer open' }
+
         const { data: team } = await admin.from('teams').select('id, created_by').eq('id', data.team_id).single()
         if (!team) return { success: false, error: 'Team not found' }
         if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can delete the team' }
@@ -515,6 +522,11 @@ export async function leaveTeamAction(data: {
 
         const admin = createAdminClient()
 
+        // Check event status
+        const { data: event } = await admin.from('events').select('status').eq('id', data.event_id).single()
+        if (!event) return { success: false, error: 'Event not found' }
+        if (event.status !== 'open') return { success: false, error: 'Cannot leave team — event is no longer open' }
+
         await admin.from('team_members').delete().eq('team_id', data.team_id).eq('student_id', user.id)
         await admin.from('individual_registrations').delete().eq('team_id', data.team_id).eq('student_id', user.id).eq('event_id', data.event_id)
 
@@ -524,3 +536,158 @@ export async function leaveTeamAction(data: {
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
+
+export type RegisterInput = {
+    eventId: string
+    userId: string
+    teamId?: string
+    teamName?: string
+    isManual: boolean
+}
+
+export async function registerParticipantAction(
+    input: RegisterInput
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // Verify caller is admin or teacher if it's a manual registration
+        if (input.isManual) {
+            const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+            if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
+                return { success: false, error: 'Not authorised to manually register participants' }
+            }
+        } else if (user.id !== input.userId) {
+            return { success: false, error: 'Can only self-register unless using manual admin mode' }
+        }
+
+        // 1. Fetch event
+        const { data: event } = await admin.from('events')
+            .select('status, registration_deadline, type, team_size')
+            .eq('id', input.eventId)
+            .single()
+
+        if (!event) return { success: false, error: 'Event not found' }
+        if (event.status === 'draft' || event.status === 'cancelled') {
+            return { success: false, error: `Cannot register for a ${event.status} event` }
+        }
+
+        // If not manual, enforce open status and deadline
+        if (!input.isManual) {
+            if (event.status !== 'open') return { success: false, error: 'Registration is closed' }
+            if (new Date() >= new Date(event.registration_deadline)) return { success: false, error: 'Registration deadline has passed' }
+        }
+
+        // 2. Fetch target user to check eligibility and existence
+        const { data: targetUser } = await admin.from('users').select('student_type, is_active').eq('id', input.userId).single()
+        if (!targetUser) return { success: false, error: 'Target user not found' }
+        if (!targetUser.is_active) return { success: false, error: 'User is not active' }
+
+        // Eligibility check
+        if (event.type === 'internal' && targetUser.student_type !== 'internal') {
+            return { success: false, error: 'This event is for internal students only' }
+        }
+        if (event.type === 'external' && targetUser.student_type !== 'external') {
+            return { success: false, error: 'This event is for external students only' }
+        }
+
+        // 3. Check for exact duplicate in registrations
+        const { data: existingReg } = await admin.from('individual_registrations')
+            .select('id, team_id')
+            .eq('student_id', input.userId)
+            .eq('event_id', input.eventId)
+            .maybeSingle()
+
+        if (existingReg) {
+            return { success: false, error: 'User is already registered for this event' }
+        }
+
+        let finalTeamId: string | null = null
+
+        // Team Logic
+        if (event.type === 'team') {
+            if (!input.teamId && !input.teamName) {
+                return { success: false, error: 'Team event requires either a existing team ID or a new team name' }
+            }
+
+            if (input.teamId) {
+                // Joining existing team
+                const { data: existingTeam } = await admin.from('teams').select('id').eq('id', input.teamId).maybeSingle()
+                if (!existingTeam) return { success: false, error: 'Specified team does not exist' }
+
+                // Check team size limit
+                const capacity = await validateTeamCapacity(input.teamId, input.eventId)
+                if (!capacity.canAdd) {
+                    return { success: false, error: capacity.error || 'Team is already full' }
+                }
+
+                finalTeamId = input.teamId
+
+                // Insert into team_members (approved status because it's manual/admin or direct)
+                const { error: tmError } = await admin.from('team_members').insert({
+                    team_id: finalTeamId,
+                    student_id: input.userId,
+                    status: 'approved',
+                    invited_by: input.isManual ? user.id : null
+                })
+                if (tmError) return { success: false, error: 'Failed to add to team: ' + tmError.message }
+
+            } else if (input.teamName) {
+                // Creating a new team
+                const { data: newTeam, error: teamError } = await admin.from('teams').insert({
+                    event_id: input.eventId,
+                    team_name: input.teamName.trim(),
+                    created_by: input.userId // The target user "owns" this team
+                }).select('id').single()
+
+                if (teamError || !newTeam) return { success: false, error: 'Failed to create new team' }
+                finalTeamId = newTeam.id
+
+                // Insert creator into team_members
+                const { error: tmError } = await admin.from('team_members').insert({
+                    team_id: finalTeamId,
+                    student_id: input.userId,
+                    status: 'approved'
+                })
+                if (tmError) {
+                    // Rollback
+                    await admin.from('teams').delete().eq('id', finalTeamId)
+                    return { success: false, error: 'Failed to add owner to new team' }
+                }
+            }
+        }
+
+        // Final step: insert individual registration
+        const { error: regError } = await admin.from('individual_registrations').insert({
+            student_id: input.userId,
+            event_id: input.eventId,
+            team_id: finalTeamId,
+            attendance_status: 'registered'
+        })
+
+        if (regError) {
+            // Rollback team member if we just added it
+            if (finalTeamId) {
+                 await admin.from('team_members').delete().eq('team_id', finalTeamId).eq('student_id', input.userId)
+                 // If we created a brand new team just for this user, delete it too
+                 if (input.teamName && !input.teamId) {
+                     await admin.from('teams').delete().eq('id', finalTeamId)
+                 }
+            }
+            return { success: false, error: regError.message }
+        }
+
+        revalidatePath(`/admin/events/${input.eventId}`)
+        revalidatePath(`/teacher/events/${input.eventId}`)
+        revalidatePath(`/events/${input.eventId}`)
+
+        return { success: true }
+    } catch (error) {
+        console.error('registerParticipantAction error:', error)
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}

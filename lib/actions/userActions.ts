@@ -1,6 +1,7 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function createUserAction(data: {
@@ -252,5 +253,60 @@ export async function searchStudentsForInviteAction(
         return data ?? []
     } catch {
         return []
+    }
+}
+
+export type UpdateUserInput = {
+    name?: string;
+    email?: string;
+    role?: 'admin' | 'teacher' | 'student';
+    student_type?: 'internal' | 'external' | null;
+    active?: boolean;
+    password?: string;
+}
+
+export async function updateUserCredentials(
+    userId: string,
+    fields: UpdateUserInput
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+
+        const admin = createAdminClient()
+
+        if (fields.email !== undefined) {
+            // Update auth email
+            const { error } = await admin.auth.admin.updateUserById(userId, { email: fields.email })
+            if (error) return { success: false, error: error.message }
+        }
+        
+        if (fields.password) {
+            // Update auth password
+            const { error } = await admin.auth.admin.updateUserById(userId, { password: fields.password })
+            if (error) return { success: false, error: error.message }
+        }
+
+        // Update public.users
+        const dbUpdate: Record<string, any> = {}
+        if (fields.name !== undefined) dbUpdate.name = fields.name;
+        if (fields.email !== undefined) dbUpdate.email = fields.email;
+        if (fields.role !== undefined) dbUpdate.role = fields.role;
+        if (fields.student_type !== undefined) dbUpdate.student_type = fields.student_type;
+        if (fields.active !== undefined) dbUpdate.is_active = fields.active;
+
+        if (Object.keys(dbUpdate).length > 0) {
+            const { error } = await admin.from('users').update(dbUpdate).eq('id', userId)
+            if (error) return { success: false, error: error.message }
+        }
+
+        revalidatePath('/admin/users')
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
     }
 }

@@ -30,8 +30,17 @@ export async function middleware(request: NextRequest) {
     const PUBLIC_PATHS = ['/login', '/register'];
     const isPublic = PUBLIC_PATHS.includes(pathname);
 
-    // 1. Public routes — skip auth checks
+    // 1. Public routes
     if (isPublic) {
+        if (user) {
+            // Already logged in? Redirect to role dashboard
+            try {
+                const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+                if (profile) return NextResponse.redirect(new URL(`/${profile.role}`, request.url));
+            } catch {
+                return response;
+            }
+        }
         return response;
     }
 

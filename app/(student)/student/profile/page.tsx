@@ -10,7 +10,7 @@ export default async function StudentProfilePage() {
 
     return (
         <div className="page">
-            <div className="mesh-bg">
+            <div className="mesh-bg" style={{ pointerEvents: 'none' }}>
                 <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', right: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
                 <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', left: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
             </div>
@@ -20,11 +20,11 @@ export default async function StudentProfilePage() {
                 <p className="page-sub">Your account details</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: 24, alignItems: 'start' }}>
+            <div className="flex flex-col lg:grid lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">
                 <div className="glass-premium" style={{ padding: 24 }}>
                     <h3 className="section-title" style={{ marginBottom: 24 }}>Personal Info</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                        <div style={{ gridColumn: 'span 2' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="sm:col-span-2">
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
                                 Full Name
                             </div>

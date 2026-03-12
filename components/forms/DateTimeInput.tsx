@@ -9,9 +9,11 @@ interface DateTimeInputProps {
     onChange: (value: string) => void
     required?: boolean
     placeholder?: string
+    min?: string
+    max?: string
 }
 
-export function DateTimeInput({ value, onChange, required, placeholder }: DateTimeInputProps) {
+export function DateTimeInput({ value, onChange, required, placeholder, min, max }: DateTimeInputProps) {
     const [displayValue, setDisplayValue] = useState('')
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -84,6 +86,8 @@ export function DateTimeInput({ value, onChange, required, placeholder }: DateTi
                 value={value}
                 onChange={handleNativeChange}
                 required={required}
+                min={min}
+                max={max}
                 aria-label={placeholder}
                 style={{
                     position: 'absolute',

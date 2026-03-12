@@ -20,7 +20,7 @@ export default async function StudentDashboard() {
 
     return (
         <div className="page">
-            <div className="mesh-bg">
+            <div className="mesh-bg" style={{ pointerEvents: 'none' }}>
                 <div className="mesh-circle" style={{ width: '600px', height: '600px', top: '-200px', right: '-100px', background: 'var(--accent)', opacity: 0.3 }} />
                 <div className="mesh-circle" style={{ width: '400px', height: '400px', bottom: '-100px', left: '-50px', background: 'var(--accent-secondary)', animationDelay: '-5s', opacity: 0.2 }} />
             </div>
@@ -30,17 +30,17 @@ export default async function StudentDashboard() {
                 <p className="page-sub">Your event participation overview</p>
             </div>
 
-            <div className="bento-grid">
-                <div className="bento-item" style={{ gridColumn: 'span 3' }}>
+            <div className="bento-grid card-grid">
+                <div className="bento-item">
                     <StatCard label="Total Registrations" value={regCount} icon={Calendar} />
                 </div>
-                <div className="bento-item" style={{ gridColumn: 'span 3' }}>
+                <div className="bento-item">
                     <StatCard label="Upcoming Events" value={upcomingCount} icon={Activity} />
                 </div>
-                <div className="bento-item" style={{ gridColumn: 'span 3' }}>
+                <div className="bento-item">
                     <StatCard label="Certificates Earned" value={certCount} icon={Award} />
                 </div>
-                <div className="bento-item" style={{ gridColumn: 'span 3' }}>
+                <div className="bento-item">
                     <StatCard label="Pending Results" value={pendingResults} icon={Hourglass} />
                 </div>
             </div>

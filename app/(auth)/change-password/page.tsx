@@ -5,18 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { clearMustChangePasswordAction } from '@/lib/actions/authActions'
 import { Eye, EyeOff, AlertTriangle } from 'lucide-react'
 
-function getPasswordStrength(pw: string): 'weak' | 'fair' | 'strong' {
-    if (pw.length < 8) return 'weak'
-    let score = 0
-    if (/[A-Z]/.test(pw)) score++
-    if (/[a-z]/.test(pw)) score++
-    if (/[0-9]/.test(pw)) score++
-    if (/[^A-Za-z0-9]/.test(pw)) score++
-    if (pw.length >= 12) score++
-    if (score >= 4) return 'strong'
-    if (score >= 2) return 'fair'
-    return 'weak'
-}
+import { getPasswordStrength } from '@/lib/validators'
+import { Button } from '@/components/ui/Button'
+import { FormGroup } from '@/components/forms/FormGroup'
 
 export default function ChangePasswordPage() {
     const router = useRouter()
@@ -82,8 +73,7 @@ export default function ChangePasswordPage() {
                 )}
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div className="form-group">
-                        <label className="form-label form-label--required" htmlFor="new-password">New Password</label>
+                    <FormGroup label="New Password" htmlFor="new-password" required>
                         <div className="password-wrap">
                             <input
                                 id="new-password"
@@ -117,10 +107,9 @@ export default function ChangePasswordPage() {
                                 </span>
                             </>
                         )}
-                    </div>
+                    </FormGroup>
 
-                    <div className="form-group">
-                        <label className="form-label form-label--required" htmlFor="confirm-new-password">Confirm Password</label>
+                    <FormGroup label="Confirm Password" htmlFor="confirm-new-password" required>
                         <input
                             id="confirm-new-password"
                             type="password"
@@ -136,15 +125,16 @@ export default function ChangePasswordPage() {
                         {passwordsMatch && (
                             <span style={{ color: 'var(--success)', fontSize: '0.75rem', fontWeight: 600 }}>✓ Passwords match</span>
                         )}
-                    </div>
+                    </FormGroup>
 
-                    <button
+                    <Button
                         type="submit"
-                        className={`btn btn--primary btn--lg btn--full ${loading ? 'btn--loading' : ''}`}
+                        className="btn--lg btn--full"
+                        loading={loading}
                         disabled={!canSubmit}
                     >
                         {loading ? 'Setting Password...' : 'Set Password'}
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>

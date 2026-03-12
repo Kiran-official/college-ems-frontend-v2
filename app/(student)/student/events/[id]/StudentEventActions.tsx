@@ -353,14 +353,16 @@ function RegistrationAction({
                                 Team: {studentMemberTeam.team_name}
                             </span>
                             {canRegister && (
-                                <Button size="sm" variant="danger"
-                                    onClick={() => {
-                                        if (!confirm('Are you sure you want to leave this team?')) return
-                                        wrap(() => leaveTeamAction({ team_id: studentMemberTeam.id, event_id: event.id }))
-                                    }}
-                                    loading={pending}>
-                                    <LogOut size={14} /> Leave Team
-                                </Button>
+                                <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                                    <Button size="sm" variant="danger" className="w-full sm:w-auto"
+                                        onClick={() => {
+                                            if (!confirm('Are you sure you want to leave this team?')) return
+                                            wrap(() => leaveTeamAction({ team_id: studentMemberTeam.id, event_id: event.id }))
+                                        }}
+                                        loading={pending}>
+                                        <LogOut size={14} /> Leave Team
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     )}
@@ -371,24 +373,19 @@ function RegistrationAction({
                                 Team Invitations
                             </div>
                             {incomingInvites.map(inv => (
-                                <div key={inv.teamMemberId} style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '10px 14px', borderRadius: 'var(--r-md)',
-                                    border: '1px solid var(--accent-border, rgba(99,102,241,0.3))',
-                                    background: 'var(--accent-subtle, rgba(99,102,241,0.06))',
-                                }}>
+                                <div key={inv.teamMemberId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-md border border-accent/30 bg-accent/5">
                                     <div>
                                         <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
                                             You&apos;ve been invited to join <span style={{ color: 'var(--accent)' }}>{inv.teamName}</span>
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6 }}>
-                                        <Button size="sm"
+                                    <div className="flex flex-row gap-2 w-full sm:w-auto">
+                                        <Button size="sm" className="flex-1 sm:flex-none"
                                             onClick={() => wrap(() => acceptInviteAction({ team_member_id: inv.teamMemberId, event_id: event.id }))}
                                             loading={pending}>
                                             <Check size={14} /> Accept
                                         </Button>
-                                        <Button size="sm" variant="danger"
+                                        <Button size="sm" variant="danger" className="flex-1 sm:flex-none"
                                             onClick={() => wrap(() => declineInviteAction({ team_member_id: inv.teamMemberId, event_id: event.id }))}
                                             loading={pending}>
                                             <X size={14} /> Decline
@@ -401,18 +398,20 @@ function RegistrationAction({
 
                     {studentCreatedTeam && (
                         <div style={{ padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
                                 <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>
                                     Manage Team: {studentCreatedTeam.team_name}
                                 </div>
-                                <Button size="sm" variant="danger"
-                                    onClick={() => {
-                                        if (!confirm('Are you sure you want to delete this team? All members will be removed.')) return
-                                        wrap(() => deleteTeamAction({ team_id: studentCreatedTeam.id, event_id: event.id }))
-                                    }}
-                                    loading={pending}>
-                                    <Trash2 size={14} /> Delete Team
-                                </Button>
+                                {canRegister && (
+                                    <Button size="sm" variant="danger" className="w-full sm:w-auto"
+                                        onClick={() => {
+                                            if (!confirm('Are you sure you want to delete this team? All members will be removed.')) return
+                                            wrap(() => deleteTeamAction({ team_id: studentCreatedTeam.id, event_id: event.id }))
+                                        }}
+                                        loading={pending}>
+                                        <Trash2 size={14} /> Delete Team
+                                    </Button>
+                                )}
                             </div>
 
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
@@ -445,16 +444,16 @@ function RegistrationAction({
                                         Join Requests
                                     </div>
                                     {studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).map(m => (
-                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                                        <div key={m.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-2 border-b border-border/10 gap-2">
                                             <div>
                                                 <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
-                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>{m.student.email}</span>}
+                                                {m.student?.email && <span className="block sm:inline ml-0 sm:ml-2 text-xs text-text-tertiary">{m.student.email}</span>}
                                             </div>
-                                            <div style={{ display: 'flex', gap: 6 }}>
-                                                <Button size="sm" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
+                                            <div className="flex flex-row gap-2 w-full sm:w-auto">
+                                                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
                                                     <Check size={14} /> Approve
                                                 </Button>
-                                                <Button size="sm" variant="danger" onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
+                                                <Button size="sm" variant="danger" className="flex-1 sm:flex-none" onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
                                                     <X size={14} /> Reject
                                                 </Button>
                                             </div>
@@ -536,11 +535,13 @@ function RegistrationAction({
                                                 isFull ? (
                                                     <Badge variant="failed">Full</Badge>
                                                 ) : (
-                                                    <Button size="sm" variant="outline"
-                                                        onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id }))}
-                                                        loading={pending} disabled={!canJoin}>
-                                                        Request to Join
-                                                    </Button>
+                                                    <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                                                        <Button size="sm" variant="outline" className="w-full sm:w-auto"
+                                                            onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id }))}
+                                                            loading={pending} disabled={!canJoin}>
+                                                            Request to Join
+                                                        </Button>
+                                                    </div>
                                                 )
                                             ) : (
                                                 isFull ? <Badge variant="failed">Full</Badge> : <Badge variant="pending">{approvedCount === 0 ? 'Vacant' : 'Open'}</Badge>
@@ -568,7 +569,7 @@ function RegistrationAction({
 
                             {!showCreateTeam ? (
                                 <Button variant="outline" onClick={() => setShowCreateTeam(true)}>
-                                    <Users2 size={16} /> Create New Team
+                                    <Users2 size={16} /> Create Team {teamSize ? `(Size: ${teamSize})` : ''}
                                 </Button>
                             ) : (
                                 <div style={{
@@ -578,8 +579,9 @@ function RegistrationAction({
                                 }}>
                                     <div className="registration-action__details">
                                         <div className="registration-action__info">
-                                            <h3 className="registration-action__title">
-                                                {event.title}
+                                            <h3 className="registration-action__title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>{event.title}</span>
+                                                {teamSize && <Badge variant="info">Team of {teamSize}</Badge>}
                                             </h3>
                                             <div className="registration-action__meta">
                                                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>
@@ -604,8 +606,8 @@ function RegistrationAction({
                                                     Invited members will see the invite and can accept or decline.
                                                 </p>
                                             )}
-                                            <div style={{ display: 'flex', gap: 8 }}>
-                                                <Button
+                                            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                                                <Button className="w-full sm:w-auto"
                                                     onClick={() => wrap(() => createTeamAction({
                                                         event_id: event.id,
                                                         team_name: teamName.trim(),
@@ -614,7 +616,7 @@ function RegistrationAction({
                                                     loading={pending} disabled={!teamName.trim()}>
                                                     Create Team
                                                 </Button>
-                                                <Button variant="outline" onClick={cancelCreateTeam} disabled={pending}>
+                                                <Button variant="outline" className="w-full sm:w-auto" onClick={cancelCreateTeam} disabled={pending}>
                                                     Cancel
                                                 </Button>
                                             </div>
@@ -624,9 +626,17 @@ function RegistrationAction({
                             )}
 
                             {!studentMemberTeam && !studentCreatedTeam && !canRegister && (
-                                <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                                    Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
-                                </span>
+                                <div style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Badge variant="pending">Info</Badge>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+                                        Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}. Team modifications are restricted.
+                                    </span>
+                                </div>
+                            )}
+                            {(studentCreatedTeam || studentMemberTeam) && !canRegister && (
+                                 <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                                    ℹ️ Event is {event.status !== 'open' ? event.status : 'past deadline'}. Team changes are no longer allowed.
+                                </div>
                             )}
                         </div>
                     )}

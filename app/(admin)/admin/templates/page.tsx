@@ -10,7 +10,7 @@ export default async function AdminTemplatesPage() {
 
     return (
         <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, borderBottom: '1px solid var(--border-glass)', paddingBottom: 24 }}>
+            <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pb-6 border-b border-border-glass">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 48, height: 48, borderRadius: 'var(--r-lg)', background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(0,201,255,0.2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(124,58,237,0.3)', boxShadow: '0 0 20px rgba(124,58,237,0.1)' }}>
                         <LayoutTemplate size={24} color="#B983FF" />
@@ -20,7 +20,7 @@ export default async function AdminTemplatesPage() {
                         <p className="page-sub" style={{ margin: '4px 0 0 0', opacity: 0.8 }}>Design and manage certificates for all your events</p>
                     </div>
                 </div>
-                <Link href="/admin/templates/create" className="btn btn--primary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: '0.9375rem', fontWeight: 600, boxShadow: '0 8px 16px rgba(0, 201, 255, 0.25)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+                <Link href="/admin/templates/create" className="btn btn--primary w-full sm:w-auto justify-center" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: '0.9375rem', fontWeight: 600, boxShadow: '0 8px 16px rgba(0, 201, 255, 0.25)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
                     <Plus size={18} /> New Template
                 </Link>
             </div>

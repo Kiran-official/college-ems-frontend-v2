@@ -25,12 +25,12 @@ export default async function TeacherEventsPage() {
 
     return (
         <div className="page">
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="page-title">My Events</h1>
                     <p className="page-sub">Events you created or are assigned to</p>
                 </div>
-                <Link href="/teacher/events/create" className="btn btn--primary">
+                <Link href="/teacher/events/create" className="btn btn--primary w-full sm:w-auto justify-center">
                     <Plus size={16} /> Create Event
                 </Link>
             </div>

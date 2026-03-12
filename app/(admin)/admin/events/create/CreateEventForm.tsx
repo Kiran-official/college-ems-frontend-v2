@@ -76,12 +76,22 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                         <textarea className="form-textarea" value={description} onChange={e => setDescription(e.target.value)} maxLength={500} placeholder="Brief description (optional)" />
                     </FormGroup>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormGroup label="Event Date & Time" required>
-                            <DateTimeInput value={eventDate} onChange={setEventDate} placeholder="Event date & time" />
+                            <DateTimeInput 
+                                value={eventDate} 
+                                onChange={setEventDate} 
+                                placeholder="Event date & time" 
+                                min={regDeadline || new Date().toISOString().slice(0, 16)}
+                            />
                         </FormGroup>
                         <FormGroup label="Registration Deadline" required>
-                            <DateTimeInput value={regDeadline} onChange={setRegDeadline} placeholder="Last day to register" />
+                            <DateTimeInput 
+                                value={regDeadline} 
+                                onChange={setRegDeadline} 
+                                placeholder="Last day to register" 
+                                max={eventDate}
+                            />
                         </FormGroup>
                     </div>
 
@@ -95,19 +105,19 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                     </FormGroup>
 
                     <FormGroup label="Visibility" required>
-                        <div style={{ display: 'flex', gap: 16 }}>
+                        <div className="flex flex-wrap gap-4 sm:gap-6">
                             {[
                                 { value: 'public_all', label: 'Open to All' },
                                 { value: 'internal_only', label: 'Internal Only' },
                                 { value: 'external_only', label: 'External Only' },
                             ].map(opt => (
-                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                                <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
                                     <input
                                         type="radio"
                                         name="visibility"
                                         checked={visibility === opt.value}
                                         onChange={() => setVisibility(opt.value as typeof visibility)}
-                                        style={{ accentColor: 'var(--accent)' }}
+                                        className="accent-accent"
                                     />
                                     {opt.label}
                                 </label>
@@ -138,24 +148,24 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                     </FormGroup>
 
                     <FormGroup label="Participant Type" required>
-                        <div style={{ display: 'flex', gap: 16 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
                                 <input
                                     type="radio"
                                     name="participantType"
                                     checked={participantType === 'single'}
                                     onChange={() => setParticipantType('single')}
-                                    style={{ accentColor: 'var(--accent)' }}
+                                    className="accent-accent"
                                 />
                                 Single Participant
                             </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
                                 <input
                                     type="radio"
                                     name="participantType"
                                     checked={participantType === 'multiple'}
                                     onChange={() => setParticipantType('multiple')}
-                                    style={{ accentColor: 'var(--accent)' }}
+                                    className="accent-accent"
                                 />
                                 Multiple Participants (Team)
                             </label>
@@ -178,9 +188,9 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                 </div>
             </div>
 
-            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" loading={pending} disabled={!title || !eventDate || !regDeadline}>
+            <div className="mt-8 flex flex-col-reverse sm:flex-row justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => router.back()} className="w-full sm:w-auto">Cancel</Button>
+                <Button type="submit" loading={pending} disabled={!title || !eventDate || !regDeadline} className="w-full sm:w-auto">
                     Create Event
                 </Button>
             </div>

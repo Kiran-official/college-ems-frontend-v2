@@ -1,8 +1,10 @@
 'use server'
 
-import { createAdminClient, createSSRClient } from '@/lib/supabase/server'
+import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { TemplateLayout } from '@/lib/types/db'
+import { issueEventCertificates } from '@/lib/certificates'
 
 export async function retryCertificateAction(
     certificateId: string
@@ -65,6 +67,27 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
         return { success: true, count: failed.length }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function triggerCertificateProcessingAction(): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { session } } = await ssr.auth.getSession()
+        if (!session) return { success: false, error: 'Not authenticated' }
+
+        // Invoke the Supabase Edge Function
+        const { error } = await ssr.functions.invoke('process-certificates')
+
+        if (error) {
+            console.error('[triggerCertificateProcessingAction] invoke error:', error)
+            return { success: false, error: error.message }
+        }
+
+        return { success: true }
+    } catch (e) {
+        console.error('[triggerCertificateProcessingAction] crash:', e)
+        return { success: false, error: 'Failed to trigger certificate processing' }
     }
 }
 
@@ -175,5 +198,36 @@ export async function uploadTemplateBackgroundAction(
     } catch (err) {
         console.error('Upload Action Crash:', err)
         return { success: false, error: err instanceof Error ? err.message : 'An error occurred during upload' }
+    }
+}
+
+export async function syncEventCertificatesAction(eventId: string): Promise<{ success: boolean; queued?: number; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // 2. Execute
+        const certResult = await issueEventCertificates(admin, eventId)
+        if (!certResult.success) {
+            return { success: false, error: certResult.error }
+        }
+
+        if (certResult.queued > 0) {
+            // Trigger background processing
+            await triggerCertificateProcessingAction()
+        }
+
+        revalidatePath(`/admin/events/${eventId}`)
+        revalidatePath(`/teacher/events/${eventId}`)
+        revalidatePath('/admin/certificates')
+        revalidatePath('/teacher/certificates')
+
+        return { success: true, queued: certResult.queued }
+    } catch (e) {
+        console.error('[syncEventCertificatesAction] error:', e)
+        return { success: false, error: 'An unexpected error occurred' }
     }
 }

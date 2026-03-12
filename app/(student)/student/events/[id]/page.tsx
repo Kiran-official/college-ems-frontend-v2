@@ -30,7 +30,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
 
     return (
         <div className="page">
-            <div className="mesh-bg">
+            <div className="mesh-bg" style={{ pointerEvents: 'none' }}>
                 <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', right: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
                 <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', left: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
             </div>
@@ -65,17 +65,16 @@ export default async function StudentEventDetailPage({ params }: Props) {
                             </div>
                         </div>
                     )}
-                    {event.faculty_in_charge && event.faculty_in_charge.length > 0 && (
-                        <div className="bento-item__content">
-                            <div className="stat-card__label" style={{ marginBottom: 8 }}>Organised By</div>
-                            <div className="stat-card__value" style={{ fontSize: '1.125rem', fontWeight: 600 }}>
-                                {event.faculty_in_charge
-                                    .map(f => f.teacher?.name)
-                                    .filter(Boolean)
-                                    .join(', ')}
-                            </div>
+                    <div className="bento-item__content">
+                        <div className="stat-card__label" style={{ marginBottom: 8 }}>Participation</div>
+                        <div className="stat-card__value" style={{ fontSize: '1.25rem' }}>
+                            {event.participant_type === 'single' ? (
+                                'Individual'
+                            ) : (
+                                <>Team <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>(Max {event.team_size})</span></>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
                 <div className="stat-card__glow" />
             </div>

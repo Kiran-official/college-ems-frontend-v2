@@ -23,7 +23,7 @@ export default async function TeacherDashboard() {
                 <StatCard label="Completed" value={stats.completedEvents} icon={CheckCircle2} />
             </div>
 
-            <div className="glow-bg glow-bg--violet" style={{ width: 400, height: 400, top: -100, right: -100, position: 'fixed', opacity: 0.25 }} />
+            <div className="glow-bg glow-bg--violet" style={{ width: '400px', height: '400px', top: '-100px', right: '-100px', position: 'fixed', opacity: 0.25, pointerEvents: 'none' }} />
         </div>
     )
 }

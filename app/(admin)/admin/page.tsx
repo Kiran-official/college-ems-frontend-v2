@@ -54,7 +54,7 @@ export default async function AdminDashboard() {
             )}
 
             {/* Glow decorators */}
-            <div className="glow-bg glow-bg--cyan" style={{ width: 400, height: 400, top: -100, right: -100, position: 'fixed', opacity: 0.3 }} />
+            <div className="glow-bg glow-bg--cyan" style={{ width: '400px', height: '400px', top: '-100px', right: '-100px', position: 'fixed', opacity: 0.3, pointerEvents: 'none' }} />
         </div>
     )
 }

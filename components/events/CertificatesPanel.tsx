@@ -3,11 +3,11 @@
 import { useTransition } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { retryCertificateAction } from '@/lib/actions/certificateActions'
+import { retryCertificateAction, triggerCertificateProcessingAction } from '@/lib/actions/certificateActions'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Award, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
-import type { Certificate, CertificateTemplate } from '@/lib/types/db'
+import type { Certificate, CertificateTemplate, Winner } from '@/lib/types/db'
 import Link from 'next/link'
 import { FileWarning, Check } from 'lucide-react'
 
@@ -17,14 +17,27 @@ interface CertificatesPanelProps {
     templates: CertificateTemplate[]
     eventId: string
     createTemplatePath: string
+    winners: Winner[]
 }
 
-export function CertificatesPanel({ certificates, stats, templates, eventId, createTemplatePath }: CertificatesPanelProps) {
+export function CertificatesPanel({ certificates, stats, templates, eventId, createTemplatePath, winners }: CertificatesPanelProps) {
     const [pending, startTransition] = useTransition()
 
     function retry(certId: string) {
         startTransition(async () => {
             await retryCertificateAction(certId)
+            window.location.reload()
+        })
+    }
+
+    function triggerProcessing() {
+        startTransition(async () => {
+            const res = await triggerCertificateProcessingAction()
+            if (res.success) {
+                alert('Processing triggered! It may take a few moments for all certificates to generate.')
+            } else {
+                alert(`Error: ${res.error}`)
+            }
             window.location.reload()
         })
     }
@@ -45,24 +58,26 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                     </div>
                 </div>
                 {!hasParticipation && (
-                    <Link href={createTemplatePath}>
+                    <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
                         <Button size="sm" variant="outline">Create</Button>
                     </Link>
                 )}
             </div>
 
-            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasWinner ? 'var(--success-bg)' : 'var(--warning-bg)'}` }}>
+            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasWinner ? 'var(--success-bg)' : (winners.length > 0 ? 'var(--warning-bg)' : 'var(--border-glass)')}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasWinner ? 'var(--success-bg)' : 'var(--warning-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {hasWinner ? <Check size={16} color="var(--success)" /> : <FileWarning size={16} color="var(--warning)" />}
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasWinner ? 'var(--success-bg)' : (winners.length > 0 ? 'var(--warning-bg)' : 'var(--border)'), display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasWinner || winners.length > 0 ? 1 : 0.5 }}>
+                        {hasWinner ? <Check size={16} color="var(--success)" /> : (winners.length > 0 ? <FileWarning size={16} color="var(--warning)" /> : <Award size={16} color="var(--text-tertiary)" />)}
                     </div>
                     <div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Winner Template</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{hasWinner ? 'Template attached' : 'Template missing'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                            {hasWinner ? 'Template attached' : (winners.length > 0 ? 'Template missing' : 'Not required (No winners declared)')}
+                        </div>
                     </div>
                 </div>
                 {!hasWinner && (
-                    <Link href={createTemplatePath}>
+                    <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
                         <Button size="sm" variant="outline">Create</Button>
                     </Link>
                 )}
@@ -113,6 +128,11 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                     <Badge variant="processing">{stats.processing} Processing</Badge>
                     <Badge variant="generated">{stats.generated} Generated</Badge>
                     <Badge variant="failed">{stats.failed} Failed</Badge>
+                    {(stats.pending > 0 || stats.failed > 0) && (
+                        <Button size="sm" variant="outline" onClick={triggerProcessing} loading={pending}>
+                            <RotateCcw size={14} /> Process Pending Queue
+                        </Button>
+                    )}
                 </div>
                 <EmptyState icon={Award} title="No certificates" subtitle="No certificates have been created for this event yet." />
             </div>
@@ -128,6 +148,11 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                 <Badge variant="processing">{stats.processing} Processing</Badge>
                 <Badge variant="generated">{stats.generated} Generated</Badge>
                 <Badge variant="failed">{stats.failed} Failed</Badge>
+                {(stats.pending > 0 || stats.failed > 0) && (
+                    <Button size="sm" variant="outline" onClick={triggerProcessing} loading={pending}>
+                        <RotateCcw size={14} /> Process Pending Queue
+                    </Button>
+                )}
             </div>
 
             {renderTable(certificates)}

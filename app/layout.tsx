@@ -1,5 +1,8 @@
 import { Space_Grotesk, Outfit } from 'next/font/google'
 import './globals.css'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { Metadata, Viewport } from 'next'
+import { ServiceWorkerRegistration } from '../components/pwa/ServiceWorkerRegistration'
 
 const fontBody = Space_Grotesk({
   subsets: ['latin'],
@@ -15,9 +18,25 @@ const fontHeading = Outfit({
   display: 'swap',
 })
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'SICM EMS — Event Management System',
   description: 'Seshadripuram Institute of Commerce and Management — Event Management System',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SICM EMS',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#000000',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `
         }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegistration />
+        {children}
+        <InstallPrompt />
+      </body>
     </html>
   )
 }

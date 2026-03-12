@@ -14,7 +14,7 @@ export default async function StudentCertificatesPage() {
 
     return (
         <div className="page">
-            <div className="mesh-bg">
+            <div className="mesh-bg" style={{ pointerEvents: 'none' }}>
                 <div className="mesh-circle" style={{ width: '800px', height: '800px', top: '-100px', left: '-200px', background: 'var(--accent)', opacity: 0.3 }} />
                 <div className="mesh-circle" style={{ width: '600px', height: '600px', bottom: '-200px', right: '-100px', background: 'var(--accent-secondary)', animationDelay: '-8s', opacity: 0.2 }} />
             </div>
@@ -29,33 +29,48 @@ export default async function StudentCertificatesPage() {
             ) : (
                 <div className="card-grid">
                     {certificates.map(cert => (
-                        <div key={cert.id} className="glass-premium" style={{ padding: 24 }}>
-                            <h3 className="section-title" style={{ fontSize: '1.125rem', marginBottom: 8 }}>
-                                {cert.event?.title ?? 'Event'}
-                            </h3>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                                <Badge variant={cert.certificate_type === 'winner' ? 'success' : 'info'}>
-                                    {cert.certificate_type.charAt(0).toUpperCase() + cert.certificate_type.slice(1)}
-                                </Badge>
-                                {cert.winner && (
-                                    <Badge variant="success">{(cert.winner as { position_label?: string }).position_label}</Badge>
-                                )}
+                        <div key={cert.id} className="certificate-card">
+                            <div className="certificate-card__icon">
+                                <Award size={24} />
                             </div>
-                            {cert.generated_at && (
-                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', marginBottom: 16 }}>
-                                    Generated on {format(new Date(cert.generated_at), 'dd/MM/yyyy')}
+                            
+                            <div className="certificate-card__body">
+                                <h3 className="certificate-card__title">
+                                    {cert.event?.title ?? 'Event'}
+                                </h3>
+                                
+                                <div className="certificate-card__meta">
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        <Badge variant={cert.certificate_type === 'winner' ? 'gold' : 'info'}>
+                                            {cert.certificate_type.charAt(0).toUpperCase() + cert.certificate_type.slice(1)}
+                                        </Badge>
+                                        {cert.winner && (
+                                            <Badge variant="gold">{(cert.winner as { position_label?: string }).position_label}</Badge>
+                                        )}
+                                    </div>
+                                    
+                                    {cert.generated_at && (
+                                        <div className="certificate-card__date">
+                                            <Award size={14} />
+                                            Generated on {format(new Date(cert.generated_at), 'dd MMM yyyy')}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
+
                             {cert.file_path && (
-                                <a
-                                    href={cert.file_path}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn btn--outline btn--sm w-full"
-                                    style={{ justifyContent: 'center' }}
-                                >
-                                    Download Certificate
-                                </a>
+                                <div className="certificate-card__action">
+                                    <a
+                                        href={cert.file_path}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn--primary w-full"
+                                        style={{ justifyContent: 'center', gap: 8 }}
+                                    >
+                                        <Award size={18} />
+                                        Download Certificate
+                                    </a>
+                                </div>
                             )}
                         </div>
                     ))}
