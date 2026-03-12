@@ -136,7 +136,8 @@ export default function RegisterPage() {
                                     className="form-input"
                                     placeholder="Enter your phone number"
                                     value={phoneNumber}
-                                    onChange={(e) => setPhoneNumber(e.target.value)}
+                                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                    maxLength={10}
                                     required
                                 />
                             </FormGroup>
