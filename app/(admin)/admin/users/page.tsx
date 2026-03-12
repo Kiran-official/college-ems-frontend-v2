@@ -321,7 +321,7 @@ function UsersContent() {
                         <input className="form-input" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                     </FormGroup>
                     <FormGroup label="Phone Number">
-                        <input className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value })} placeholder="e.g. 9876543210" />
+                        <input className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="e.g. 9876543210" maxLength={10} />
                     </FormGroup>
                     {tab !== 'admins' && (
                         <FormGroup label="Department">
