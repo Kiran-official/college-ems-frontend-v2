@@ -105,9 +105,37 @@ function UsersContent() {
         return matchesSearch && matchesDept && matchesProg && matchesSem && matchesType
     })
 
+    function showCreateValidationError(fieldId: string, message: string) {
+        setCreateError(message)
+        setTimeout(() => {
+            const el = document.getElementById(fieldId)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                el.focus()
+            }
+        }, 50)
+    }
+
     async function handleCreate() {
         setCreateError('')
         const role = tab === 'admins' ? 'admin' : tab === 'teachers' ? 'teacher' : 'student'
+
+        // Client-side validation
+        const name = formData.name.trim()
+        if (!name || name.length < 2) {
+            showCreateValidationError('create-user-name', 'Name must be at least 2 characters'); return
+        }
+        if (!/^[A-Za-z\s.]+$/.test(name)) {
+            showCreateValidationError('create-user-name', 'Name must contain only letters, spaces, and dots'); return
+        }
+        const email = formData.email.trim()
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showCreateValidationError('create-user-email', 'Please enter a valid email address'); return
+        }
+        if (!formData.phone_number || formData.phone_number.length !== 10) {
+            showCreateValidationError('create-user-phone', 'Phone number is required and must be exactly 10 digits'); return
+        }
+
         startCreate(async () => {
             const result = await createUserAction({
                 name: formData.name,
@@ -315,13 +343,13 @@ function UsersContent() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {createError && <div className="form-error">{createError}</div>}
                     <FormGroup label="Full Name" required>
-                        <input className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                        <input id="create-user-name" className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value.replace(/[^A-Za-z\s.]/g, '') })} placeholder="Letters, spaces, and dots only" />
                     </FormGroup>
                     <FormGroup label="Email" required>
-                        <input className="form-input" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                        <input id="create-user-email" className="form-input" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                     </FormGroup>
-                    <FormGroup label="Phone Number">
-                        <input className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="e.g. 9876543210" maxLength={10} />
+                    <FormGroup label="Phone Number" required>
+                        <input id="create-user-phone" className="form-input" type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="e.g. 9876543210" maxLength={10} />
                     </FormGroup>
                     {tab !== 'admins' && (
                         <FormGroup label="Department">

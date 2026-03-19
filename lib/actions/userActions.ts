@@ -259,6 +259,7 @@ export async function searchStudentsForInviteAction(
 export type UpdateUserInput = {
     name?: string;
     email?: string;
+    phone_number?: string;
     role?: 'admin' | 'teacher' | 'student';
     student_type?: 'internal' | 'external' | null;
     active?: boolean;
@@ -296,6 +297,7 @@ export async function updateUserCredentials(
         if (fields.name !== undefined) dbUpdate.name = fields.name;
         if (fields.email !== undefined) dbUpdate.email = fields.email;
         if (fields.role !== undefined) dbUpdate.role = fields.role;
+        if (fields.phone_number !== undefined) dbUpdate.phone_number = fields.phone_number || null;
         if (fields.student_type !== undefined) dbUpdate.student_type = fields.student_type;
         if (fields.active !== undefined) dbUpdate.is_active = fields.active;
 
