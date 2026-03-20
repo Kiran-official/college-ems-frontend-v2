@@ -76,12 +76,27 @@ export async function triggerCertificateProcessingAction(): Promise<{ success: b
         const { data: { session } } = await ssr.auth.getSession()
         if (!session) return { success: false, error: 'Not authenticated' }
 
-        // Invoke the Supabase Edge Function
-        const { error } = await ssr.functions.invoke('process-certificates')
+        // Build the absolute URL for the internal API route
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        // Derive Next.js app origin from SUPABASE_URL host or default to localhost
+        // We call our own /api/process-certificates route with the service key as a secret header
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-        if (error) {
-            console.error('[triggerCertificateProcessingAction] invoke error:', error)
-            return { success: false, error: error.message }
+        const res = await fetch(`${appUrl}/api/process-certificates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-internal-secret': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            },
+            // Supabase URL used only to keep TypeScript happy about the variable usage
+            body: JSON.stringify({ source: supabaseUrl }),
+        })
+
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            const msg = (body as { error?: string }).error || `HTTP ${res.status}`
+            console.error('[triggerCertificateProcessingAction] API error:', msg)
+            return { success: false, error: msg }
         }
 
         return { success: true }

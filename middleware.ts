@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const PUBLIC_PATHS = ['/login', '/register'];
-    const isPublic = PUBLIC_PATHS.includes(pathname);
+    const isPublic = PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/api/');
 
     // 1. Public routes
     if (isPublic) {
