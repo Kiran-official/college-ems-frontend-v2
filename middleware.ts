@@ -27,8 +27,8 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
-    const PUBLIC_PATHS = ['/login', '/register'];
-    const isPublic = PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/api/');
+    const PUBLIC_PATHS = ['/login', '/register', '/sw.js', '/manifest.json', '/offline.html'];
+    const isPublic = PUBLIC_PATHS.some(path => pathname === path) || pathname.startsWith('/api/');
 
     // 1. Public routes
     if (isPublic) {
@@ -86,6 +86,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|mp4|webm|woff|woff2|ttf|eot)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|offline.html|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|mp4|webm|woff|woff2|ttf|eot)$).*)',
     ],
 };
