@@ -58,6 +58,18 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
         setOpen(localStorage.getItem('sicm_sidebar') !== 'false')
     }, [])
 
+    // Auto-collapse sidebar on tablet widths
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth <= 1024 && window.innerWidth > 640) {
+                setOpen(false)
+            }
+        }
+        handleResize() // check on mount
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
     function toggle() {
         const next = !open
         setOpen(next)

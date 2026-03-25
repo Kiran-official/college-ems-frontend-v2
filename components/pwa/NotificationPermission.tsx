@@ -81,13 +81,15 @@ export function NotificationPermission() {
     if (!showPrompt) return null
 
     return (
-        <div className="fixed top-6 right-6 z-[100] w-80 max-w-[calc(100vw-3rem)]">
-            <div className="bg-card border-border border shadow-lg rounded-xl p-4 flex gap-4 animate-in fade-in slide-in-from-top-4 duration-300 relative">
+        <div className="notification-banner">
+            <div className="glass p-4 flex gap-4 relative">
                 <button 
                     onClick={handleDismiss}
-                    className="absolute top-2 right-2 p-1 hover:bg-muted rounded-md transition-colors"
+                    className="absolute top-2 right-2 p-1.5 rounded-md transition-all hover:bg-white/10"
+                    style={{ color: 'var(--text-tertiary)' }}
+                    aria-label="Dismiss"
                 >
-                    <X size={14} className="text-muted-foreground" />
+                    <X size={16} />
                 </button>
                 
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -95,14 +97,14 @@ export function NotificationPermission() {
                 </div>
                 
                 <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="font-heading font-semibold text-sm text-foreground mb-1">Enable Notifications</h3>
-                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                    <h3 className="font-heading font-bold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Enable Notifications</h3>
+                    <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         Get instantly notified when new events are open for registration.
                     </p>
                     <button 
                         onClick={handleSubscribe}
                         disabled={subscribing}
-                        className="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="btn btn--primary btn--sm btn--full"
                     >
                         {subscribing ? 'Enabling...' : 'Enable Now'}
                     </button>

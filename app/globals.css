@@ -181,6 +181,31 @@ img {
   --t-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Notification Banner ────────────────────────────────────────── */
+.notification-banner {
+  position: fixed;
+  z-index: 400;
+  width: 80%;
+  max-width: 360px;
+}
+
+@media (max-width: 640px) {
+  .notification-banner {
+    bottom: 24px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (min-width: 641px) {
+  .notification-banner {
+    top: 24px;
+    right: 24px;
+  }
+}
+
 /* ── Portal Overrides ───────────────────────────────────────────── */
 .portal--admin {
   --accent: #A855F7;
@@ -3013,4 +3038,335 @@ input[type="datetime-local"] {
 
 .certificate-card__action {
   margin-top: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — Tablet & Mobile Enhancements
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (768px – 1024px) ────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .app-main {
+    margin-left: var(--sidebar-w-collapsed);
+  }
+
+  .page {
+    padding: 32px 24px;
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    padding: 24px;
+  }
+
+  .stat-card__value {
+    font-size: 1.75rem;
+  }
+
+  .stat-card__icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .modal-box {
+    max-width: 520px;
+    padding: 28px;
+  }
+
+  .template-builder {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Lifecycle Tracker — Scrollable on small screens ────────── */
+.lifecycle {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.lifecycle::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Page Header — Flexible wrapping ────────────────────────── */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.page-header__title-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.page-header__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .page-header__actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .page-header__actions .btn {
+    width: 100%;
+  }
+}
+
+/* ── Toolbar — Responsive stacking ──────────────────────────── */
+@media (max-width: 640px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .toolbar__left,
+  .toolbar__right {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .toolbar__right {
+    flex-direction: column;
+  }
+
+  .toolbar__right .btn {
+    width: 100%;
+  }
+}
+
+/* ── Form Actions — Responsive ──────────────────────────────── */
+@media (max-width: 640px) {
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ── Bulk Actions — Responsive wrapping ─────────────────────── */
+@media (max-width: 640px) {
+  .bulk-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .bulk-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Stat Cards — Mobile stacking ───────────────────────────── */
+@media (max-width: 640px) {
+  .stat-card {
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .stat-card__value {
+    font-size: 1.5rem;
+  }
+
+  .stat-card__icon {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ── Winner Form — Responsive stacking ──────────────────────── */
+@media (max-width: 640px) {
+  .winner-form {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .winner-form .form-group {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .winner-form .btn {
+    width: 100%;
+  }
+
+  .winner-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .winner-item__position {
+    min-width: unset;
+  }
+}
+
+/* ── Certificate Summary — Responsive ───────────────────────── */
+@media (max-width: 640px) {
+  .cert-summary {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cert-summary__item {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Tab Bar — Momentum scrolling ───────────────────────────── */
+.tab-bar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .tab-item {
+    padding: 10px 16px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ── Buttons — Responsive utility ───────────────────────────── */
+@media (max-width: 640px) {
+  .btn--responsive {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn--sm {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    min-height: 40px;
+  }
+}
+
+/* ── Alert — Mobile compact ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .alert {
+    padding: 12px 16px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ── Attendance Row — Responsive ────────────────────────────── */
+@media (max-width: 640px) {
+  .attendance-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* ── Dashboard — Responsive greeting ────────────────────────── */
+@media (max-width: 640px) {
+  .dashboard__greeting {
+    font-size: 1.5rem;
+  }
+
+  .dashboard__sub {
+    font-size: 0.875rem;
+    margin-bottom: 24px;
+  }
+
+  .dashboard__section-title {
+    font-size: 1rem;
+    margin-top: 28px;
+  }
+}
+
+/* ── Event Card — Responsive footer ─────────────────────────── */
+@media (max-width: 480px) {
+  .event-card-premium {
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .event-card__footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .event-card__action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Profile Card — Mobile ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .profile-card {
+    padding: 20px;
+    gap: 20px;
+  }
+
+  .profile-card__header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+/* ── CSV Dropzone — Mobile ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .csv-dropzone {
+    padding: 32px 20px;
+  }
+}
+
+/* ── Change Password — Mobile ───────────────────────────────── */
+@media (max-width: 640px) {
+  .change-password-page {
+    padding: 24px 16px;
+  }
+
+  .change-password-card {
+    padding: 28px 20px;
+  }
+}
+
+/* ── Status Strip — Mobile ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .status-strip {
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ── Search Input — Mobile ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .search-input-wrap .form-input {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
 }
