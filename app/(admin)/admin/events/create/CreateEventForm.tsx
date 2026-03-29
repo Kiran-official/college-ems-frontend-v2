@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
@@ -31,31 +31,87 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
     const [participantType, setParticipantType] = useState<'single' | 'multiple'>('single')
     const [teamSize, setTeamSize] = useState<number | ''>('')
 
+    // Payment fields
+    const [isPaid, setIsPaid] = useState(false)
+    const [registrationFee, setRegistrationFee] = useState<number | ''>('')
+    const [qrFile, setQrFile] = useState<File | null>(null)
+    const [qrPreview, setQrPreview] = useState<string | null>(null)
+    const qrInputRef = useRef<HTMLInputElement>(null)
+
     // Faculty in charge
     const initialFaculty = isAdmin ? [] : [{ id: currentUser.id, name: currentUser.name }]
     const [faculty, setFaculty] = useState<Array<{ id: string; name: string }>>(initialFaculty)
+
+    function handleQrChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setError('QR code must be an image file')
+            return
+        }
+        setQrFile(file)
+        const reader = new FileReader()
+        reader.onload = (ev) => setQrPreview(ev.target?.result as string)
+        reader.readAsDataURL(file)
+    }
+
+    async function uploadQrToStorage(file: File): Promise<string> {
+        // We use the public Supabase client for uploading to the public event-qr bucket
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        const ext = file.name.split('.').pop() ?? 'png'
+        const path = `qr_${Date.now()}.${ext}`
+        const { data, error } = await supabase.storage.from('event-qr').upload(path, file, { upsert: true })
+        if (error) throw new Error('QR upload failed: ' + error.message)
+        const { data: urlData } = supabase.storage.from('event-qr').getPublicUrl(data.path)
+        return urlData.publicUrl
+    }
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setError('')
 
-        startTransition(async () => {
-            const result = await createEventAction({
-                title,
-                description: description || undefined,
-                event_date: eventDate,
-                registration_deadline: regDeadline,
-                department_id: departmentId || undefined,
-                visibility,
-                participant_type: participantType,
-                team_size: participantType === 'multiple' ? (teamSize as number) : undefined,
-                faculty_ids: faculty.map(f => f.id),
-            })
+        if (isPaid && !registrationFee) {
+            setError('Please enter a registration fee for paid events')
+            return
+        }
+        if (isPaid && !qrFile) {
+            setError('Please upload a UPI QR code image for paid events')
+            return
+        }
 
-            if (result.success) {
-                router.push(`${basePath}/${result.event_id}`)
-            } else {
-                setError(result.error ?? 'Failed to create event')
+        startTransition(async () => {
+            try {
+                let upiQrUrl: string | undefined
+                if (isPaid && qrFile) {
+                    upiQrUrl = await uploadQrToStorage(qrFile)
+                }
+
+                const result = await createEventAction({
+                    title,
+                    description: description || undefined,
+                    event_date: eventDate,
+                    registration_deadline: regDeadline,
+                    department_id: departmentId || undefined,
+                    visibility,
+                    participant_type: participantType,
+                    team_size: participantType === 'multiple' ? (teamSize as number) : undefined,
+                    faculty_ids: faculty.map(f => f.id),
+                    is_paid: isPaid,
+                    registration_fee: isPaid ? (registrationFee as number) : undefined,
+                    upi_qr_url: upiQrUrl,
+                })
+
+                if (result.success) {
+                    router.push(`${basePath}/${result.event_id}`)
+                } else {
+                    setError(result.error ?? 'Failed to create event')
+                }
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Failed to create event')
             }
         })
     }
@@ -124,6 +180,99 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                             ))}
                         </div>
                     </FormGroup>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', opacity: 0.1 }} />
+
+                {/* ── Payment Section ── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Registration Fee</h2>
+
+                    <FormGroup label="Event Type" required>
+                        <div className="flex gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                    type="radio"
+                                    name="isPaid"
+                                    checked={!isPaid}
+                                    onChange={() => { setIsPaid(false); setRegistrationFee(''); setQrFile(null); setQrPreview(null) }}
+                                    className="accent-accent"
+                                />
+                                <span style={{ fontWeight: 600 }}>Free</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                    type="radio"
+                                    name="isPaid"
+                                    checked={isPaid}
+                                    onChange={() => setIsPaid(true)}
+                                    className="accent-accent"
+                                />
+                                <span style={{ fontWeight: 600 }}>Paid</span>
+                            </label>
+                        </div>
+                    </FormGroup>
+
+                    {isPaid && (
+                        <>
+                            <FormGroup label="Registration Fee (₹)" required>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={registrationFee}
+                                    onChange={e => setRegistrationFee(e.target.value ? Number(e.target.value) : '')}
+                                    min={1}
+                                    step={0.01}
+                                    placeholder="e.g. 100"
+                                    style={{ maxWidth: 200 }}
+                                />
+                            </FormGroup>
+
+                            <FormGroup label="UPI QR Code Image" required>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <input
+                                        ref={qrInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleQrChange}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => qrInputRef.current?.click()}
+                                        style={{ width: 'fit-content' }}
+                                    >
+                                        {qrFile ? 'Change QR Image' : 'Upload QR Image'}
+                                    </Button>
+                                    {qrPreview && (
+                                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                                            <img
+                                                src={qrPreview}
+                                                alt="UPI QR Preview"
+                                                style={{
+                                                    width: 160,
+                                                    height: 160,
+                                                    objectFit: 'contain',
+                                                    borderRadius: 'var(--r-md)',
+                                                    border: '1px solid var(--border)',
+                                                    background: '#fff',
+                                                    padding: 8,
+                                                }}
+                                            />
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                                {qrFile?.name}
+                                            </p>
+                                        </div>
+                                    )}
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                        Upload a clear image of your UPI QR code. Max 2 MB. JPEG, PNG, or WebP.
+                                    </p>
+                                </div>
+                            </FormGroup>
+                        </>
+                    )}
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--border)', opacity: 0.1 }} />

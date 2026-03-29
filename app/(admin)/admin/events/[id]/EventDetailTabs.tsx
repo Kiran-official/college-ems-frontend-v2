@@ -7,13 +7,14 @@ import { TeamsPanel } from '@/components/events/TeamsPanel'
 import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
+import { PaymentsPanel } from '@/components/events/PaymentsPanel'
 import { Button } from '@/components/ui/Button'
 import { openEventAction, closeEventAction, publishResultsAction } from '@/lib/actions/eventActions'
 import { syncEventCertificatesAction } from '@/lib/actions/certificateActions'
 import type { Event, IndividualRegistration, Team, Winner, Certificate, CertificateTemplate } from '@/lib/types/db'
 import { AlertTriangle } from 'lucide-react'
 
-type Tab = 'registrations' | 'teams' | 'attendance' | 'winners' | 'certificates' | 'actions'
+type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates' | 'actions'
 
 interface EventDetailTabsProps {
     event: Event
@@ -32,6 +33,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
 
     const baseTabs: Tab[] = ['registrations']
     if (event.participant_type === 'multiple') baseTabs.push('teams')
+    if (event.is_paid) baseTabs.push('payments')
     baseTabs.push('attendance', 'winners', 'certificates', 'actions')
 
     const queryTab = searchParams.get('tab') as Tab | null
@@ -89,6 +91,9 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                 )}
                 {tab === 'teams' && (
                     <TeamsPanel event={event} teams={teams} registrations={registrations} />
+                )}
+                {tab === 'payments' && (
+                    <PaymentsPanel event={event} registrations={registrations} />
                 )}
                 {tab === 'attendance' && (
                     <AttendancePanel event={event} registrations={registrations} />

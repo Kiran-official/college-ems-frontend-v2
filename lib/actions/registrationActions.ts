@@ -13,7 +13,7 @@ export async function registerForEventAction(data: {
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
 
-        const { data: event } = await ssr.from('events').select('status, registration_deadline').eq('id', data.event_id).single()
+        const { data: event } = await ssr.from('events').select('status, registration_deadline, is_paid').eq('id', data.event_id).single()
         if (!event) return { success: false, error: 'Event not found' }
         if (event.status !== 'open') return { success: false, error: 'Registration is closed' }
         if (new Date() >= new Date(event.registration_deadline)) return { success: false, error: 'Registration deadline has passed' }
@@ -30,6 +30,7 @@ export async function registerForEventAction(data: {
             student_id: user.id,
             event_id: data.event_id,
             attendance_status: 'registered',
+            payment_status: event.is_paid ? 'pending' : 'not_required',
         })
         if (error) return { success: false, error: error.message }
 
@@ -110,7 +111,7 @@ export async function createTeamAction(data: {
             .eq('status', 'pending')
             .is('invited_by', null)
             .in('team_id',
-                (await admin.from('teams').select('id').eq('event_id', data.event_id)).data?.map(t => t.id) ?? []
+                (await admin.from('teams').select('id').eq('event_id', data.event_id)).data?.map((t: { id: string }) => t.id) ?? []
             )
 
         // 4. Create the team
@@ -313,7 +314,7 @@ export async function acceptInviteAction(data: {
             .is('invited_by', null)
             .neq('id', data.team_member_id)
             .in('team_id',
-                (await admin.from('teams').select('id').eq('event_id', eventId)).data?.map(t => t.id) ?? []
+                (await admin.from('teams').select('id').eq('event_id', eventId)).data?.map((t: { id: string }) => t.id) ?? []
             )
 
         // Approve the invite
@@ -690,4 +691,156 @@ export async function registerParticipantAction(
         console.error('registerParticipantAction error:', error)
         return { success: false, error: 'An unexpected error occurred' }
     }
-}
+}
+
+// ── Payment Actions ─────────────────────────────────────────────
+
+export async function uploadPaymentProofAction(data: {
+    registration_id: string
+    event_id: string
+    file_base64: string
+    file_type: string
+    file_ext: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        // Verify this registration belongs to the current user
+        const { data: reg } = await ssr.from('individual_registrations')
+            .select('id, student_id, payment_status')
+            .eq('id', data.registration_id)
+            .eq('student_id', user.id)
+            .maybeSingle()
+        if (!reg) return { success: false, error: 'Registration not found or not authorised' }
+        if (reg.payment_status === 'verified') return { success: false, error: 'Payment is already verified' }
+
+        // Validate file type
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        if (!allowed.includes(data.file_type)) return { success: false, error: 'Only image files are allowed (JPEG, PNG, WebP)' }
+
+        const admin = createAdminClient()
+
+        // Upload to payment-proofs bucket: path = {user_id}/{registration_id}.{ext}
+        const filePath = `${user.id}/${data.registration_id}.${data.file_ext}`
+
+        // Decode base64
+        const base64Data = data.file_base64.split(',')[1] ?? data.file_base64
+        const buffer = Buffer.from(base64Data, 'base64')
+
+        const { error: uploadError } = await admin.storage
+            .from('payment-proofs')
+            .upload(filePath, buffer, {
+                contentType: data.file_type,
+                upsert: true,
+            })
+        if (uploadError) return { success: false, error: 'Upload failed: ' + uploadError.message }
+
+        // Get the public URL (we'll use signed URL at read time, but store the path)
+        const { error: updateError } = await admin.from('individual_registrations').update({
+            payment_status: 'submitted',
+            payment_proof_url: filePath,
+            payment_submitted_at: new Date().toISOString(),
+            rejection_reason: null,
+        }).eq('id', data.registration_id)
+
+        if (updateError) return { success: false, error: updateError.message }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch (e) {
+        console.error('uploadPaymentProofAction error:', e)
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function verifyPaymentAction(data: {
+    registration_id: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        // Only admins/teachers (faculty in charge) can verify
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile || !['admin', 'teacher'].includes(profile.role)) {
+            return { success: false, error: 'Not authorised to verify payments' }
+        }
+
+        const admin = createAdminClient()
+        const { error } = await admin.from('individual_registrations').update({
+            payment_status: 'verified',
+            verified_at: new Date().toISOString(),
+            verified_by: user.id,
+            rejection_reason: null,
+        }).eq('id', data.registration_id)
+
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/admin/events/${data.event_id}`)
+        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function rejectPaymentAction(data: {
+    registration_id: string
+    event_id: string
+    rejection_reason: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile || !['admin', 'teacher'].includes(profile.role)) {
+            return { success: false, error: 'Not authorised to reject payments' }
+        }
+
+        if (!data.rejection_reason.trim()) return { success: false, error: 'Rejection reason is required' }
+
+        const admin = createAdminClient()
+        const { error } = await admin.from('individual_registrations').update({
+            payment_status: 'rejected',
+            rejection_reason: data.rejection_reason.trim(),
+            verified_at: null,
+            verified_by: null,
+        }).eq('id', data.registration_id)
+
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/admin/events/${data.event_id}`)
+        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function getPaymentProofSignedUrlAction(
+    filePath: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { data, error } = await admin.storage
+            .from('payment-proofs')
+            .createSignedUrl(filePath, 3600) // 1 hour
+
+        if (error || !data) return { success: false, error: error?.message ?? 'Failed to generate URL' }
+        return { success: true, url: data.signedUrl }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}

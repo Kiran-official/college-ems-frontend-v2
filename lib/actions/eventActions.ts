@@ -17,6 +17,9 @@ export async function createEventAction(data: {
     participant_type: 'single' | 'multiple'
     team_size?: number
     faculty_ids: string[]
+    is_paid?: boolean
+    registration_fee?: number
+    upi_qr_url?: string
 }): Promise<{ success: boolean; event_id?: string; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -44,6 +47,9 @@ export async function createEventAction(data: {
             is_active: true,
             results_published: false,
             created_by: user.id,
+            is_paid: data.is_paid ?? false,
+            registration_fee: data.is_paid ? (data.registration_fee ?? null) : null,
+            upi_qr_url: data.is_paid ? (data.upi_qr_url ?? null) : null,
         }).select('id').single()
 
         if (eventError || !event) return { success: false, error: eventError?.message ?? 'Failed to create event' }
