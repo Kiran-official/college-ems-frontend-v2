@@ -69,7 +69,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
     return (
         <div>
             {isAdminOrTeacher && (
-                <div className="flex justify-end mb-4">
+                <div style={{ paddingBottom: 24, display: 'flex', justifyContent: 'flex-end' }}>
                     {!showCreateForm ? (
                         <Button size="sm" onClick={() => setShowCreateForm(true)}>
                             <Plus size={14} /> Create Team
@@ -111,19 +111,19 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                         <tbody>
                             {mappedTeams.map(t => (
                                 <tr key={t.id}>
-                                    <td style={{ fontWeight: 500 }}>{t.team_name}</td>
-                                    <td>
+                                    <td data-label="Team Name" style={{ fontWeight: 500 }}>{t.team_name}</td>
+                                    <td data-label="Members">
                                         <Badge variant={t.memberCount === event.team_size ? 'success' : 'info'}>
                                             {t.memberCount} / {event.team_size || '∞'}
                                         </Badge>
                                     </td>
-                                    <td>
+                                    <td data-label="Created By">
                                         {/* Identify who created it among the members, fallback if empty */}
                                         {t.members.find(m => m.student_id === t.created_by)?.student?.name || 'Admin'}
                                     </td>
                                     {isAdminOrTeacher && (
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                        <td data-label="Actions" style={{ textAlign: 'right' }}>
+                                            <div className="table-actions" style={{ justifyContent: 'flex-end' }}>
                                                 {event.status === 'open' && (
                                                     <Button 
                                                         variant="ghost" 

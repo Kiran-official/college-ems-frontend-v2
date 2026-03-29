@@ -13,13 +13,20 @@ const DEPT_PROGRAMMES: Record<string, string[]> = {
     'Computer Science': ['BCA', 'BCA(AI&ML)'],
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+    'pending': 'Not Paid',
+    'submitted': 'Still Review',
+    'verified': 'Verified',
+    'rejected': 'Rejected',
+}
+
 interface RegistrationsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
     teams?: Team[]
 }
 
-function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
+function RegistrationTable({ rows, isPaid }: { rows: IndividualRegistration[], isPaid: boolean }) {
     return (
         <div className="table-wrap">
             <table className="data-table">
@@ -28,6 +35,7 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Department</th>
+                        {isPaid && <th>Payment</th>}
                         <th>Registered At</th>
                         <th>Attendance</th>
                     </tr>
@@ -35,11 +43,22 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
                 <tbody>
                     {rows.map(r => (
                         <tr key={r.id}>
-                            <td>{r.student?.name ?? '—'}</td>
-                            <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
-                            <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-                            <td>{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                            <td><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
+                            <td data-label="Name">{r.student?.name ?? '—'}</td>
+                            <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
+                            <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
+                            {isPaid && (
+                                <td data-label="Payment">
+                                    <Badge variant={
+                                        r.payment_status === 'verified' ? 'generated' :
+                                        r.payment_status === 'submitted' ? 'processing' :
+                                        r.payment_status === 'rejected' ? 'failed' : 'pending'
+                                    }>
+                                        {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
+                                    </Badge>
+                                </td>
+                            )}
+                            <td data-label="Registered">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
+                            <td data-label="Attendance"><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
                         </tr>
                     ))}
                 </tbody>
@@ -48,7 +67,7 @@ function RegistrationTable({ rows }: { rows: IndividualRegistration[] }) {
     )
 }
 
-function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members: IndividualRegistration[] }> }) {
+function TeamGroupTable({ teams, isPaid }: { teams: Map<string, { name: string; members: IndividualRegistration[] }>, isPaid: boolean }) {
     const entries = Array.from(teams.entries())
     return (
         <div className="table-wrap">
@@ -58,6 +77,7 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Department</th>
+                        {isPaid && <th>Payment</th>}
                         <th>Registered At</th>
                         <th>Attendance</th>
                     </tr>
@@ -66,18 +86,29 @@ function TeamGroupTable({ teams }: { teams: Map<string, { name: string; members:
                     {entries.map(([teamId, team], idx) => (
                         <React.Fragment key={teamId}>
                             {idx > 0 && (
-                                <tr className="team-group-gap"><td colSpan={5} /></tr>
+                                <tr className="team-group-gap"><td colSpan={isPaid ? 6 : 5} /></tr>
                             )}
                             <tr className="team-group-header">
-                                <td colSpan={5}>{team.name}</td>
+                                <td colSpan={isPaid ? 6 : 5}>{team.name}</td>
                             </tr>
                             {team.members.map(r => (
                                 <tr key={r.id}>
-                                    <td>{r.student?.name ?? '—'}</td>
-                                    <td>{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
-                                    <td>{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-                                    <td>{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                                    <td><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
+                                    <td data-label="Name">{r.student?.name ?? '—'}</td>
+                                    <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
+                                    <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
+                                    {isPaid && (
+                                        <td data-label="Payment">
+                                            <Badge variant={
+                                                r.payment_status === 'verified' ? 'generated' :
+                                                r.payment_status === 'submitted' ? 'processing' :
+                                                r.payment_status === 'rejected' ? 'failed' : 'pending'
+                                            }>
+                                                {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
+                                            </Badge>
+                                        </td>
+                                    )}
+                                    <td data-label="Registered">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
+                                    <td data-label="Attendance"><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
                                 </tr>
                             ))}
                         </React.Fragment>
@@ -93,6 +124,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
     const [filterSemester, setFilterSemester] = useState('')
+    const [filterPaymentStatus, setFilterPaymentStatus] = useState('')
     const [showAddModal, setShowAddModal] = useState(false)
     
     const pathname = usePathname()
@@ -113,52 +145,72 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
         const matchesDept = !filterDept || student?.department?.name === filterDept
         const matchesProg = !filterProgramme || student?.programme === filterProgramme
         const matchesSem = !filterSemester || String(student?.semester ?? 1) === filterSemester
-        return matchesDept && matchesProg && matchesSem
+        const matchesPayment = !filterPaymentStatus || r.payment_status === filterPaymentStatus
+        return matchesDept && matchesProg && matchesSem && matchesPayment
     })
 
     const isTeam = event.participant_type === 'multiple'
 
     const renderActionHeader = () => (
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <div className="w-full sm:w-auto">
-                {isAdminOrTeacher && event.status === 'open' && (
-                    <Button size="sm" className="w-full sm:w-auto" onClick={() => setShowAddModal(true)}>
-                        <Plus size={14} /> Add Participant
-                    </Button>
-                )}
+        <div style={{ paddingBottom: 24 }}> {/* Robust spacer container */}
+            <div className="flex justify-between items-center gap-3">
+                <div>
+                    {isAdminOrTeacher && event.status === 'open' && (
+                        <Button size="sm" onClick={() => setShowAddModal(true)}>
+                            <Plus size={14} /> Add Participant
+                        </Button>
+                    )}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                    <Filter size={14} /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+                </Button>
             </div>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setShowFilters(!showFilters)}>
-                <Filter size={14} /> {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </Button>
+            
+            <div style={{ padding: '12px 0 0 4px', fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                Showing {filtered.length} registration{filtered.length !== 1 ? 's' : ''}
+            </div>
         </div>
     )
 
     const renderFilterBar = () => showFilters && (
-        <div className="flex flex-col sm:flex-row items-end flex-wrap gap-3 mb-4 p-4 rounded-xl border border-border bg-bg-elevated w-full glass">
-            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px]">
-                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Department</label>
-                <select className="form-select" value={filterDept} onChange={e => { setFilterDept(e.target.value); setFilterProgramme('') }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-end flex-wrap w-full glass rounded-2xl border border-border bg-bg-elevated" style={{ padding: 20, marginBottom: 24, gap: 20 }}>
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px] flex flex-col justify-end" style={{ gap: 8 }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 500, margin: 0, opacity: 0.9 }}>Department</label>
+                <select className="form-select w-full" value={filterDept} onChange={e => { setFilterDept(e.target.value); setFilterProgramme('') }}>
                     <option value="">All Departments</option>
                     {depts.map(d => <option key={d} value={d!}>{d}</option>)}
                 </select>
             </div>
-            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px]">
-                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Programme</label>
-                <select className="form-select" value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)}>
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px] flex flex-col justify-end" style={{ gap: 8 }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 500, margin: 0, opacity: 0.9 }}>Programme</label>
+                <select className="form-select w-full" value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)}>
                     <option value="">All Programmes</option>
                     {programmes.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
             </div>
-            <div className="w-full sm:w-auto flex-1 sm:min-w-[120px]">
-                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Semester</label>
-                <select className="form-select" value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
+            <div className="w-full sm:w-auto flex-1 sm:min-w-[160px] flex flex-col justify-end" style={{ gap: 8 }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 500, margin: 0, opacity: 0.9 }}>Semester</label>
+                <select className="form-select w-full" value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
                     <option value="">All Semesters</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
+                    {[1, 2, 3, 4, 5, 6].map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
                 </select>
             </div>
-            <Button variant="ghost" size="sm" className="w-full sm:w-auto justify-center" onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester('') }}>
-                Clear
-            </Button>
+            {event.is_paid && (
+                <div className="w-full sm:w-auto flex-1 sm:min-w-[160px] flex flex-col justify-end" style={{ gap: 8 }}>
+                    <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 500, margin: 0, opacity: 0.9 }}>Payment Status</label>
+                    <select className="form-select w-full" value={filterPaymentStatus} onChange={e => setFilterPaymentStatus(e.target.value)}>
+                        <option value="">All Statuses</option>
+                        {Object.entries(PAYMENT_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+            <div className="w-full sm:w-auto flex-shrink-0 flex flex-col justify-end" style={{ marginTop: 8 }}>
+                <Button variant="ghost" size="sm" className="w-full sm:w-auto justify-center" style={{ height: 42 }} onClick={() => { setFilterDept(''); setFilterProgramme(''); setFilterSemester(''); setFilterPaymentStatus('') }}>
+                    Clear
+                </Button>
+            </div>
         </div>
     )
 
@@ -171,10 +223,10 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
                 if (!teamMap.has(tid)) teamMap.set(tid, { name: tname, members: [] })
                 teamMap.get(tid)!.members.push(r)
             }
-            return <TeamGroupTable teams={teamMap} />
+            return <TeamGroupTable teams={teamMap} isPaid={event.is_paid} />
         }
 
-        return <RegistrationTable rows={filtered} />
+        return <RegistrationTable rows={filtered} isPaid={event.is_paid} />
     }
 
     const mappedTeams = teams.map(t => ({

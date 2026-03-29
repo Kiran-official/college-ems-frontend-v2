@@ -40,8 +40,10 @@ export default async function StudentEventsPage() {
             </div>
 
             <div className="page-header">
-                <h1 className="page-title">Events</h1>
-                <p className="page-sub">Discover, register, and track events</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">Events</h1>
+                    <p className="page-sub">Discover, register, and track events</p>
+                </div>
             </div>
 
             {/* Section 1: Open for Registration */}

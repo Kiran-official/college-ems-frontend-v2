@@ -28,9 +28,9 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
 
     return (
         <tr>
-            <td>{reg.student?.name ?? '—'}</td>
-            <td>{(reg.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-            <td>
+            <td data-label="Name">{reg.student?.name ?? '—'}</td>
+            <td data-label="Department">{(reg.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
+            <td data-label="Attendance">
                 {isEditable ? (
                     <div style={{ display: 'flex', gap: 6 }}>
                         <button
@@ -64,7 +64,7 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
                     </Badge>
                 )}
             </td>
-            <td>
+            <td data-label="Status">
                 {status !== 'registered' ? (
                     <Badge variant="generated">✓ Marked</Badge>
                 ) : (
@@ -118,13 +118,15 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
 
     return (
         <div>
-            <div className="flex flex-wrap gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
-                    Mark All Present
-                </Button>
-                <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
-                    Reset All
-                </Button>
+            <div style={{ paddingBottom: 24 }}>
+                <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
+                        Mark All Present
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
+                        Reset All
+                    </Button>
+                </div>
             </div>
             <div className="table-wrap">
                 <table className="data-table">

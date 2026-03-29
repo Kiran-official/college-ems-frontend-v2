@@ -22,10 +22,10 @@ export async function sendEventNotification(eventId: string) {
     try {
         const admin = createAdminClient()
 
-        // 1. Fetch event (title, description, type, status)
+        // 1. Fetch event (title, description, visibility, status)
         const { data: event, error: eventError } = await admin
             .from('events')
-            .select('id, title, description, type, status')
+            .select('id, title, description, visibility, status')
             .eq('id', eventId)
             .single()
 
@@ -37,15 +37,15 @@ export async function sendEventNotification(eventId: string) {
         // Only send if the event is actually open
         if (event.status !== 'open') return
 
-        // 2. Fetch eligible user_ids based on event.type
+        // 2. Fetch eligible user_ids based on event.visibility
         let userQuery = admin.from('users').select('id')
         
-        if (event.type === 'internal') {
+        if (event.visibility === 'internal_only') {
             userQuery = userQuery.eq('student_type', 'internal')
-        } else if (event.type === 'external') {
+        } else if (event.visibility === 'external_only') {
             userQuery = userQuery.eq('student_type', 'external')
         }
-        // If type === 'public', we don't apply an eq filter, selecting all active users
+        // If visibility === 'public_all', we don't apply an eq filter, selecting all active users
         userQuery = userQuery.eq('is_active', true)
 
         const { data: eligibleUsers, error: usersError } = await userQuery

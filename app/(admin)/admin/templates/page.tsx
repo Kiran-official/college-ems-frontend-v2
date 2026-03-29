@@ -16,7 +16,7 @@ export default async function AdminTemplatesPage() {
                         <LayoutTemplate size={24} color="#B983FF" />
                     </div>
                     <div>
-                        <h1 className="page-title" style={{ margin: 0, fontSize: '1.75rem', backgroundImage: 'linear-gradient(90deg, var(--text-primary), var(--text-secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Certificate Templates</h1>
+                        <h1 className="page-title" style={{ margin: 0, fontSize: '1.75rem', backgroundImage: 'linear-gradient(90deg, var(--text-primary), var(--text-secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Certificate Templates ({templates.length})</h1>
                         <p className="page-sub" style={{ margin: '4px 0 0 0', opacity: 0.8 }}>Design and manage certificates for all your events</p>
                     </div>
                 </div>

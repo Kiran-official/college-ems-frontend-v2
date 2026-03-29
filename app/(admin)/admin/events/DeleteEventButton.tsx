@@ -38,7 +38,7 @@ export function DeleteEventButton({ eventId, eventTitle }: DeleteEventButtonProp
             loading={pending}
             title="Hard Delete"
         >
-            <Trash2 size={12} />
+            <Trash2 size={12} /> Delete
         </Button>
     )
 }

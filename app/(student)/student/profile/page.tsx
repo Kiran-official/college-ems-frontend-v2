@@ -16,8 +16,10 @@ export default async function StudentProfilePage() {
             </div>
 
             <div className="page-header">
-                <h1 className="page-title">My Profile</h1>
-                <p className="page-sub">Your account details</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">My Profile</h1>
+                    <p className="page-sub">Your account details</p>
+                </div>
             </div>
 
             <div className="flex flex-col lg:grid lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">

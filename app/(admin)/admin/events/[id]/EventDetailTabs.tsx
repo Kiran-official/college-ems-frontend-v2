@@ -85,7 +85,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
             </div>
 
             {/* Tab content */}
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 24 }}>
                 {tab === 'registrations' && (
                     <RegistrationsPanel event={event} registrations={registrations} teams={teams} />
                 )}

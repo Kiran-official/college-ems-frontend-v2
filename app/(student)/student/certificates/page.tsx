@@ -20,8 +20,10 @@ export default async function StudentCertificatesPage() {
             </div>
 
             <div className="page-header">
-                <h1 className="page-title">My Certificates</h1>
-                <p className="page-sub">Your earned participation and winner certificates</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">My Certificates</h1>
+                    <p className="page-sub">Your earned participation and winner certificates</p>
+                </div>
             </div>
 
             {certificates.length === 0 ? (

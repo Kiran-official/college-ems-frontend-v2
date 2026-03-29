@@ -10,7 +10,7 @@ import {
     getPaymentProofSignedUrlAction,
 } from '@/lib/actions/registrationActions'
 import type { IndividualRegistration, Event } from '@/lib/types/db'
-import { CheckCircle, XCircle, Image, Clock, AlertCircle } from 'lucide-react'
+import { CheckCircle, XCircle, Image, Clock, AlertCircle, Hourglass, List } from 'lucide-react'
 
 interface PaymentsPanelProps {
     event: Event
@@ -27,48 +27,24 @@ function PaymentStatusBadge({ status }: { status: string }) {
     }
 }
 
-function ProofImage({ filePath }: { filePath: string }) {
-    const [url, setUrl] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
+function ShowProofButton({ filePath }: { filePath: string }) {
+    const [loading, setLoading] = useState(false)
 
-    useEffect(() => {
-        getPaymentProofSignedUrlAction(filePath).then(res => {
-            if (res.success && res.url) setUrl(res.url)
-            setLoading(false)
-        })
-    }, [filePath])
-
-    if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            <Clock size={14} /> Loading proof...
-        </div>
-    )
-
-    if (!url) return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--error)', fontSize: '0.8125rem' }}>
-            <AlertCircle size={14} /> Could not load image
-        </div>
-    )
+    async function handleShow() {
+        setLoading(true)
+        const res = await getPaymentProofSignedUrlAction(filePath)
+        setLoading(false)
+        if (res.success && res.url) {
+            window.open(res.url, '_blank')
+        } else {
+            alert('Could not load proof image')
+        }
+    }
 
     return (
-        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
-            <img
-                src={url}
-                alt="Payment proof"
-                style={{
-                    width: 120,
-                    height: 120,
-                    objectFit: 'cover',
-                    borderRadius: 'var(--r-md)',
-                    border: '1px solid var(--border)',
-                    cursor: 'pointer',
-                    transition: 'opacity 0.2s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-            />
-            <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: 3 }}>Click to enlarge</p>
-        </a>
+        <Button size="sm" variant="outline" onClick={handleShow} loading={loading}>
+            <Image size={14} style={{ marginRight: 6 }} /> Show Proof
+        </Button>
     )
 }
 
@@ -113,121 +89,100 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
             border: `1px solid ${localStatus === 'submitted' ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`,
             background: localStatus === 'submitted' ? 'rgba(99,102,241,0.04)' : 'var(--bg-surface)',
             display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
         }}>
-            {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div>
+            {/* Left side: Student Info */}
+            <div style={{ flex: '1 1 auto', minWidth: 200 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>
                         {reg.student?.name ?? 'Unknown Student'}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                        {reg.student?.email}
-                        {reg.student?.programme && ` · ${reg.student.programme}`}
-                        {reg.student?.semester && ` · Sem ${reg.student.semester}`}
-                    </div>
-                    {reg.payment_submitted_at && (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                            Submitted {format(new Date(reg.payment_submitted_at), 'dd MMM yyyy, hh:mm a')}
-                        </div>
-                    )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                        ₹{event.registration_fee?.toFixed(2)}
-                    </div>
-                    <PaymentStatusBadge status={localStatus} />
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    {reg.student?.email}
+                    {reg.student?.programme && ` · ${reg.student.programme}`}
+                    {reg.student?.semester && ` · Sem ${reg.student.semester}`}
                 </div>
+                {reg.payment_submitted_at && (
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                        Submitted {format(new Date(reg.payment_submitted_at), 'dd MMM yyyy, hh:mm a')}
+                    </div>
+                )}
+                {reg.rejection_reason && localStatus === 'rejected' && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: 4, fontWeight: 500 }}>
+                        Rejection reason: {reg.rejection_reason}
+                    </div>
+                )}
+                {error && (
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--error)', fontWeight: 600, marginTop: 4 }}>{error}</div>
+                )}
             </div>
 
-            {/* Payment proof image */}
-            {reg.payment_proof_url && (
-                <div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
-                        Payment Proof
-                    </div>
-                    <ProofImage filePath={reg.payment_proof_url} />
+            {/* Right side: Payment Details & Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                    ₹{event.registration_fee?.toFixed(2)}
                 </div>
-            )}
+                <PaymentStatusBadge status={localStatus} />
 
-            {!reg.payment_proof_url && localStatus === 'pending' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-                    <Image size={14} /> No proof uploaded yet
-                </div>
-            )}
+                {reg.payment_proof_url && <ShowProofButton filePath={reg.payment_proof_url} />}
 
-            {/* Rejection reason (if previously rejected) */}
-            {reg.rejection_reason && localStatus === 'rejected' && (
-                <div style={{
-                    padding: '8px 12px', borderRadius: 'var(--r-sm)',
-                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                    fontSize: '0.8125rem', color: 'var(--error)',
-                }}>
-                    Rejection reason: {reg.rejection_reason}
-                </div>
-            )}
-
-            {error && (
-                <div style={{ fontSize: '0.8125rem', color: 'var(--error)', fontWeight: 600 }}>{error}</div>
-            )}
-
-            {/* Action buttons — only for submitted */}
-            {localStatus === 'submitted' && !showReject && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Button
-                        size="sm"
-                        onClick={handleVerify}
-                        loading={pending}
-                        style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
-                    >
-                        <CheckCircle size={14} /> Approve
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setShowReject(true)}
-                        disabled={pending}
-                    >
-                        <XCircle size={14} /> Reject
-                    </Button>
-                </div>
-            )}
-
-            {/* Reject form */}
-            {showReject && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <input
-                        className="form-input"
-                        value={rejectReason}
-                        onChange={e => setRejectReason(e.target.value)}
-                        placeholder="Reason for rejection (shown to student)..."
-                        autoFocus
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
+                {/* Inline Action block */}
+                {showReject ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                            className="form-input"
+                            style={{ height: 32, fontSize: '0.8125rem' }}
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            placeholder="Reason..."
+                            autoFocus
+                        />
                         <Button size="sm" variant="danger" onClick={handleReject} loading={pending} disabled={!rejectReason.trim()}>
-                            Confirm Reject
+                            Confirm
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setShowReject(false); setRejectReason('') }} disabled={pending}>
                             Cancel
                         </Button>
                     </div>
-                </div>
-            )}
-
-            {/* Re-verify option for already-rejected */}
-            {localStatus === 'rejected' && !showReject && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Button
-                        size="sm"
-                        onClick={handleVerify}
-                        loading={pending}
-                        style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
-                    >
-                        <CheckCircle size={14} /> Approve Anyway
-                    </Button>
-                </div>
-            )}
+                ) : (
+                    <>
+                        {localStatus === 'submitted' && (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <Button
+                                    size="sm"
+                                    onClick={handleVerify}
+                                    loading={pending}
+                                    style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+                                >
+                                    <CheckCircle size={14} style={{ marginRight: 6 }}/> Approve
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => setShowReject(true)}
+                                    disabled={pending}
+                                >
+                                    <XCircle size={14} style={{ marginRight: 6 }}/> Reject
+                                </Button>
+                            </div>
+                        )}
+                        {localStatus === 'rejected' && (
+                            <Button
+                                size="sm"
+                                onClick={handleVerify}
+                                loading={pending}
+                                style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+                            >
+                                <CheckCircle size={14} style={{ marginRight: 6 }}/> Approve Anyway
+                            </Button>
+                        )}
+                    </>
+                )}
+            </div>
         </div>
     )
 }
@@ -261,59 +216,66 @@ export function PaymentsPanel({ event, registrations }: PaymentsPanelProps) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Summary cards */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {/* Summary cards - Explicit Single Line Flex Layout */}
+            <div style={{ display: 'flex', flexWrap: 'nowrap', width: '100%', gap: 8, marginBottom: 16 }}>
                 {([
-                    { key: 'submitted', label: 'Needs Review', color: '#818cf8' },
-                    { key: 'pending', label: 'Awaiting Payment', color: '#f59e0b' },
-                    { key: 'verified', label: 'Verified', color: '#22c55e' },
-                    { key: 'rejected', label: 'Rejected', color: '#ef4444' },
-                ] as const).map(item => (
-                    <button
-                        key={item.key}
-                        onClick={() => setFilter(item.key)}
-                        style={{
-                            padding: '10px 16px',
-                            borderRadius: 'var(--r-md)',
-                            border: `1px solid ${filter === item.key ? item.color : 'var(--border)'}`,
-                            background: filter === item.key ? `${item.color}18` : 'var(--bg-surface)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            minWidth: 110,
-                            transition: 'all 0.15s',
-                        }}
-                    >
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: item.color, lineHeight: 1 }}>
-                            {counts[item.key]}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                            {item.label}
-                        </span>
-                    </button>
-                ))}
-            </div>
+                    { key: 'all', label: 'All', color: '#a855f7', icon: List },
+                    { key: 'submitted', label: 'Needs Review', color: '#818cf8', icon: Hourglass },
+                    { key: 'pending', label: 'Awaiting Payment', color: '#f59e0b', icon: Clock },
+                    { key: 'verified', label: 'Verified', color: '#22c55e', icon: CheckCircle },
+                    { key: 'rejected', label: 'Rejected', color: '#ef4444', icon: XCircle },
+                ] as const).map(item => {
+                    const isActive = filter === item.key;
+                    return (
+                        <div 
+                            key={item.key} 
+                            onClick={() => setFilter(item.key)} 
+                            className="glass" 
+                            style={{ 
+                                flex: 1,
+                                minWidth: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '12px 4px',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s', 
+                                transform: isActive ? 'translateY(-2px)' : 'none', 
+                                border: isActive ? `1px solid ${item.color}50` : undefined, 
+                                background: isActive ? `${item.color}15` : undefined,
+                                borderRadius: 'var(--r-lg)'
+                            }}
+                        >
+                            <div style={{ color: item.color, fontSize: 'clamp(1rem, 3vw, 1.5rem)', fontWeight: 800, lineHeight: 1, marginBottom: 6 }}>
+                                {counts[item.key]}
+                            </div>
+                            <div style={{ 
+                                fontSize: 'clamp(0.55rem, 1.5vw, 0.75rem)', 
+                                color: 'var(--text-tertiary)', 
+                                fontWeight: 600, 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.02em', 
+                                textAlign: 'center',
+                                lineHeight: 1.2,
+                                width: '100%',
+                                wordWrap: 'break-word',
+                                padding: '0 2px'
+                            }}>
+                                {item.label}
+                            </div>
+                            
+                            {/* Icon entirely hidden to allow text packing on mobile */}
+                            <div className="hidden lg:block absolute right-3 bottom-3" style={{ opacity: isActive ? 1 : 0.3 }}>
+                                <item.icon size={20} color={item.color} />
+                            </div>
 
-            {/* Filter bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', flexShrink: 0 }}>Show:</span>
-                {(['submitted', 'pending', 'verified', 'rejected', 'all'] as const).map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        style={{
-                            padding: '4px 10px', borderRadius: 20,
-                            border: '1px solid var(--border)',
-                            background: filter === f ? 'var(--accent)' : 'transparent',
-                            color: filter === f ? '#fff' : 'var(--text-secondary)',
-                            fontSize: '0.8125rem', cursor: 'pointer', fontWeight: filter === f ? 600 : 400,
-                            transition: 'all 0.15s',
-                        }}
-                    >
-                        {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f as keyof typeof counts]})
-                    </button>
-                ))}
+                            <div className="absolute inset-0" style={{ background: item.color, opacity: isActive ? 0.1 : 0, transition: 'opacity 0.3s', pointerEvents: 'none' }} />
+                        </div>
+                    )
+                })}
             </div>
 
             {/* List */}

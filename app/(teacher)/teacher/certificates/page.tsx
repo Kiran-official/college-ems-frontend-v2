@@ -56,11 +56,11 @@ export default async function TeacherCertificatesPage() {
                         <tbody>
                             {certificates.map((cert: any) => (
                                 <tr key={cert.id}>
-                                    <td>{cert.student?.name ?? '—'}</td>
-                                    <td>{cert.event?.title ?? '—'}</td>
-                                    <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
-                                    <td><Badge variant={cert.status}>{cert.status}</Badge></td>
-                                    <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
+                                    <td data-label="Student">{cert.student?.name ?? '—'}</td>
+                                    <td data-label="Event">{cert.event?.title ?? '—'}</td>
+                                    <td data-label="Type"><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
+                                    <td data-label="Status"><Badge variant={cert.status}>{cert.status}</Badge></td>
+                                    <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
                                 </tr>
                             ))}
                         </tbody>

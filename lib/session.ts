@@ -3,11 +3,11 @@ import { redirect } from 'next/navigation';
 
 export async function requireSession(redirectTo = "/login") {
   const supabase = await createSSRClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (!session) {
+  if (!user) {
     redirect(redirectTo);
   }
   
-  return session;
+  return user;
 }

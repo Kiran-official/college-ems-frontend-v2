@@ -82,33 +82,81 @@ export function NotificationPermission() {
 
     return (
         <div className="notification-banner">
-            <div className="glass p-4 flex gap-4 relative">
-                <button 
-                    onClick={handleDismiss}
-                    className="absolute top-2 right-2 p-1.5 rounded-md transition-all hover:bg-white/10"
-                    style={{ color: 'var(--text-tertiary)' }}
-                    aria-label="Dismiss"
+            <div
+                style={{
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: 'var(--r-lg)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--border-glass)',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                }}
+            >
+                <div
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: 'var(--accent-dim)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                    }}
                 >
-                    <X size={16} />
+                    <Bell size={18} style={{ color: 'var(--accent)' }} />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                        Enable Notifications
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', lineHeight: 1.4, marginTop: 2 }}>
+                        Get notified about new events
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleSubscribe}
+                    disabled={subscribing}
+                    style={{
+                        background: 'var(--accent)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--r-sm)',
+                        padding: '6px 14px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        transition: 'opacity 0.15s',
+                    }}
+                >
+                    {subscribing ? 'Enabling...' : 'Enable'}
                 </button>
-                
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bell className="w-5 h-5 text-primary" />
-                </div>
-                
-                <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="font-heading font-bold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Enable Notifications</h3>
-                    <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                        Get instantly notified when new events are open for registration.
-                    </p>
-                    <button 
-                        onClick={handleSubscribe}
-                        disabled={subscribing}
-                        className="btn btn--primary btn--sm btn--full"
-                    >
-                        {subscribing ? 'Enabling...' : 'Enable Now'}
-                    </button>
-                </div>
+
+                <button
+                    onClick={handleDismiss}
+                    aria-label="Dismiss"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-tertiary)',
+                        cursor: 'pointer',
+                        padding: 4,
+                        borderRadius: 'var(--r-sm)',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.15s',
+                    }}
+                >
+                    <X size={14} />
+                </button>
             </div>
         </div>
     )

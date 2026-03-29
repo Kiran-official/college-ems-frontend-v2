@@ -300,8 +300,8 @@ function PaymentProofUpload({ registration, event }: { registration: any; event:
         submitted: {
             icon: <Clock size={16} />,
             label: submitted ? 'Proof submitted! Under review by admin.' : 'Payment proof is under review.',
-            color: '#818cf8',
-            bg: 'rgba(99,102,241,0.08)',
+            color: '#4f46e5',
+            bg: 'rgba(79, 70, 229, 0.08)',
         },
     }
 

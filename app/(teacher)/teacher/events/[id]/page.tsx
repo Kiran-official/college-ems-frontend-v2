@@ -6,6 +6,7 @@ import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
+import { Calendar, Globe, Users, Building } from 'lucide-react'
 import { TeacherEventTabs } from './TeacherEventTabs'
 
 interface Props {
@@ -33,14 +34,40 @@ export default async function TeacherEventDetailPage({ params }: Props) {
                 {event.description && <p className="page-sub">{event.description}</p>}
             </div>
 
-            <div className="glass" style={{ padding: 24, marginBottom: 24, overflow: 'auto' }}>
+            <div className="glass" style={{ padding: 'clamp(12px, 3vw, 24px)', marginBottom: 24, overflow: 'visible' }}>
                 <LifecycleTracker status={event.status} resultsPublished={event.results_published} />
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+            <div className="glass" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-evenly', gap: 12, marginBottom: 24, padding: '12px 16px', borderRadius: 'var(--r-lg)', width: '100%' }}>
                 <Badge variant={event.status}>{event.status}</Badge>
-                <Badge variant="info">📅 {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}</Badge>
-                <Badge variant="processing">{registrations.length} Registrations</Badge>
+                
+                <div style={{ width: 1, height: 16, background: 'var(--border)' }} className="hidden sm:block"></div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    <Calendar size={14} color="var(--text-tertiary)" />
+                    {format(new Date(event.event_date), 'dd/MM/yyyy, hh:mm a')}
+                </span>
+                
+                <div style={{ width: 1, height: 16, background: 'var(--border)' }} className="hidden sm:block"></div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    <Globe size={14} color="var(--text-tertiary)" />
+                    {event.visibility === 'public_all' ? 'Open to All' : event.visibility === 'internal_only' ? 'Internal Only' : 'External Only'}
+                </span>
+                
+                <div style={{ width: 1, height: 16, background: 'var(--border)' }} className="hidden sm:block"></div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    <Users size={14} color="var(--text-tertiary)" />
+                    {registrations.length} {registrations.length === 1 ? 'Registration' : 'Registrations'}
+                </span>
+                
+                {event.department && (
+                    <>
+                        <div style={{ width: 1, height: 16, background: 'var(--border)' }} className="hidden sm:block"></div>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                            <Building size={14} color="var(--text-tertiary)" />
+                            {event.department.name}
+                        </span>
+                    </>
+                )}
             </div>
 
             <TeacherEventTabs

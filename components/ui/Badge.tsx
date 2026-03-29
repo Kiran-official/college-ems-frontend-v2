@@ -1,11 +1,10 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, HTMLAttributes } from 'react'
 
-interface BadgeProps {
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
     variant: string
     children: ReactNode
-    className?: string
 }
 
-export function Badge({ variant, children, className = '' }: BadgeProps) {
-    return <span className={`badge badge--${variant} ${className}`}>{children}</span>
+export function Badge({ variant, children, className = '', ...props }: BadgeProps) {
+    return <span className={`badge badge--${variant} ${className}`} {...props}>{children}</span>
 }

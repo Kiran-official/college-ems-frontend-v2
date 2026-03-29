@@ -11,6 +11,7 @@ export async function createUserAction(data: {
     role: 'admin' | 'teacher' | 'student'
     department_id?: string
     programme?: string
+    semester?: number
     student_type?: 'internal' | 'external'
 }): Promise<{ success: boolean; error?: string }> {
     try {
@@ -50,7 +51,8 @@ export async function createUserAction(data: {
             phone_number: data.phone_number || null,
             role: data.role,
             department_id: data.department_id || null,
-            programme: data.programme || null,
+            programme: data.programme ? data.programme.trim().toUpperCase() : null,
+            semester: data.role === 'student' ? (data.semester ?? 1) : null,
             student_type: data.role === 'student' ? (data.student_type ?? 'internal') : null,
             must_change_password: true,
             is_active: true,
@@ -129,7 +131,7 @@ export async function bulkCreateUsersAction(
                 phone_number: u.phone_number || null,
                 role: role,
                 department_id: departmentId || null,
-                programme: role === 'student' ? (u.programme || null) : null,
+                programme: role === 'student' ? (u.programme?.trim().toUpperCase() || null) : null,
                 semester: role === 'student' ? (isNaN(semesterVal) ? 1 : semesterVal) : null,
                 student_type: role === 'student' ? 'internal' : null,
                 must_change_password: true,

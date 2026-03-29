@@ -7,6 +7,7 @@ import { FormGroup } from '@/components/forms/FormGroup'
 import { MultiSelect } from '@/components/forms/MultiSelect'
 import { DateTimeInput } from '@/components/forms/DateTimeInput'
 import { createEventAction } from '@/lib/actions/eventActions'
+import { createClient } from '@/lib/supabase/client'
 import type { Department, User } from '@/lib/types/db'
 
 interface CreateEventFormProps {
@@ -56,12 +57,8 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
     }
 
     async function uploadQrToStorage(file: File): Promise<string> {
-        // We use the public Supabase client for uploading to the public event-qr bucket
-        const { createClient } = await import('@supabase/supabase-js')
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
+        // Use the session-aware browser client for storage uploads
+        const supabase = createClient()
         const ext = file.name.split('.').pop() ?? 'png'
         const path = `qr_${Date.now()}.${ext}`
         const { data, error } = await supabase.storage.from('event-qr').upload(path, file, { upsert: true })
@@ -117,7 +114,7 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
     }
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ paddingBottom: 40 }}>
             {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
 
             <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -173,7 +170,6 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                                         name="visibility"
                                         checked={visibility === opt.value}
                                         onChange={() => setVisibility(opt.value as typeof visibility)}
-                                        className="accent-accent"
                                     />
                                     {opt.label}
                                 </label>
@@ -196,7 +192,6 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                                     name="isPaid"
                                     checked={!isPaid}
                                     onChange={() => { setIsPaid(false); setRegistrationFee(''); setQrFile(null); setQrPreview(null) }}
-                                    className="accent-accent"
                                 />
                                 <span style={{ fontWeight: 600 }}>Free</span>
                             </label>
@@ -206,7 +201,6 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                                     name="isPaid"
                                     checked={isPaid}
                                     onChange={() => setIsPaid(true)}
-                                    className="accent-accent"
                                 />
                                 <span style={{ fontWeight: 600 }}>Paid</span>
                             </label>
@@ -304,7 +298,6 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                                     name="participantType"
                                     checked={participantType === 'single'}
                                     onChange={() => setParticipantType('single')}
-                                    className="accent-accent"
                                 />
                                 Single Participant
                             </label>
@@ -314,7 +307,6 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                                     name="participantType"
                                     checked={participantType === 'multiple'}
                                     onChange={() => setParticipantType('multiple')}
-                                    className="accent-accent"
                                 />
                                 Multiple Participants (Team)
                             </label>

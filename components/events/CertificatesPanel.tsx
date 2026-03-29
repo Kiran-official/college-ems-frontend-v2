@@ -100,11 +100,11 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                 <tbody>
                     {certs.map(cert => (
                         <tr key={cert.id}>
-                            <td>{cert.student?.name ?? '—'}</td>
-                            <td><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
-                            <td><Badge variant={cert.status}>{cert.status}</Badge></td>
-                            <td>{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
-                            <td>
+                            <td data-label="Student">{cert.student?.name ?? '—'}</td>
+                            <td data-label="Type"><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
+                            <td data-label="Status"><Badge variant={cert.status}>{cert.status}</Badge></td>
+                            <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
+                            <td data-label="Action">
                                 {cert.status === 'failed' && (
                                     <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending}>
                                         <RotateCcw size={14} /> Retry

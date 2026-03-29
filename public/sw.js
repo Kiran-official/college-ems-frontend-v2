@@ -38,9 +38,21 @@ self.addEventListener('fetch', (event) => {
   // Skip chrome-extension or other non-http schemes
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  const url = new URL(event.request.url);
+  
+  // Ignore Next.js hot module replacement and internal resources to prevent intercepting dev server streams
+  if (url.pathname.startsWith('/_next/') || url.pathname.includes('webpack-hmr')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
-      .catch(async () => {
+      .catch(async (error) => {
+        // Handle React/Next.js aborted navigation fetches gracefully instead of throwing timeouts
+        if (error.name === 'AbortError') {
+          return new Response(null, { status: 499, statusText: 'Client Closed Request' });
+        }
+
         const cache = await caches.open(CACHE_NAME);
         const cachedResponse = await cache.match(event.request);
         
@@ -48,8 +60,11 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        // If it's a navigation request, show the offline page
-        if (event.request.mode === 'navigate') {
+        // Check if the user is explicitly requesting an HTML page
+        const isHTMLRequest = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+
+        // If it's an HTML navigation request and we're offline, show the offline page
+        if (isHTMLRequest) {
           return cache.match(OFFLINE_URL);
         }
 

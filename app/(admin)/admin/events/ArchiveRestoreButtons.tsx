@@ -21,7 +21,15 @@ export function ArchiveRestoreButtons({ eventId, isActive }: { eventId: string; 
 
     return (
         <Button size="sm" variant={isActive ? 'danger' : 'outline'} onClick={handleClick} loading={pending}>
-            {isActive ? <><Archive size={12} /> Archive</> : <><RotateCcw size={12} /> Restore</>}
+            {isActive ? (
+                <>
+                    <Archive size={12} /> Archive
+                </>
+            ) : (
+                <>
+                    <RotateCcw size={12} /> Restore
+                </>
+            )}
         </Button>
     )
 }

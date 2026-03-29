@@ -73,7 +73,7 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
                 })}
             </div>
 
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 24 }}>
                 {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} />}
                 {tab === 'attendance' && <AttendancePanel event={event} registrations={registrations} />}
                 {tab === 'winners' && <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} />}

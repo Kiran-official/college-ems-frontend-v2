@@ -73,8 +73,8 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
 export async function triggerCertificateProcessingAction(): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
-        const { data: { session } } = await ssr.auth.getSession()
-        if (!session) return { success: false, error: 'Not authenticated' }
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
 
         // Build the absolute URL for the internal API route
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
