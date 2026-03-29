@@ -138,10 +138,10 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                                     </div>
                                 )}
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                    <Button 
-                                        variant="primary" 
+                                    <Button
+                                        variant="primary"
                                         className="w-full sm:w-auto"
-                                        onClick={() => handleAction(() => publishResultsAction(event.id))} 
+                                        onClick={() => handleAction(() => publishResultsAction(event.id))}
                                         loading={actionPending}
                                         disabled={incompleteAttendanceCount > 0}
                                     >
@@ -163,16 +163,16 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                                     <div style={{ fontSize: '0.875rem', marginBottom: 12 }}>
                                         <strong>Certificate Recovery:</strong> If any participation or winner certificates are missing for this completed event, you can sync them now.
                                     </div>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleAction(async () => {
                                             const res = await syncEventCertificatesAction(event.id)
                                             if (res.success) {
                                                 alert(`Successfully synced! Queued ${res.queued} missing certificates.`)
                                             }
                                             return res
-                                        })} 
+                                        })}
                                         loading={actionPending}
                                     >
                                         Sync Missing Certificates

@@ -134,18 +134,18 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormGroup label="Event Date & Time" required>
-                            <DateTimeInput 
-                                value={eventDate} 
-                                onChange={setEventDate} 
-                                placeholder="Event date & time" 
+                            <DateTimeInput
+                                value={eventDate}
+                                onChange={setEventDate}
+                                placeholder="Event date & time"
                                 min={regDeadline || new Date().toISOString().slice(0, 16)}
                             />
                         </FormGroup>
                         <FormGroup label="Registration Deadline" required>
-                            <DateTimeInput 
-                                value={regDeadline} 
-                                onChange={setRegDeadline} 
-                                placeholder="Last day to register" 
+                            <DateTimeInput
+                                value={regDeadline}
+                                onChange={setRegDeadline}
+                                placeholder="Last day to register"
                                 max={eventDate}
                             />
                         </FormGroup>
