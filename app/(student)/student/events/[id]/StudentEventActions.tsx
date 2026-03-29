@@ -17,9 +17,10 @@ import {
     sendInviteAction,
     acceptInviteAction,
     declineInviteAction,
+    uploadPaymentProofAction,
 } from '@/lib/actions/registrationActions'
 import { searchStudentsForInviteAction } from '@/lib/actions/userActions'
-import { Users2, Trash2, Check, X, Search, Loader2, UserPlus, LogOut, UserMinus } from 'lucide-react'
+import { Users2, Trash2, Check, X, Search, Loader2, UserPlus, LogOut, UserMinus, QrCode, Upload, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react'
 import type { Event, Team, Winner } from '@/lib/types/db'
 
 type StudentSearchResult = {
@@ -80,8 +81,6 @@ function WinnersDisplay({ winners }: { winners: Winner[] }) {
         </div>
     )
 }
-
-// ... [restoring StudentSearchInput and MemberSearch] ...
 
 // ── Shared student search input ────────────────────────────────
 
@@ -227,6 +226,211 @@ function MemberSearch({ excludeId, selectedMembers, onAdd, onRemove, maxMembers 
     )
 }
 
+// ── Payment proof upload panel ─────────────────────────────────
+
+function PaymentProofUpload({ registration, event }: { registration: any; event: Event }) {
+    const [pending, startTransition] = useTransition()
+    const [file, setFile] = useState<File | null>(null)
+    const [preview, setPreview] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const [submitted, setSubmitted] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const paymentStatus = registration?.payment_status ?? 'pending'
+
+    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const f = e.target.files?.[0]
+        if (!f) return
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        if (!allowed.includes(f.type)) {
+            setError('Only image files are allowed (JPEG, PNG, WebP)')
+            return
+        }
+        if (f.size > 5 * 1024 * 1024) {
+            setError('File size must be less than 5 MB')
+            return
+        }
+        setError(null)
+        setFile(f)
+        const reader = new FileReader()
+        reader.onload = ev => setPreview(ev.target?.result as string)
+        reader.readAsDataURL(f)
+    }
+
+    function handleSubmit() {
+        if (!file || !registration) return
+        setError(null)
+
+        startTransition(async () => {
+            const reader = new FileReader()
+            reader.onload = async (ev) => {
+                const base64 = ev.target?.result as string
+                const ext = file.name.split('.').pop() ?? 'jpg'
+                const result = await uploadPaymentProofAction({
+                    registration_id: registration.id,
+                    event_id: event.id,
+                    file_base64: base64,
+                    file_type: file.type,
+                    file_ext: ext,
+                })
+                if (result.success) {
+                    setSubmitted(true)
+                    setFile(null)
+                    setPreview(null)
+                } else {
+                    setError(result.error ?? 'Upload failed')
+                }
+            }
+            reader.readAsDataURL(file)
+        })
+    }
+
+    // Status display
+    if (!registration) return null
+
+    if (paymentStatus === 'not_required') return null
+
+    const statusMap: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
+        verified: {
+            icon: <CheckCircle2 size={16} />,
+            label: 'Payment verified — you are fully registered!',
+            color: '#22c55e',
+            bg: 'rgba(34,197,94,0.08)',
+        },
+        submitted: {
+            icon: <Clock size={16} />,
+            label: submitted ? 'Proof submitted! Under review by admin.' : 'Payment proof is under review.',
+            color: '#818cf8',
+            bg: 'rgba(99,102,241,0.08)',
+        },
+    }
+
+    return (
+        <div className="glass-premium" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Payment info banner */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <QrCode size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>Payment Required</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                        Registration fee: <strong>₹{event.registration_fee?.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            {/* QR Code */}
+            {event.upi_qr_url && (paymentStatus === 'pending' || paymentStatus === 'rejected') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Scan & Pay via UPI
+                    </div>
+                    <img
+                        src={event.upi_qr_url}
+                        alt="UPI QR Code"
+                        style={{
+                            width: 180, height: 180,
+                            objectFit: 'contain',
+                            borderRadius: 'var(--r-md)',
+                            border: '1px solid var(--border)',
+                            background: '#fff',
+                            padding: 8,
+                        }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', maxWidth: 280 }}>
+                        Scan the QR code using any UPI app (Google Pay, PhonePe, Paytm, etc.), pay ₹{event.registration_fee?.toFixed(2)}, then upload the screenshot below.
+                    </p>
+                </div>
+            )}
+
+            {/* Rejection notice */}
+            {paymentStatus === 'rejected' && registration.rejection_reason && (
+                <div style={{
+                    padding: '10px 14px', borderRadius: 'var(--r-md)',
+                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                    display: 'flex', alignItems: 'flex-start', gap: 8,
+                }}>
+                    <XCircle size={15} style={{ color: '#ef4444', marginTop: 1, flexShrink: 0 }} />
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ef4444' }}>Payment Rejected</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                            Reason: {registration.rejection_reason}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                            Please make a new payment and re-upload your proof below.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Status display for submitted/verified */}
+            {statusMap[paymentStatus] && (
+                <div style={{
+                    padding: '10px 14px', borderRadius: 'var(--r-md)',
+                    background: statusMap[paymentStatus].bg,
+                    border: `1px solid ${statusMap[paymentStatus].color}30`,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    color: statusMap[paymentStatus].color, fontWeight: 600, fontSize: '0.875rem',
+                }}>
+                    {statusMap[paymentStatus].icon}
+                    {statusMap[paymentStatus].label}
+                </div>
+            )}
+
+            {/* Upload form — shown for pending and rejected */}
+            {(paymentStatus === 'pending' || paymentStatus === 'rejected') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Upload Payment Screenshot
+                    </div>
+
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                    />
+
+                    {preview ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <img
+                                src={preview}
+                                alt="Payment screenshot preview"
+                                style={{
+                                    width: 160, height: 160, objectFit: 'cover',
+                                    borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
+                                }}
+                            />
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <Button size="sm" onClick={handleSubmit} loading={pending}>
+                                    <Upload size={14} /> Submit Proof
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setFile(null); setPreview(null) }} disabled={pending}>
+                                    Change
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} style={{ width: 'fit-content' }}>
+                            <Upload size={14} /> Choose Screenshot
+                        </Button>
+                    )}
+
+                    {error && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--error)' }}>
+                            <AlertCircle size={14} /> {error}
+                        </div>
+                    )}
+
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                        Max 5 MB · JPEG, PNG, or WebP
+                    </p>
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ── Registration action block ──────────────────────────────────
 
 function RegistrationAction({
@@ -251,6 +455,10 @@ function RegistrationAction({
 
     const canRegister = event.status === 'open' && !isDeadlinePassed
     const isRegistered = !!existingReg
+
+    // For paid events, "registered" means payment is verified
+    const paymentStatus = existingReg?.payment_status ?? null
+    const isPaid = event.is_paid
 
     // Event-level teams
     const eventTeams = teams
@@ -322,18 +530,43 @@ function RegistrationAction({
             {participantType === 'single' && (
                 <div>
                     {isRegistered ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <Badge variant="success">Registered</Badge>
-                            {canRegister && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            {/* Payment status badge for paid events */}
+                            {isPaid && paymentStatus && paymentStatus !== 'not_required' ? (
+                                <>
+                                    {paymentStatus === 'pending'   && <Badge variant="pending">⏳ Waiting for payment</Badge>}
+                                    {paymentStatus === 'submitted' && <Badge variant="info">🔍 Under Review</Badge>}
+                                    {paymentStatus === 'verified'  && <Badge variant="success">✓ Registered</Badge>}
+                                    {paymentStatus === 'rejected'  && <Badge variant="failed">✗ Payment Rejected</Badge>}
+                                </>
+                            ) : (
+                                <Badge variant="success">Registered</Badge>
+                            )}
+                            {canRegister && (paymentStatus === 'not_required' || paymentStatus === 'pending') && (
                                 <Button size="sm" variant="danger" onClick={() => wrap(() => cancelRegistrationAction(existingReg.id))} loading={pending}>
                                     Cancel Registration
                                 </Button>
                             )}
                         </div>
                     ) : canRegister ? (
-                        <Button onClick={() => wrap(() => registerForEventAction({ event_id: event.id }))} loading={pending}>
-                            Register Now
-                        </Button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* Paid event preview */}
+                            {isPaid && (
+                                <div style={{
+                                    padding: '10px 14px', borderRadius: 'var(--r-md)',
+                                    background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+                                    fontSize: '0.875rem', color: 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                }}>
+                                    <QrCode size={16} style={{ color: 'var(--accent)' }} />
+                                    This is a paid event. Registration fee: <strong>₹{event.registration_fee?.toFixed(2)}</strong>
+                                    {' '}— You will be asked to pay after registering.
+                                </div>
+                            )}
+                            <Button onClick={() => wrap(() => registerForEventAction({ event_id: event.id }))} loading={pending}>
+                                {isPaid ? '📋 Register & Proceed to Pay' : 'Register Now'}
+                            </Button>
+                        </div>
                     ) : (
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
                             Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
@@ -634,7 +867,7 @@ function RegistrationAction({
                                 </div>
                             )}
                             {(studentCreatedTeam || studentMemberTeam) && !canRegister && (
-                                 <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                                     ℹ️ Event is {event.status !== 'open' ? event.status : 'past deadline'}. Team changes are no longer allowed.
                                 </div>
                             )}
@@ -660,6 +893,10 @@ export function StudentEventActions({ event, registration, teams, winners, stude
                 studentId={studentId}
                 isDeadlinePassed={isDeadlinePassed}
             />
+            {/* Payment proof upload — shown only for paid events where student has registered */}
+            {event.is_paid && registration && registration.payment_status !== 'not_required' && (
+                <PaymentProofUpload registration={registration} event={event} />
+            )}
             {event.results_published && <WinnersDisplay winners={winners} />}
         </div>
     )

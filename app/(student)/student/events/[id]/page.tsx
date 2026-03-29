@@ -36,9 +36,12 @@ export default async function StudentEventDetailPage({ params }: Props) {
             </div>
 
             <div className="page-header">
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
                     <Badge variant={event.status}>{event.status}</Badge>
                     {event.department && <Badge variant="info">{event.department.name}</Badge>}
+                    {event.is_paid && event.registration_fee && (
+                        <Badge variant="pending">₹{event.registration_fee.toFixed(2)} Fee</Badge>
+                    )}
                 </div>
                 <h1 className="page-title">{event.title}</h1>
                 {event.description && (

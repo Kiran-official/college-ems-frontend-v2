@@ -11,6 +11,7 @@ export type AttendanceStatus = 'registered' | 'attended' | 'absent'
 export type CertificateType = 'participation' | 'winner'
 export type CertificateStatus = 'pending' | 'processing' | 'generated' | 'failed'
 export type WinnerType = 'student' | 'team'
+export type PaymentStatus = 'not_required' | 'pending' | 'submitted' | 'verified' | 'rejected'
 
 // ── Core Entities ──────────────────────────────────────────────
 
@@ -56,6 +57,10 @@ export interface Event {
     department_id?: string
     created_at: string
     updated_at?: string
+    // Payment fields
+    is_paid: boolean
+    registration_fee?: number | null
+    upi_qr_url?: string | null
     // Joined fields
     department?: Department
     creator?: User
@@ -80,6 +85,13 @@ export interface IndividualRegistration {
     team_id?: string
     attendance_status: AttendanceStatus
     registered_at: string
+    // Payment fields
+    payment_status: PaymentStatus
+    payment_proof_url?: string | null
+    payment_submitted_at?: string | null
+    verified_at?: string | null
+    verified_by?: string | null
+    rejection_reason?: string | null
     // Joined fields
     student?: User
     event?: Event
