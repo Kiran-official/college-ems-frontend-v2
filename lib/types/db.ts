@@ -4,7 +4,7 @@
 
 export type UserRole = 'admin' | 'teacher' | 'student'
 export type StudentType = 'internal' | 'external'
-export type EventStatus = 'draft' | 'open' | 'closed' | 'completed'
+export type EventStatus = 'draft' | 'open' | 'closed' | 'completed' | 'cancelled'
 export type EventVisibility = 'public_all' | 'internal_only' | 'external_only'
 export type ParticipantType = 'single' | 'multiple'
 export type AttendanceStatus = 'registered' | 'attended' | 'absent'
