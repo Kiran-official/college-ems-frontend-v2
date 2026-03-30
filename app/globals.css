@@ -207,9 +207,11 @@ img {
 @media (max-width: 640px) {
   .notification-banner {
     top: 12px;
-    left: 12px;
-    right: 12px;
-    width: auto;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100vw - 32px);
+    max-width: none;
   }
 }
 
