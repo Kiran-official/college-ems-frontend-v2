@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -9,24 +10,18 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPrompt() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
+  // Handle browser install events
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
-      // Only show if not previously dismissed
-      const dismissed = localStorage.getItem('pwa_install_dismissed');
-      const installed = localStorage.getItem('pwa_installed');
-      
-      if (!dismissed && !installed) {
-        setIsVisible(true);
-      }
     };
 
     const handleAppInstalled = () => {
@@ -45,8 +40,39 @@ export function InstallPrompt() {
     };
   }, []);
 
+  // Handle visibility based on route and state
+  useEffect(() => {
+    // Determine if we're currently running AS an installed standalone app
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone === true);
+    
+    if (isStandalone) {
+      setIsVisible(false); // Never show if they are already inside the PWA!
+      return;
+    }
+
+    const isLoginPage = pathname === '/login' || pathname === '/';
+    
+    if (isLoginPage) {
+      // If we are in the regular browser, always show the prompt on the login page as a fallback
+      setIsVisible(true);
+      setIsDismissed(false);
+    } else {
+      // On other pages, only show if we received the browser prompt AND user hasn't dismissed it
+      const dismissed = localStorage.getItem('pwa_install_dismissed');
+      // If they installed it in the past but opened the browser, we won't show it except on login
+      if (!dismissed && deferredPrompt) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    }
+  }, [pathname, deferredPrompt]);
+
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      alert("To install the app, please use your browser's menu:\n\n• iOS Profile: Tap Share -> 'Add to Home Screen'\n• Android: Tap Menu -> 'Install App'");
+      return;
+    }
 
     // Show the install prompt
     deferredPrompt.prompt();

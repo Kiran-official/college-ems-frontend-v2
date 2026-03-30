@@ -27,7 +27,7 @@ export function NotificationPermission() {
 
         // Delay prompt slightly to not overwhelm on login
         const timer = setTimeout(() => {
-            if (Notification.permission === 'default' && !localStorage.getItem('push_prompt_dismissed')) {
+            if (Notification.permission === 'default' && !sessionStorage.getItem('push_prompt_dismissed')) {
                 setShowPrompt(true)
             }
         }, 3000)
@@ -75,7 +75,7 @@ export function NotificationPermission() {
 
     function handleDismiss() {
         setShowPrompt(false)
-        localStorage.setItem('push_prompt_dismissed', 'true')
+        sessionStorage.setItem('push_prompt_dismissed', 'true')
     }
 
     if (!showPrompt) return null

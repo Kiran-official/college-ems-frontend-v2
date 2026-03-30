@@ -29,7 +29,7 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     return (
         <tr>
             <td data-label="Name">{reg.student?.name ?? '—'}</td>
-            <td data-label="Department">{(reg.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
+            <td data-label="Phone">{reg.student?.phone_number ?? '—'}</td>
             <td data-label="Attendance">
                 {isEditable ? (
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -133,7 +133,7 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Department</th>
+                            <th>Phone</th>
                             <th>Attendance</th>
                             <th>Status</th>
                         </tr>

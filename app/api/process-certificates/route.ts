@@ -237,8 +237,9 @@ export async function POST(req: NextRequest) {
 
             if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`)
 
-            // 7. Get public URL
+            // 7. Get public URL and generate verification ID
             const { data: urlData } = admin.storage.from('certificates').getPublicUrl(filePath)
+            const verificationId = crypto.randomUUID()
 
             // 8. Mark certificate as generated
             await admin
@@ -246,6 +247,8 @@ export async function POST(req: NextRequest) {
                 .update({
                     status: 'generated',
                     file_path: urlData.publicUrl,
+                    storage_path: filePath,
+                    verification_id: verificationId,
                     generated_at: new Date().toISOString(),
                     error_message: null,
                 })

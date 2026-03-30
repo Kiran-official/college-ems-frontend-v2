@@ -107,7 +107,8 @@ export async function triggerCertificateProcessingAction(): Promise<{ success: b
 }
 
 export async function createTemplateAction(data: {
-    event_id: string
+    event_id?: string
+    is_global?: boolean
     template_name: string
     certificate_type: 'participation' | 'winner'
     layout_json: TemplateLayout
@@ -139,6 +140,8 @@ export async function updateTemplateAction(
     templateId: string,
     data: {
         template_name?: string
+        event_id?: string
+        is_global?: boolean
         layout_json?: TemplateLayout
         background_image_url?: string
         is_active?: boolean
@@ -156,6 +159,92 @@ export async function updateTemplateAction(
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
         return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function deleteTemplateAction(
+    templateId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // Check if any certificates have been generated with this template
+        const { data: template } = await admin
+            .from('certificate_templates')
+            .select('event_id')
+            .eq('id', templateId)
+            .single()
+
+        if (template?.event_id) {
+            const { count } = await admin
+                .from('certificates')
+                .select('*', { count: 'exact', head: true })
+                .eq('event_id', template.event_id)
+
+            if (count && count > 0) {
+                // Soft-delete: keep the template data for existing certificates
+                const { error } = await admin
+                    .from('certificate_templates')
+                    .update({ is_active: false })
+                    .eq('id', templateId)
+                if (error) return { success: false, error: error.message }
+            } else {
+                // Hard delete if no certificates reference this event
+                const { error } = await admin
+                    .from('certificate_templates')
+                    .delete()
+                    .eq('id', templateId)
+                if (error) return { success: false, error: error.message }
+            }
+        } else {
+            // Global template or no event — hard delete
+            const { error } = await admin
+                .from('certificate_templates')
+                .delete()
+                .eq('id', templateId)
+            if (error) return { success: false, error: error.message }
+        }
+
+        revalidatePath('/admin/templates')
+        revalidatePath('/teacher/templates')
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function cloneTemplateAction(sourceTemplateId: string, targetEventId: string): Promise<{ success: boolean; template_id?: string; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { data: source, error: fetchErr } = await admin.from('certificate_templates').select('*').eq('id', sourceTemplateId).single()
+        if (fetchErr || !source) return { success: false, error: 'Source template not found' }
+
+        const { data: cloned, error: insertErr } = await admin.from('certificate_templates').insert({
+            event_id: targetEventId,
+            is_global: false,
+            template_name: `${source.template_name} (Clone)`,
+            certificate_type: source.certificate_type,
+            layout_json: source.layout_json,
+            background_image_url: source.background_image_url,
+            is_active: true,
+            created_by: user.id
+        }).select('id').single()
+
+        if (insertErr || !cloned) return { success: false, error: insertErr?.message || 'Failed to clone' }
+
+        revalidatePath('/admin/templates')
+        revalidatePath('/teacher/templates')
+        return { success: true, template_id: cloned.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
     }

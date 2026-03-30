@@ -148,7 +148,8 @@ export interface Winner {
 
 export interface CertificateTemplate {
     id: string
-    event_id: string
+    event_id?: string | null
+    is_global: boolean
     template_name: string
     certificate_type: CertificateType
     layout_json: TemplateLayout
@@ -173,12 +174,14 @@ export interface TemplateField {
     y: number           // percentage 0-100
     width: number       // percentage 0-100
     fontSize: number
+    lineHeight?: number // multiplier, default 1.2
+    letterSpacing?: number // in px, default 0
     fontFamily: string
     color: string
     bold: boolean
     italic: boolean
     align: 'left' | 'center' | 'right'
-    customText?: string // only for field_type = 'custom'
+    customText?: string // used when field_type === 'custom'
 }
 
 export interface Certificate {
@@ -189,6 +192,8 @@ export interface Certificate {
     certificate_type: CertificateType
     status: CertificateStatus
     file_path?: string
+    storage_path?: string
+    verification_id?: string
     error_message?: string
     retry_count: number
     last_retried_at?: string

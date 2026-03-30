@@ -1,41 +1,49 @@
 'use client'
 
-import { useState, useRef, useCallback, useTransition } from 'react'
+import { useState, useRef, useCallback, useEffect, useTransition } from 'react'
 import { Button } from '@/components/ui/Button'
 import { FormGroup } from '@/components/forms/FormGroup'
-import { createTemplateAction, updateTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
+import { createTemplateAction, updateTemplateAction, deleteTemplateAction, uploadTemplateBackgroundAction } from '@/lib/actions/certificateActions'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Trash2, Move, GripVertical, Upload, Loader2, AlignLeft, AlignCenter, AlignRight, Type, Bold, Italic, Settings2, LayoutTemplate, Paintbrush, Image as ImageIcon } from 'lucide-react'
+import {
+    Plus, Trash2, Upload, AlignLeft, AlignCenter, AlignRight,
+    Type, Bold, Italic, LayoutTemplate, Image as ImageIcon,
+    ChevronLeft, X, Copy, Check, Save, Settings,
+    ZoomIn, ZoomOut, Maximize,
+    Sun, Moon, MoreVertical, MoveVertical, Space, Minus
+} from 'lucide-react'
 import type { TemplateField, TemplateLayout, CertificateTemplate, Event } from '@/lib/types/db'
 
+// ─── Constants ──────────────────────────────────────────────────
 const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
-    { id: 'default-1', field_type: 'student_name', x: 50, y: 35, width: 60, fontSize: 32, fontFamily: 'Space Grotesk', color: '#FFFFFF', bold: true, italic: false, align: 'center' },
-    { id: 'default-2', field_type: 'event_name', x: 50, y: 50, width: 70, fontSize: 18, fontFamily: 'Space Grotesk', color: '#A0AECB', bold: false, italic: false, align: 'center' },
-    { id: 'default-4', field_type: 'position', x: 50, y: 63, width: 50, fontSize: 16, fontFamily: 'Space Grotesk', color: '#F5A623', bold: true, italic: false, align: 'center' },
-    { id: 'default-5', field_type: 'date', x: 50, y: 72, width: 40, fontSize: 14, fontFamily: 'Space Grotesk', color: '#5B6B8A', bold: false, italic: false, align: 'center' },
-    { id: 'default-6', field_type: 'certificate_type', x: 85, y: 85, width: 20, fontSize: 12, fontFamily: 'Space Grotesk', color: '#5B6B8A', bold: false, italic: false, align: 'right' },
+    { id: 'default-1', field_type: 'student_name', x: 50, y: 30, width: 60, fontSize: 32, fontFamily: 'Helvetica', color: '#000000', bold: true, italic: false, align: 'center' },
+    { id: 'default-2', field_type: 'event_name', x: 50, y: 42, width: 70, fontSize: 32, fontFamily: 'Helvetica', color: '#000000', bold: true, italic: false, align: 'center' },
+    { id: 'default-4', field_type: 'position', x: 50, y: 54, width: 50, fontSize: 32, fontFamily: 'Helvetica', color: '#000000', bold: true, italic: false, align: 'center' },
+    { id: 'default-5', field_type: 'date', x: 50, y: 66, width: 40, fontSize: 32, fontFamily: 'Helvetica', color: '#000000', bold: true, italic: false, align: 'center' },
+    { id: 'default-6', field_type: 'certificate_type', x: 50, y: 78, width: 30, fontSize: 32, fontFamily: 'Helvetica', color: '#000000', bold: true, italic: false, align: 'center' },
 ]
-
-function initFields(): TemplateField[] {
-    return DEFAULT_TEMPLATE_FIELDS
-}
 
 const FIELD_TYPES = [
-    { value: 'student_name', label: 'Student Name' },
-    { value: 'event_name', label: 'Event Name' },
-    { value: 'position', label: 'Position / Award' },
-    { value: 'date', label: 'Date' },
-    { value: 'certificate_type', label: 'Certificate Type' },
-    { value: 'custom', label: 'Custom Text' },
+    { value: 'student_name', label: 'Student Name', placeholder: '{{student_name}}', mock: 'John Doe' },
+    { value: 'event_name', label: 'Event Name', placeholder: '{{event_name}}', mock: 'Annual Sports Meet 2024' },
+    { value: 'position', label: 'Position / Award', placeholder: '{{position}}', mock: 'First Place' },
+    { value: 'date', label: 'Date', placeholder: '{{date}}', mock: 'March 31, 2026' },
+    { value: 'certificate_type', label: 'Type', placeholder: '{{certificate_type}}', mock: 'Participation Certificate' },
+    { value: 'custom', label: 'Custom Text', placeholder: 'Custom Text', mock: 'Custom Text' },
 ]
 
+// ─── Types ──────────────────────────────────────────────────────
 interface TemplateBuilderProps {
     events: Event[]
     template?: CertificateTemplate
     basePath: string
 }
 
+type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null
+
+// ─── Component ──────────────────────────────────────────────────
 export function TemplateBuilder({ events, template, basePath }: TemplateBuilderProps) {
+    const [isBarExpanded, setIsBarExpanded] = useState(true);
     const router = useRouter()
     const [pending, startTransition] = useTransition()
     const [uploading, setUploading] = useState(false)
@@ -43,87 +51,197 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const searchParams = useSearchParams()
-    
-    // Prefill logic
     const queryEventId = searchParams.get('eventId')
     const queryType = searchParams.get('type') as 'participation' | 'winner' | null
 
+    // ─── State ────────────────────────────────────────────────
     const [eventId, setEventId] = useState(template?.event_id ?? queryEventId ?? '')
     const [templateName, setTemplateName] = useState(template?.template_name ?? '')
     const [certType, setCertType] = useState<'participation' | 'winner'>(
         template?.certificate_type ?? queryType ?? 'participation'
     )
     const [bgUrl, setBgUrl] = useState(template?.background_image_url ?? '')
-
     const selectedEvent = events.find(e => e.id === eventId)
 
     const [fields, setFields] = useState<TemplateField[]>(
-        template?.layout_json?.fields ?? initFields()
+        template?.layout_json?.fields ?? [...DEFAULT_TEMPLATE_FIELDS]
     )
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
     const [dragging, setDragging] = useState<string | null>(null)
+    const [resizing, setResizing] = useState<{ fieldId: string; handle: ResizeHandle; startX: number; startWidth: number } | null>(null)
+    const [viewMode, setViewMode] = useState<'design' | 'preview'>('design')
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [activeTool, setActiveTool] = useState<string | null>(null)
+    const [zoom, setZoom] = useState(100)
+    const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
 
     const selectedField = fields.find(f => f.id === selectedFieldId) ?? null
 
-    const availableFieldTypes = FIELD_TYPES
+    // ─── Auto-zoom on resize ──────────────────────────────────
+    useEffect(() => {
+        function handleResize() {
+            if (window.innerWidth < 1024) {
+                // Auto-scale to fit precisely within mobile viewport width
+                // 900 is base canvas width. 32px accounts for side padding wrapper.
+                setZoom(Math.max(20, Math.floor(((window.innerWidth - 32) / 900) * 100)))
+            } else {
+                setZoom(100)
+            }
+        }
+        handleResize() // Initially
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
+    // ─── Toast auto-dismiss ───────────────────────────────────
+    useEffect(() => {
+        if (!toast) return
+        const t = setTimeout(() => setToast(null), 4000)
+        return () => clearTimeout(t)
+    }, [toast])
+
+    // ─── Keyboard shortcuts ───────────────────────────────────
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            if (isSettingsOpen) return
+            const target = e.target as HTMLElement
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
+
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedFieldId) {
+                e.preventDefault()
+                removeField(selectedFieldId)
+            }
+            if (e.key === 'Escape') {
+                setSelectedFieldId(null)
+                setActiveTool(null)
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedFieldId) {
+                e.preventDefault()
+                duplicateField(selectedFieldId)
+            }
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [selectedFieldId, isSettingsOpen, fields])
+
+    // ─── Field operations ─────────────────────────────────────
     function addField(fieldType: string) {
         const newField: TemplateField = {
             id: `field_${Date.now()}`,
             field_type: fieldType,
             x: 50, y: 50, width: 40,
-            fontSize: 16, fontFamily: 'Space Grotesk',
-            color: '#FFFFFF', bold: false, italic: false,
+            fontSize: 16, fontFamily: 'Helvetica',
+            color: '#000000', bold: false, italic: false,
             align: 'center',
-            ...(fieldType === 'custom' ? { customText: 'Custom text here' } : {}),
+            ...(fieldType === 'custom' ? { customText: 'Custom Text' } : {}),
         }
-        setFields([...fields, newField])
+        setFields(prev => [...prev, newField])
         setSelectedFieldId(newField.id)
     }
 
     function updateField(id: string, updates: Partial<TemplateField>) {
-        setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f))
+        setFields(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
     }
 
     function removeField(id: string) {
-        setFields(fields.filter(f => f.id !== id))
+        setFields(prev => prev.filter(f => f.id !== id))
         if (selectedFieldId === id) setSelectedFieldId(null)
     }
 
-    // Drag handling
+    function duplicateField(id: string) {
+        const field = fields.find(f => f.id === id)
+        if (!field) return
+        const newField = { ...field, id: `field_${Date.now()}`, x: Math.min(95, field.x + 3), y: Math.min(95, field.y + 3) }
+        setFields(prev => [...prev, newField])
+        setSelectedFieldId(newField.id)
+    }
+
+    // ─── Drag handling (mouse) ────────────────────────────────
+    const getCanvasCoords = useCallback((clientX: number, clientY: number) => {
+        if (!canvasRef.current) return { x: 0, y: 0 }
+        const rect = canvasRef.current.getBoundingClientRect()
+        const x = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100))
+        const y = Math.max(2, Math.min(98, ((clientY - rect.top) / rect.height) * 100))
+        return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+    }, [])
+
     const handleMouseDown = useCallback((fieldId: string, e: React.MouseEvent) => {
         e.preventDefault()
+        e.stopPropagation()
         setDragging(fieldId)
         setSelectedFieldId(fieldId)
     }, [])
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
+        if (resizing && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect()
+            const deltaXPct = ((e.clientX - resizing.startX) / rect.width) * 100
+            let newWidth = resizing.startWidth
+            if (resizing.handle === 'e' || resizing.handle === 'ne' || resizing.handle === 'se') {
+                newWidth = resizing.startWidth + deltaXPct * 2
+            } else if (resizing.handle === 'w' || resizing.handle === 'nw' || resizing.handle === 'sw') {
+                newWidth = resizing.startWidth - deltaXPct * 2
+            }
+            newWidth = Math.max(10, Math.min(100, Math.round(newWidth)))
+            updateField(resizing.fieldId, { width: newWidth })
+            return
+        }
         if (!dragging || !canvasRef.current) return
-        const rect = canvasRef.current.getBoundingClientRect()
-        const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
-        const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
-        updateField(dragging, { x: Math.round(x), y: Math.round(y) })
-    }, [dragging, fields])
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY)
+        updateField(dragging, { x, y })
+    }, [dragging, resizing, getCanvasCoords])
 
     const handleMouseUp = useCallback(() => {
         setDragging(null)
+        setResizing(null)
     }, [])
 
-    function getFieldLabel(f: TemplateField) {
-        if (f.field_type === 'custom') return f.customText ?? 'Custom'
+    // ─── Touch handling ───────────────────────────────────────
+    const handleTouchStart = useCallback((fieldId: string, e: React.TouchEvent) => {
+        e.stopPropagation()
+        setDragging(fieldId)
+        setSelectedFieldId(fieldId)
+    }, [])
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (!dragging || !canvasRef.current) return
+        const touch = e.touches[0]
+        const { x, y } = getCanvasCoords(touch.clientX, touch.clientY)
+        updateField(dragging, { x, y })
+    }, [dragging, getCanvasCoords])
+
+    const handleTouchEnd = useCallback(() => {
+        setDragging(null)
+        setResizing(null)
+    }, [])
+
+    // ─── Resize handle start ──────────────────────────────────
+    const handleResizeStart = useCallback((fieldId: string, handle: ResizeHandle, e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const field = fields.find(f => f.id === fieldId)
+        if (!field) return
+        setResizing({ fieldId, handle, startX: e.clientX, startWidth: field.width })
+        setSelectedFieldId(fieldId)
+    }, [fields])
+
+    // ─── Display value ────────────────────────────────────────
+    function getFieldDisplayValue(f: TemplateField) {
+        if (f.field_type === 'custom') return f.customText || 'Custom Text'
         const ft = FIELD_TYPES.find(t => t.value === f.field_type)
-        return ft?.label ?? f.field_type
+        if (viewMode === 'preview') return ft?.mock ?? f.field_type
+        return ft?.placeholder ?? f.field_type
     }
 
+    // ─── File upload ──────────────────────────────────────────
     async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
         if (!file) return
-
         if (file.size > 5 * 1024 * 1024) {
-            alert('File is too large. Max size is 5MB.')
+            setToast({ message: 'File too large. Max size is 5MB.', type: 'error' })
             return
         }
-
         setUploading(true)
         try {
             const formData = new FormData()
@@ -131,29 +249,58 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
             const result = await uploadTemplateBackgroundAction(formData)
             if (result.success && result.url) {
                 setBgUrl(result.url)
+                setToast({ message: 'Background uploaded!', type: 'success' })
             } else {
-                alert(result.error || 'Failed to upload image')
+                setToast({ message: result.error || 'Upload failed', type: 'error' })
             }
         } catch (err: any) {
-            console.error('Client Upload Error:', err)
-            alert('Upload failed: ' + (err?.message || 'An unexpected error occurred'))
+            setToast({ message: 'Upload failed: ' + (err?.message || 'Unknown error'), type: 'error' })
         } finally {
             setUploading(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
         }
     }
 
+    // ─── Validation ───────────────────────────────────────────
+    function validateTemplate(): { valid: boolean; errors: string[] } {
+        const errors: string[] = []
+        const fieldTypes = fields.map(f => f.field_type)
+
+        if (!fieldTypes.includes('student_name')) {
+            errors.push('{{student_name}} is required')
+        }
+        if (certType === 'winner' && !fieldTypes.includes('position')) {
+            errors.push('Winner certificates require {{position}}')
+        }
+        if (!eventId) {
+            errors.push('Please link an event in Settings')
+        }
+        if (!templateName.trim()) {
+            errors.push('Please set a template name in Settings')
+        }
+        return { valid: errors.length === 0, errors }
+    }
+
+    // ─── Save ─────────────────────────────────────────────────
     function save() {
-        if (!eventId || !templateName.trim()) return
+        const { valid, errors } = validateTemplate()
+        if (!valid) {
+            setToast({ message: errors.join(' • '), type: 'error' })
+            return
+        }
         const layout: TemplateLayout = { fields }
 
         startTransition(async () => {
             if (template) {
-                const result = await updateTemplateAction(template.id, { template_name: templateName, layout_json: layout, background_image_url: bgUrl || undefined })
+                const result = await updateTemplateAction(template.id, {
+                    template_name: templateName,
+                    layout_json: layout,
+                    background_image_url: bgUrl || undefined,
+                })
                 if (result.success) {
-                    alert('Template updated successfully.')
+                    setToast({ message: 'Template saved!', type: 'success' })
                 } else {
-                    alert(result.error || 'Failed to update template.')
+                    setToast({ message: result.error || 'Failed to save', type: 'error' })
                 }
             } else {
                 const result = await createTemplateAction({
@@ -166,365 +313,470 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                 if (result.success && result.template_id) {
                     router.push(`${basePath}/${result.template_id}`)
                 } else {
-                    alert(result.error || 'Failed to create template.')
-                    console.error('Template creation error:', result.error)
+                    setToast({ message: result.error || 'Failed to create template', type: 'error' })
                 }
             }
         })
     }
 
+    // ─── Zoom helpers ─────────────────────────────────────────
+    const zoomIn = () => setZoom(z => Math.min(200, z + 10))
+    const zoomOut = () => setZoom(z => Math.max(40, z - 10))
+    const zoomFit = () => setZoom(100)
+
+    // ═══════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════
     return (
-        <div className="flex flex-col lg:grid lg:grid-cols-[400px_1fr] gap-8 items-start min-h-[calc(100vh-140px)]">
-            {/* Left panel — toolbar and field properties */}
-            <div className="flex flex-col gap-6 lg:pr-2 lg:pb-[120px] w-full">
-                {/* Meta fields */}
-                <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-glass)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, rgba(0,201,255,0.2) 0%, rgba(146,254,157,0.2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,201,255,0.3)' }}>
-                            <Settings2 size={16} color="var(--accent)" />
-                        </div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Template Settings</h3>
-                    </div>
-
-                    <FormGroup label="Template Name" required>
-                        <input className="form-input" value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Participation Certificate" />
-                    </FormGroup>
-                    <FormGroup label="Event" required>
-                        <select className="form-select" value={eventId} onChange={e => setEventId(e.target.value)} disabled={!!template}>
-                            <option value="">Select event…</option>
-                            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
-                        </select>
-                    </FormGroup>
-                    <FormGroup label="Certificate Type">
-                        <select className="form-select" value={certType} onChange={e => setCertType(e.target.value as 'participation' | 'winner')} disabled={!!template}>
-                            <option value="participation">Participation</option>
-                            <option value="winner">Winner</option>
-                        </select>
-                    </FormGroup>
-
-                    <FormGroup label="Background Image">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <div style={{ position: 'relative', flex: 1 }}>
-                                    <ImageIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                                    <input className="form-input" style={{ paddingLeft: 34 }} value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="https://…" />
-                                </div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileUpload}
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                />
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    loading={uploading}
-                                    type="button"
-                                    style={{ height: 42 }}
-                                >
-                                    {!uploading && <Upload size={14} style={{ marginRight: 6 }} />}
-                                    Upload
-                                </Button>
-                            </div>
-                            {bgUrl && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} /> Background applied
-                                </div>
-                            )}
-                        </div>
-                    </FormGroup>
+        <div className="cb-root">
+            {/* ─── TOAST ─────────────────────────────────────── */}
+            {toast && (
+                <div className={`cb-toast ${toast.type === 'error' ? 'cb-toast--error' : 'cb-toast--success'}`}>
+                    <span>{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="cb-toast__close">&times;</button>
                 </div>
+            )}
 
-                {/* Add field buttons */}
-                <div className="glass" style={{ padding: 24, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-glass)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(255,0,128,0.2) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(124,58,237,0.3)' }}>
-                            <LayoutTemplate size={16} color="#B983FF" />
-                        </div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Fields</h3>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        {availableFieldTypes.map(ft => (
-                            <button
-                                key={ft.value}
-                                onClick={() => addField(ft.value)}
-                                className="glass-button"
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '10px 12px',
-                                    borderRadius: 'var(--r-md)',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    color: 'var(--text-secondary)',
-                                    fontSize: '0.8125rem',
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                                    e.currentTarget.style.color = 'var(--text-primary)'
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                                    e.currentTarget.style.color = 'var(--text-secondary)'
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                                }}
-                            >
-                                <Plus size={14} style={{ opacity: 0.6 }} />
-                                {ft.label}
-                            </button>
-                        ))}
+            {/* ─── TOP NAV ───────────────────────────────────── */}
+            <header className="cb-topnav">
+                <div className="cb-topnav__left">
+                    <button onClick={() => router.push(basePath)} className="cb-topnav__btn" title="Back">
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div className="cb-topnav__sep" />
+                    <div className="cb-topnav__title-group">
+                        <input
+                            value={templateName}
+                            onChange={e => setTemplateName(e.target.value)}
+                            className="cb-topnav__name-input"
+                            placeholder="Untitled Design"
+                            title={templateName || 'Untitled Design'}
+                        />
+                        <span className="cb-topnav__meta">
+                            {certType} • {selectedEvent?.title || 'No Event'}
+                        </span>
                     </div>
                 </div>
 
-                {/* Selected field properties */}
-                {selectedField && (
-                    <div className="glass" style={{
-                        padding: 24,
-                        borderRadius: 'var(--r-lg)',
-                        border: '1px solid var(--accent)',
-                        boxShadow: '0 0 20px rgba(0, 201, 255, 0.1)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                        position: 'relative',
-                        overflow: 'hidden'
-                    }}>
-                        {/* Glow effect */}
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', opacity: 0.5 }} />
+                <div className="cb-topnav__right">
+                    {/* View mode toggle */}
+                    <div className="cb-mode-toggle md-only">
+                        <button
+                            onClick={() => setViewMode('design')}
+                            className={`cb-mode-toggle__btn ${viewMode === 'design' ? 'cb-mode-toggle__btn--active' : ''}`}
+                        >Design</button>
+                        <button
+                            onClick={() => setViewMode('preview')}
+                            className={`cb-mode-toggle__btn ${viewMode === 'preview' ? 'cb-mode-toggle__btn--active' : ''}`}
+                        >Preview</button>
+                    </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'rgba(0, 201, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0, 201, 255, 0.2)' }}>
-                                    <Paintbrush size={16} color="var(--accent)" />
-                                </div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Design Field</h3>
-                            </div>
-                            <button
-                                onClick={() => removeField(selectedField.id)}
-                                style={{
-                                    background: 'rgba(255, 68, 68, 0.1)',
-                                    border: '1px solid rgba(255, 68, 68, 0.2)',
-                                    borderRadius: 'var(--r-sm)',
-                                    width: 32,
-                                    height: 32,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    color: 'var(--error)',
-                                    transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.2)' }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.1)' }}
-                                title="Remove Field"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
+                    <div className="cb-topnav__desktop-actions">
+                        <button onClick={() => setIsSettingsOpen(true)} className="cb-topnav__btn" title="Settings">
+                            <Settings size={20} />
+                        </button>
+                        <Button onClick={save} loading={pending} className="cb-topnav__save">
+                            <Save size={16} />
+                            <span className="cb-topnav__save-label">Save</span>
+                        </Button>
+                    </div>
 
-                        {selectedField.field_type === 'custom' && (
-                            <FormGroup label="Text">
-                                <input className="form-input" value={selectedField.customText ?? ''} onChange={e => updateField(selectedField.id, { customText: e.target.value })} />
-                            </FormGroup>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <FormGroup label="Font Size">
-                                <input type="number" className="form-input" value={selectedField.fontSize} onChange={e => updateField(selectedField.id, { fontSize: Number(e.target.value) })} min={8} max={72} />
-                            </FormGroup>
-                            <FormGroup label="Color">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 'var(--r-md)', padding: '4px 8px' }}>
-                                    <input type="color" value={selectedField.color} onChange={e => updateField(selectedField.id, { color: e.target.value })} style={{ width: 28, height: 28, border: 'none', borderRadius: '4px', cursor: 'pointer', padding: 0, background: 'none' }} />
-                                    <span style={{ fontSize: '0.8125rem', fontFamily: 'monospace', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>{selectedField.color}</span>
-                                </div>
-                            </FormGroup>
-                        </div>
-
-                        <FormGroup label="Alignment">
-                            <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.2)', padding: 4, borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                                {(['left', 'center', 'right'] as const).map(align => (
-                                    <button
-                                        key={align}
-                                        onClick={() => updateField(selectedField.id, { align })}
-                                        style={{
-                                            flex: 1,
-                                            height: 36,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            borderRadius: 'var(--r-sm)',
-                                            background: selectedField.align === align ? 'var(--focus-ring)' : 'transparent',
-                                            color: selectedField.align === align ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
-                                            boxShadow: selectedField.align === align ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
-                                        }}
-                                    >
-                                    {align === 'left' && <AlignLeft size={16} />}
-                                    {align === 'center' && <AlignCenter size={16} />}
-                                    {align === 'right' && <AlignRight size={16} />}
+                    <div className="cb-topnav__mobile-actions">
+                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="cb-topnav__btn">
+                            <MoreVertical size={20} />
+                        </button>
+                        {isMobileMenuOpen && (
+                            <div className="cb-mobile-menu">
+                                <button onClick={() => { setViewMode(viewMode === 'design' ? 'preview' : 'design'); setIsMobileMenuOpen(false); }}>
+                                    {viewMode === 'design' ? 'Preview Mode' : 'Design Mode'}
                                 </button>
-                            ))}
-                        </div>
-                    </FormGroup>
-
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                        <button
-                            onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
-                            className={`flex-1 h-10 flex items-center justify-center gap-2 rounded-md border transition-all ${selectedField.bold ? 'bg-accent/15 border-accent text-primary font-semibold' : 'bg-black/20 border-border text-secondary'}`}
-                        >
-                            <Bold size={14} /> Bold
-                        </button>
-                        <button
-                            onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
-                            className={`flex-1 h-10 flex items-center justify-center gap-2 rounded-md border transition-all ${selectedField.italic ? 'bg-accent/15 border-accent text-primary italic' : 'bg-black/20 border-border text-secondary'}`}
-                        >
-                            <Italic size={14} /> Italic
-                        </button>
-                    </div>
-
-                        <div style={{ position: 'relative', padding: '16px 0 8px', marginTop: 8 }}>
-                            <div style={{ position: 'absolute', top: 0, left: -24, right: -24, height: 1, background: 'var(--border-glass)' }} />
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 12 }}>Position & Size</div>
-                            <div className="grid grid-cols-3 gap-3">
-                                <FormGroup label="X %">
-                                    <input type="number" className="form-input text-center px-2" value={selectedField.x} onChange={e => updateField(selectedField.id, { x: Number(e.target.value) })} min={0} max={100} />
-                                </FormGroup>
-                                <FormGroup label="Y %">
-                                    <input type="number" className="form-input text-center px-2" value={selectedField.y} onChange={e => updateField(selectedField.id, { y: Number(e.target.value) })} min={0} max={100} />
-                                </FormGroup>
-                                <FormGroup label="Width %">
-                                    <input type="number" className="form-input text-center px-2" value={selectedField.width} onChange={e => updateField(selectedField.id, { width: Number(e.target.value) })} min={5} max={100} />
-                                </FormGroup>
+                                <button onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}>Settings</button>
+                                <button onClick={() => { save(); setIsMobileMenuOpen(false); }}>Save</button>
                             </div>
-                        </div>
+                        )}
                     </div>
-                )}
-
-                <div className="mt-auto pt-4 sticky bottom-4 z-10">
-                    <Button onClick={save} loading={pending} disabled={!eventId || !templateName.trim()} className="w-full h-12 text-[0.9375rem] font-semibold shadow-[0_8px_16px_rgba(0,201,255,0.2)]">
-                        {template ? 'Update Template' : 'Create Template'}
-                    </Button>
                 </div>
-            </div>
+            </header>
 
-            {/* Right panel — A4 landscape canvas */}
-            <div className="flex flex-col gap-4 w-full overflow-hidden">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} />
-                        Live Preview (A4 Landscape)
-                    </div>
-                    {bgUrl && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                            Drag elements to reposition
-                        </div>
-                    )}
-                </div>
+            {/* ─── BODY ──────────────────────────────────────── */}
+            <div className="cb-body">
+                {/* ─── SIDEBAR (desktop) ─────────────────────── */}
+                <aside className="cb-sidebar">
+                    <button
+                        onClick={() => setActiveTool(activeTool === 'elements' ? null : 'elements')}
+                        className={`cb-sidebar__btn ${activeTool === 'elements' ? 'cb-sidebar__btn--active' : ''}`}
+                    >
+                        <LayoutTemplate size={20} />
+                        <span>Fields</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTool(activeTool === 'bg' ? null : 'bg')}
+                        className={`cb-sidebar__btn ${activeTool === 'bg' ? 'cb-sidebar__btn--active' : ''}`}
+                    >
+                        <ImageIcon size={20} />
+                        <span>Uploads</span>
+                    </button>
+                </aside>
 
-                <div
-                    ref={canvasRef}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    className="w-full max-w-[900px] relative overflow-hidden transition-all duration-300 rounded-md"
-                    style={{
-                        aspectRatio: '297 / 210',
-                        backgroundColor: 'var(--bg-void)',
-                        backgroundImage: bgUrl ? `url(${bgUrl})` : 'linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-                        backgroundSize: bgUrl ? 'cover' : '20px 20px',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                        border: selectedFieldId ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
-                        cursor: dragging ? 'grabbing' : 'default',
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02), inset 0 0 0 1px rgba(255,255,255,0.05)',
-                    }}
-                >
-                    {!bgUrl && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>
-                            <ImageIcon size={48} style={{ opacity: 0.2 }} />
-                            <p style={{ fontSize: '1rem', fontWeight: 500 }}>Upload a background image to start designing</p>
-                            <p style={{ fontSize: '0.8125rem', maxWidth: 300, textAlign: 'center', opacity: 0.7 }}>We recommend a 297mm × 210mm (A4 Landscape) image for optimal results.</p>
-                        </div>
-                    )}
-
-                    {fields.map(f => {
-                        const isSelected = selectedFieldId === f.id
-                        return (
-                            <div
-                                key={f.id}
-                                onMouseDown={(e) => handleMouseDown(f.id, e)}
-                                onClick={() => setSelectedFieldId(f.id)}
-                                style={{
-                                    position: 'absolute',
-                                    left: `${f.x - f.width / 2}%`,
-                                    top: `${f.y}%`,
-                                    width: `${f.width}%`,
-                                    transform: 'translateY(-50%)',
-                                    fontSize: f.fontSize * 0.6,
-                                    fontFamily: f.fontFamily,
-                                    fontWeight: f.bold ? 700 : 400,
-                                    fontStyle: f.italic ? 'italic' : 'normal',
-                                    color: f.color,
-                                    textAlign: f.align,
-                                    cursor: dragging === f.id ? 'grabbing' : 'grab',
-                                    padding: '8px',
-                                    border: isSelected ? '2px solid var(--accent)' : '1px dashed transparent',
-                                    background: isSelected ? 'rgba(0, 201, 255, 0.08)' : 'transparent',
-                                    backdropFilter: isSelected ? 'blur(2px)' : 'none',
-                                    borderRadius: 'var(--r-sm)',
-                                    userSelect: 'none',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    transition: isSelected ? 'none' : 'border-color 0.2s ease, background-color 0.2s ease',
-                                    boxShadow: isSelected ? '0 0 15px rgba(0, 201, 255, 0.3)' : 'none',
-                                    zIndex: isSelected ? 10 : 1,
-                                }}
-                                onMouseEnter={e => {
-                                    if (!isSelected && dragging !== f.id) {
-                                        e.currentTarget.style.border = '1px dashed rgba(255,255,255,0.3)'
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!isSelected && dragging !== f.id) {
-                                        e.currentTarget.style.border = '1px dashed transparent'
-                                        e.currentTarget.style.background = 'transparent'
-                                    }
-                                }}
-                            >
-                                {/* Drag Indicator Context */}
-                                {isSelected && (
-                                    <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', background: 'var(--accent)', color: 'var(--bg-void)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.2)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-                                        {getFieldLabel(f)}
+                {/* ─── DRAWER ────────────────────────────────── */}
+                {activeTool && (
+                    <>
+                        <div className="cb-drawer-overlay" onClick={() => setActiveTool(null)} />
+                        <div className="cb-drawer">
+                            <div className="cb-drawer__header">
+                                <h3>{activeTool === 'elements' ? 'Placeholders' : 'Background'}</h3>
+                                <button onClick={() => setActiveTool(null)} className="cb-drawer__close"><X size={16} /></button>
+                            </div>
+                            <div className="cb-drawer__body">
+                                {activeTool === 'elements' && (
+                                    <div className="cb-drawer__grid">
+                                        <div className="cb-drawer__section-label">Drag onto canvas</div>
+                                        {FIELD_TYPES.map(ft => (
+                                            <button
+                                                key={ft.value}
+                                                onClick={() => {
+                                                    addField(ft.value)
+                                                    if (window.innerWidth < 1024) setActiveTool(null)
+                                                }}
+                                                className="cb-field-card"
+                                            >
+                                                <div className="cb-field-card__add"><Plus size={14} /></div>
+                                                <div className="cb-field-card__label">{ft.label}</div>
+                                                <div className="cb-field-card__placeholder">{ft.placeholder}</div>
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
 
-                                {/* Resize dots (visual only) */}
-                                {isSelected && (
-                                    <>
-                                        <div style={{ position: 'absolute', top: -3, left: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
-                                        <div style={{ position: 'absolute', top: -3, right: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
-                                        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
-                                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 6, height: 6, background: '#fff', border: '1px solid var(--accent)', borderRadius: '50%' }} />
-                                    </>
+                                {activeTool === 'bg' && (
+                                    <div className="cb-drawer__uploads">
+                                        <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="cb-hidden" />
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="cb-upload-zone"
+                                            disabled={uploading}
+                                        >
+                                            <Upload size={24} />
+                                            <span>{uploading ? 'Uploading...' : 'Upload Background'}</span>
+                                            <span className="cb-upload-zone__hint">PNG, JPG up to 5MB</span>
+                                        </button>
+                                        {bgUrl && (
+                                            <div className="cb-upload-preview">
+                                                <img src={bgUrl} alt="Background" />
+                                                <button onClick={() => setBgUrl('')} className="cb-upload-preview__remove">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
-
-                                {getFieldLabel(f)}
                             </div>
-                        )
-                    })}
-                </div>
+                        </div>
+                    </>
+                )}
+
+                {/* ─── CANVAS AREA ───────────────────────────── */}
+                <main className="cb-canvas-area" onClick={() => setSelectedFieldId(null)}>
+                    {/* Zoom controls */}
+                    <div className="cb-zoom-controls">
+                        <button onClick={zoomOut} className="cb-zoom-btn" title="Zoom Out"><ZoomOut size={16} /></button>
+                        <span className="cb-zoom-label">{zoom}%</span>
+                        <button onClick={zoomIn} className="cb-zoom-btn" title="Zoom In"><ZoomIn size={16} /></button>
+                        <button onClick={zoomFit} className="cb-zoom-btn" title="Fit"><Maximize size={16} /></button>
+                    </div>
+
+                    {/* Dot grid */}
+                    <div className="cb-dot-grid" />
+
+                    {/* Canvas */}
+                    <div
+                        ref={canvasRef}
+                        className="cb-canvas"
+                        style={{
+                            transform: `scale(${zoom / 100})`,
+                            backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
+                            backgroundSize: bgUrl ? 'cover' : undefined,
+                            backgroundPosition: 'center',
+                        }}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onClick={() => setSelectedFieldId(null)}
+                    >
+                        {fields.map(f => {
+                            const isSelected = selectedFieldId === f.id
+                            return (
+                                <div
+                                    key={f.id}
+                                    className={`cb-element ${isSelected && viewMode === 'design' ? 'cb-element--selected' : ''}`}
+                                    style={{
+                                        left: `${f.x - f.width / 2}%`,
+                                        top: `${f.y}%`,
+                                        width: `${f.width}%`,
+                                        transform: 'translateY(-50%)',
+                                        fontSize: `${f.fontSize * 0.8}px`,
+                                        fontWeight: f.bold ? 700 : 400,
+                                        fontStyle: f.italic ? 'italic' : 'normal',
+                                        color: f.color,
+                                        textAlign: f.align,
+                                        cursor: viewMode === 'preview' ? 'default' : (dragging === f.id ? 'grabbing' : 'grab'),
+                                        zIndex: isSelected ? 50 : 10,
+                                    }}
+                                    onMouseDown={(e) => viewMode === 'design' && handleMouseDown(f.id, e)}
+                                    onTouchStart={(e) => viewMode === 'design' && handleTouchStart(f.id, e)}
+                                    onClick={(e) => { e.stopPropagation(); setSelectedFieldId(f.id) }}
+                                >
+                                    {/* Resize handles */}
+                                    {isSelected && viewMode === 'design' && (
+                                        <>
+                                            <div className="cb-handle cb-handle--nw" onMouseDown={e => handleResizeStart(f.id, 'nw', e)} />
+                                            <div className="cb-handle cb-handle--ne" onMouseDown={e => handleResizeStart(f.id, 'ne', e)} />
+                                            <div className="cb-handle cb-handle--sw" onMouseDown={e => handleResizeStart(f.id, 'sw', e)} />
+                                            <div className="cb-handle cb-handle--se" onMouseDown={e => handleResizeStart(f.id, 'se', e)} />
+                                            <div className="cb-handle cb-handle--e" onMouseDown={e => handleResizeStart(f.id, 'e', e)} />
+                                            <div className="cb-handle cb-handle--w" onMouseDown={e => handleResizeStart(f.id, 'w', e)} />
+
+                                            {/* Floating pill (Desktop only) */}
+                                            <div className="cb-pill">
+                                                <button onClick={(e) => { e.stopPropagation(); duplicateField(f.id) }} className="cb-pill__btn" title="Duplicate">
+                                                    <Copy size={16} />
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); removeField(f.id) }} className="cb-pill__btn cb-pill__btn--danger" title="Delete">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                    {getFieldDisplayValue(f)}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </main>
             </div>
+
+            {selectedField && viewMode === 'design' && (
+                <div className={`cb-contextbar ${isBarExpanded ? '' : 'cb-contextbar--collapsed'}`}>
+                    {/* Secondary Fixed Mobile Action Bar for Duplicate/Delete */}
+                    <div className="cb-mobile-secondary-bar">
+                        <button onClick={(e) => { e.stopPropagation(); duplicateField(selectedField.id) }} className="cb-mobile-secondary-btn" title="Duplicate">
+                            <Copy size={16} /> <span>Duplicate</span>
+                        </button>
+                        <div className="cb-mobile-secondary-sep" />
+                        <button onClick={(e) => { e.stopPropagation(); removeField(selectedField.id) }} className="cb-mobile-secondary-btn cb-mobile-secondary-btn--danger" title="Delete">
+                            <Trash2 size={16} /> <span>Delete</span>
+                        </button>
+                    </div>
+
+                    {/* Drag handle for mobile */}
+                    <div className="cb-drag-handle" onClick={() => setIsBarExpanded(!isBarExpanded)}>
+                        <div className="cb-drag-handle__pill" />
+                    </div>
+                    {/* Custom text input row */}
+                    {selectedField.field_type === 'custom' && (
+                        <div className="cb-contextbar__custom-row">
+                            <input
+                                type="text"
+                                value={selectedField.customText || ''}
+                                onChange={e => updateField(selectedField.id, { customText: e.target.value })}
+                                className="cb-contextbar__text-input"
+                                placeholder="Enter custom text..."
+                                onClick={e => e.stopPropagation()}
+                            />
+                        </div>
+                    )}
+                    <div className="cb-contextbar__controls">
+                        <button onClick={() => setSelectedFieldId(null)} className="cb-contextbar__done" aria-label="Done">
+                            <Check size={16} />
+                        </button>
+                        <div className="cb-contextbar__sep" />
+                        {/* Font size */}
+                        <div className="cb-contextbar__group cb-contextbar__group--bordered">
+                            <button
+                                onClick={() => updateField(selectedField.id, { fontSize: Math.max(8, selectedField.fontSize - 1) })}
+                                className="cb-contextbar__step-btn" title="Decrease Font Size"  
+                            ><Minus size={14} /></button>
+                            <input
+                                type="number" min={8} max={100}
+                                value={selectedField.fontSize}
+                                onChange={e => updateField(selectedField.id, { fontSize: Math.max(8, Math.min(100, Number(e.target.value) || 8)) })}
+                                className="cb-contextbar__num-input"
+                                onClick={e => e.stopPropagation()}
+                            />
+                            <button
+                                onClick={() => updateField(selectedField.id, { fontSize: Math.min(100, selectedField.fontSize + 1) })}
+                                className="cb-contextbar__step-btn" title="Increase Font Size"
+                            ><Plus size={14} /></button>
+                        </div>
+                        <div className="cb-contextbar__sep" />
+                        {/* Line height */}
+                        <div className="cb-contextbar__group cb-contextbar__group--bordered" title="Line Height">
+                            <MoveVertical size={16} className="cb-contextbar__icon" />
+                            <input
+                                type="number" step={0.1} min={0.5} max={3}
+                                value={selectedField.lineHeight ?? 1.2}
+                                onChange={e => updateField(selectedField.id, { lineHeight: Number(e.target.value) })}
+                                className="cb-contextbar__num-input"
+                            />
+                        </div>
+
+                        {/* Letter spacing */}
+                        <div className="cb-contextbar__group" title="Letter Spacing">
+                            <Space size={16} className="cb-contextbar__icon" />
+                            <input
+                                type="number" step={0.5} min={-5} max={20}
+                                value={selectedField.letterSpacing ?? 0}
+                                onChange={e => updateField(selectedField.id, { letterSpacing: Number(e.target.value) })}
+                                className="cb-contextbar__num-input"
+                            />
+                        </div>
+                        <div className="cb-contextbar__sep" />
+
+                        {/* Typography Grouping (Bold, Italic, Align) */}
+                        <div className="cb-contextbar__group cb-contextbar__group--bordered">
+                            <button
+                                onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
+                                className={`cb-contextbar__toggle ${selectedField.bold ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Bold"
+                                title="Bold"
+                            ><Bold size={16} /></button>
+                            <button
+                                onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
+                                className={`cb-contextbar__toggle ${selectedField.italic ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Italic"
+                                title="Italic"
+                            ><Italic size={16} /></button>
+
+                            <div className="cb-contextbar__align">
+                                {(['left', 'center', 'right'] as const).map(a => (
+                                    <button
+                                        key={a}
+                                        onClick={() => updateField(selectedField.id, { align: a })}
+                                        className={`cb-contextbar__align-btn ${selectedField.align === a ? 'cb-contextbar__align-btn--on' : ''}`} aria-label={`Align ${a}`}
+                                        title={`Align ${a}`}
+                                    >
+                                        {a === 'left' && <AlignLeft size={16} />}
+                                        {a === 'center' && <AlignCenter size={16} />}
+                                        {a === 'right' && <AlignRight size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="cb-contextbar__sep" />
+
+                        {/* Color */}
+                        <div className="cb-contextbar__color-wrap" title="Text Color">
+                            <input
+                                type="color"
+                                value={selectedField.color}
+                                onChange={e => updateField(selectedField.id, { color: e.target.value })}
+                                className="cb-contextbar__color"
+                                aria-label="Color"
+                            />
+                        </div>
+                        <div className="cb-contextbar__sep" />
+                        {/* Width */}
+                        <div className="cb-contextbar__group cb-contextbar__width-group cb-contextbar__group--bordered">
+                            <span className="cb-contextbar__label" style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginRight: '4px' }}>W</span>
+                            <button
+                                onClick={() => updateField(selectedField.id, { width: Math.max(10, selectedField.width - 1) })}
+                                className="cb-contextbar__step-btn" title="Decrease Width"
+                            ><Minus size={14} /></button>
+                            <input
+                                type="number" min={10} max={100}
+                                value={selectedField.width}
+                                onChange={e => updateField(selectedField.id, { width: Math.max(10, Math.min(100, Number(e.target.value) || 10)) })}
+                                className="cb-contextbar__num-input"
+                                onClick={e => e.stopPropagation()}
+                            />
+                            <button
+                                onClick={() => updateField(selectedField.id, { width: Math.min(100, selectedField.width + 1) })}
+                                className="cb-contextbar__step-btn" title="Increase Width"
+                            ><Plus size={14} /></button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── MOBILE FAB (no field selected) ────────────── */}
+            {!selectedField && viewMode === 'design' && (
+                <div className="cb-mobile-fab">
+                    <button onClick={() => setActiveTool('elements')} className="cb-mobile-fab__btn">
+                        <Plus size={18} /> Add
+                    </button>
+                    <button onClick={() => setActiveTool('bg')} className="cb-mobile-fab__btn">
+                        <Upload size={18} /> Bg
+                    </button>
+                </div>
+            )}
+
+            {/* ─── SETTINGS MODAL ────────────────────────────── */}
+            {isSettingsOpen && (
+                <div className="cb-modal-overlay" onClick={() => setIsSettingsOpen(false)}>
+                    <div className="cb-modal" onClick={e => e.stopPropagation()}>
+                        <div className="cb-modal__header">
+                            <h2><Settings size={20} /> Settings</h2>
+                            <button onClick={() => setIsSettingsOpen(false)} className="cb-modal__close"><X size={20} /></button>
+                        </div>
+                        <div className="cb-modal__body">
+                            <FormGroup label="Template Name">
+                                <input
+                                    value={templateName}
+                                    onChange={e => setTemplateName(e.target.value)}
+                                    className="cb-modal__input"
+                                    placeholder="Template Name"
+                                />
+                            </FormGroup>
+                            <FormGroup label="Link to Event">
+                                <select
+                                    value={eventId}
+                                    onChange={e => setEventId(e.target.value)}
+                                    disabled={!!template}
+                                    className="cb-modal__input"
+                                >
+                                    <option value="">Select Event</option>
+                                    {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                                </select>
+                            </FormGroup>
+                            <FormGroup label="Certificate Type">
+                                <div className="cb-modal__type-grid">
+                                    {(['participation', 'winner'] as const).map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => setCertType(t)}
+                                            className={`cb-modal__type-btn ${certType === t ? 'cb-modal__type-btn--active' : ''}`}
+                                        >{t}</button>
+                                    ))}
+                                </div>
+                            </FormGroup>
+                            <Button onClick={() => setIsSettingsOpen(false)} className="cb-modal__save-btn">
+                                Save Settings
+                            </Button>
+                            {template && (
+                                <button
+                                    onClick={() => {
+                                        if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) return
+                                        startTransition(async () => {
+                                            const result = await deleteTemplateAction(template.id)
+                                            if (result.success) {
+                                                router.push(basePath)
+                                            } else {
+                                                setToast({ message: result.error || 'Failed to delete', type: 'error' })
+                                            }
+                                        })
+                                    }}
+                                    className="cb-modal__delete-btn"
+                                    disabled={pending}
+                                >
+                                    <Trash2 size={14} />
+                                    {pending ? 'Deleting...' : 'Delete Template'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
