@@ -7,14 +7,16 @@ import { format } from 'date-fns'
 import {
     verifyPaymentAction,
     rejectPaymentAction,
+    processRefundAction,
     getPaymentProofSignedUrlAction,
 } from '@/lib/actions/registrationActions'
-import type { IndividualRegistration, Event } from '@/lib/types/db'
+import type { IndividualRegistration, Event, Team } from '@/lib/types/db'
 import { CheckCircle, XCircle, Image, Clock, AlertCircle, Hourglass, List } from 'lucide-react'
 
 interface PaymentsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
+    teams: Team[]
 }
 
 function PaymentStatusBadge({ status }: { status: string }) {
@@ -23,6 +25,8 @@ function PaymentStatusBadge({ status }: { status: string }) {
         case 'submitted':  return <Badge variant="info">Proof Submitted</Badge>
         case 'verified':   return <Badge variant="success">Verified</Badge>
         case 'rejected':   return <Badge variant="failed">Rejected</Badge>
+        case 'refund_requested': return <Badge variant="pending">Refund Requested</Badge>
+        case 'refunded':   return <Badge variant="failed">Refunded</Badge>
         default:           return <Badge variant="pending">{status}</Badge>
     }
 }
@@ -48,11 +52,18 @@ function ShowProofButton({ filePath }: { filePath: string }) {
     )
 }
 
-function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: Event }) {
+function RegistrationRow({ reg, team, event }: { reg?: IndividualRegistration; team?: Team; event: Event }) {
     const [pending, startTransition] = useTransition()
     const [showReject, setShowReject] = useState(false)
     const [rejectReason, setRejectReason] = useState('')
-    const [localStatus, setLocalStatus] = useState(reg.payment_status)
+    
+    // Status source
+    const paymentStatus = team ? (team as any).payment_status : (reg?.payment_status ?? 'pending')
+    const proofUrl = team ? (team as any).payment_proof_url : reg?.payment_proof_url
+    const submittedAt = team ? (team as any).payment_submitted_at : reg?.payment_submitted_at
+    const rejectionReason = team ? (team as any).rejection_reason : reg?.rejection_reason
+
+    const [localStatus, setLocalStatus] = useState(paymentStatus)
     const [error, setError] = useState<string | null>(null)
 
     function wrap(fn: () => Promise<{ success: boolean; error?: string }>, onSuccess?: () => void) {
@@ -67,20 +78,6 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
         })
     }
 
-    function handleVerify() {
-        wrap(
-            () => verifyPaymentAction({ registration_id: reg.id, event_id: event.id }),
-            () => setLocalStatus('verified')
-        )
-    }
-
-    function handleReject() {
-        if (!rejectReason.trim()) { setError('Please enter a rejection reason'); return }
-        wrap(
-            () => rejectPaymentAction({ registration_id: reg.id, event_id: event.id, rejection_reason: rejectReason }),
-            () => { setLocalStatus('rejected'); setShowReject(false) }
-        )
-    }
 
     return (
         <div style={{
@@ -98,22 +95,23 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
             <div style={{ flex: '1 1 auto', minWidth: 200 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>
-                        {reg.student?.name ?? 'Unknown Student'}
+                        {team ? team.team_name : (reg?.student?.name ?? 'Unknown Student')}
                     </div>
+                    {team && <Badge variant="info">Team</Badge>}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    {reg.student?.email}
-                    {reg.student?.programme && ` · ${reg.student.programme}`}
-                    {reg.student?.semester && ` · Sem ${reg.student.semester}`}
+                    {team ? `Creator: ${team.creator?.name || 'Unknown'}` : reg?.student?.email}
+                    {!team && reg?.student?.programme && ` · ${reg.student.programme}`}
+                    {!team && reg?.student?.semester && ` · Sem ${reg.student.semester}`}
                 </div>
-                {reg.payment_submitted_at && (
+                {submittedAt && (
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                        Submitted {format(new Date(reg.payment_submitted_at), 'dd MMM yyyy, hh:mm a')}
+                        Submitted {format(new Date(submittedAt), 'dd MMM yyyy, hh:mm a')}
                     </div>
                 )}
-                {reg.rejection_reason && localStatus === 'rejected' && (
+                {rejectionReason && localStatus === 'rejected' && (
                     <div style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: 4, fontWeight: 500 }}>
-                        Rejection reason: {reg.rejection_reason}
+                        Rejection reason: {rejectionReason}
                     </div>
                 )}
                 {error && (
@@ -128,7 +126,7 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
                 </div>
                 <PaymentStatusBadge status={localStatus} />
 
-                {reg.payment_proof_url && <ShowProofButton filePath={reg.payment_proof_url} />}
+                {proofUrl && <ShowProofButton filePath={proofUrl} />}
 
                 {/* Inline Action block */}
                 {showReject ? (
@@ -141,7 +139,13 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
                             placeholder="Reason..."
                             autoFocus
                         />
-                        <Button size="sm" variant="danger" onClick={handleReject} loading={pending} disabled={!rejectReason.trim()}>
+                        <Button size="sm" variant="danger" onClick={() => {
+                             if (!rejectReason.trim()) { setError('Please enter a rejection reason'); return }
+                             wrap(
+                                 () => rejectPaymentAction({ registration_id: reg?.id, team_id: team?.id, event_id: event.id, rejection_reason: rejectReason }),
+                                 () => { setLocalStatus('rejected'); setShowReject(false) }
+                             )
+                        }} loading={pending} disabled={!rejectReason.trim()}>
                             Confirm
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setShowReject(false); setRejectReason('') }} disabled={pending}>
@@ -154,7 +158,10 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <Button
                                     size="sm"
-                                    onClick={handleVerify}
+                                    onClick={() => wrap(
+                                        () => verifyPaymentAction({ registration_id: reg?.id, team_id: team?.id, event_id: event.id }),
+                                        () => setLocalStatus('verified')
+                                    )}
                                     loading={pending}
                                     style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
                                 >
@@ -173,11 +180,30 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
                         {localStatus === 'rejected' && (
                             <Button
                                 size="sm"
-                                onClick={handleVerify}
+                                onClick={() => wrap(
+                                    () => verifyPaymentAction({ registration_id: reg?.id, team_id: team?.id, event_id: event.id }),
+                                    () => setLocalStatus('verified')
+                                )}
                                 loading={pending}
                                 style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
                             >
                                 <CheckCircle size={14} style={{ marginRight: 6 }}/> Approve Anyway
+                            </Button>
+                        )}
+                        {localStatus === 'refund_requested' && (
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    if (!confirm('Confirm refund for this registration/team?')) return
+                                    wrap(
+                                        () => processRefundAction({ registration_id: reg?.id, team_id: team?.id, event_id: event.id }),
+                                        () => setLocalStatus('refunded')
+                                    )
+                                }}
+                                loading={pending}
+                                style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                            >
+                                <XCircle size={14} style={{ marginRight: 6 }}/> Process Refund
                             </Button>
                         )}
                     </>
@@ -187,29 +213,33 @@ function RegistrationRow({ reg, event }: { reg: IndividualRegistration; event: E
     )
 }
 
-export function PaymentsPanel({ event, registrations }: PaymentsPanelProps) {
-    const [filter, setFilter] = useState<'all' | 'submitted' | 'pending' | 'verified' | 'rejected'>('submitted')
+export function PaymentsPanel({ event, registrations, teams }: PaymentsPanelProps) {
+    const [filter, setFilter] = useState<'all' | 'submitted' | 'pending' | 'verified' | 'rejected' | 'refund_requested' | 'refunded'>('submitted')
 
-    const paidRegs = registrations.filter(r => r.payment_status !== 'not_required')
+    // Source of truth: Teams for team events, registrations for individual events
+    const isTeamEvent = event.participant_type === 'multiple'
+    const items = isTeamEvent ? teams : registrations.filter(r => r.payment_status !== 'not_required')
 
     const filtered = filter === 'all'
-        ? paidRegs
-        : paidRegs.filter(r => r.payment_status === filter)
+        ? items
+        : items.filter((i: any) => i.payment_status === filter)
 
     const counts = {
-        all: paidRegs.length,
-        pending: paidRegs.filter(r => r.payment_status === 'pending').length,
-        submitted: paidRegs.filter(r => r.payment_status === 'submitted').length,
-        verified: paidRegs.filter(r => r.payment_status === 'verified').length,
-        rejected: paidRegs.filter(r => r.payment_status === 'rejected').length,
+        all: items.length,
+        pending: items.filter((i: any) => i.payment_status === 'pending').length,
+        submitted: items.filter((i: any) => i.payment_status === 'submitted').length,
+        verified: items.filter((i: any) => i.payment_status === 'verified').length,
+        rejected: items.filter((i: any) => i.payment_status === 'rejected').length,
+        refund_requested: items.filter((i: any) => i.payment_status === 'refund_requested').length,
+        refunded: items.filter((i: any) => i.payment_status === 'refunded').length,
     }
 
-    if (paidRegs.length === 0) {
+    if (items.length === 0) {
         return (
             <div className="glass" style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                 <Clock size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
-                <p style={{ fontWeight: 600, marginBottom: 4 }}>No payment registrations yet</p>
-                <p style={{ fontSize: '0.875rem' }}>Students who register for this paid event will appear here.</p>
+                <p style={{ fontWeight: 600, marginBottom: 4 }}>No {isTeamEvent ? 'team' : 'student'} registrations yet</p>
+                <p style={{ fontSize: '0.875rem' }}>{isTeamEvent ? 'Teams' : 'Students'} who register for this paid event will appear here.</p>
             </div>
         )
     }
@@ -224,6 +254,8 @@ export function PaymentsPanel({ event, registrations }: PaymentsPanelProps) {
                     { key: 'pending', label: 'Awaiting Payment', color: '#f59e0b', icon: Clock },
                     { key: 'verified', label: 'Verified', color: '#22c55e', icon: CheckCircle },
                     { key: 'rejected', label: 'Rejected', color: '#ef4444', icon: XCircle },
+                    { key: 'refund_requested', label: 'Refund Req.', color: '#fb923c', icon: Clock },
+                    { key: 'refunded', label: 'Refunded', color: '#71717a', icon: XCircle },
                 ] as const).map(item => {
                     const isActive = filter === item.key;
                     return (
@@ -285,8 +317,13 @@ export function PaymentsPanel({ event, registrations }: PaymentsPanelProps) {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {filtered.map(reg => (
-                        <RegistrationRow key={reg.id} reg={reg} event={event} />
+                    {filtered.map((item: any) => (
+                        <RegistrationRow 
+                            key={item.id} 
+                            reg={isTeamEvent ? undefined : item} 
+                            team={isTeamEvent ? item : undefined} 
+                            event={event} 
+                        />
                     ))}
                 </div>
             )}

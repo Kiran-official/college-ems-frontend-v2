@@ -143,8 +143,8 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                                     size="sm" 
                                                     style={{ color: 'var(--danger)' }} 
                                                     onClick={() => handleDeleteTeam(t.id)}
-                                                    disabled={t.memberCount > 0 || isDeleting || event.status !== 'open'}
-                                                    title={t.memberCount > 0 ? "Remove members first" : "Delete Team"}
+                                                    disabled={isDeleting || (!isAdminOrTeacher && (t.memberCount > 0 || event.status !== 'open'))}
+                                                    title={!isAdminOrTeacher && t.memberCount > 0 ? "Remove members first" : "Delete Team"}
                                                 >
                                                     <Trash2 size={14} />
                                                 </Button>
@@ -163,6 +163,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                 <AddParticipantModal 
                     eventId={event.id}
                     eventType="team"
+                    isPaid={event.is_paid}
                     teams={mappedTeams.map(m => ({ id: m.id, team_name: m.team_name, memberCount: m.memberCount }))}
                     teamSize={event.team_size || undefined}
                     open={showAddModal}

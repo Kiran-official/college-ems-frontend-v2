@@ -1,4 +1,5 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { createSSRClient } from '@/lib/supabase/server'
 import { getEventById } from '@/lib/queries/events'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
@@ -15,6 +16,27 @@ interface Props {
 
 export default async function TeacherEventDetailPage({ params }: Props) {
     const { id } = await params
+    
+    // Auth check
+    const supabase = await createSSRClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/login')
+
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+    
+    if (profile?.role === 'teacher') {
+        const { data: fic } = await supabase
+            .from('faculty_in_charge')
+            .select('id')
+            .eq('event_id', id)
+            .eq('teacher_id', user.id)
+            .maybeSingle()
+        
+        if (!fic) redirect('/teacher/events')
+    } else if (profile?.role !== 'admin') {
+        redirect('/')
+    }
+
     const event = await getEventById(id)
     if (!event) notFound()
 

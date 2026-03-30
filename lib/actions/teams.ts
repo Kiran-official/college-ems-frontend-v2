@@ -36,10 +36,14 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; er
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
+        
+        // Check if admin or teacher
+        const { data: profile } = await admin.from('users').select('role').eq('id', user.id).single()
+        const isAdmin = profile?.role === 'admin' || profile?.role === 'teacher'
 
         // Check if team has participants
         const { count } = await admin.from('team_members').select('*', { count: 'exact', head: true }).eq('team_id', teamId).eq('status', 'approved')
-        if (count && count > 0) {
+        if (!isAdmin && count && count > 0) {
             return { success: false, error: 'Remove members first' }
         }
 

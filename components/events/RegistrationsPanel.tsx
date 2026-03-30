@@ -245,6 +245,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
                 <AddParticipantModal 
                     eventId={event.id}
                     eventType={isTeam ? 'team' : 'individual'}
+                    isPaid={event.is_paid}
                     teams={mappedTeams}
                     teamSize={event.team_size || undefined}
                     open={showAddModal}

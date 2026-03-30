@@ -104,7 +104,15 @@ export async function createTeamAction(data: {
             .maybeSingle()
         if (existingReg?.team_id) return { success: false, error: 'You are already in a team for this event' }
 
-        // 3. Auto-cancel any pending join requests the student sent
+        // 3. Check for unique team name in this event
+        const { data: nameConflict } = await admin.from('teams')
+            .select('id')
+            .eq('event_id', data.event_id)
+            .ilike('team_name', data.team_name.trim())
+            .maybeSingle()
+        if (nameConflict) return { success: false, error: 'A team with this name already exists for this event' }
+
+        // 4. Auto-cancel any pending join requests the student sent
         await admin.from('team_members')
             .delete()
             .eq('student_id', user.id)
@@ -115,10 +123,14 @@ export async function createTeamAction(data: {
             )
 
         // 4. Create the team
+        const { data: event } = await admin.from('events').select('is_paid').eq('id', data.event_id).single()
+        const isPaid = event?.is_paid ?? false
+
         const { data: team, error: teamError } = await admin.from('teams').insert({
             event_id: data.event_id,
             team_name: data.team_name.trim(),
             created_by: user.id,
+            payment_status: isPaid ? 'pending' : 'not_required',
         }).select('id').single()
         if (teamError || !team) return { success: false, error: teamError?.message ?? 'Failed to create team' }
 
@@ -172,6 +184,43 @@ export async function createTeamAction(data: {
         return { success: true, team_id: team.id }
     } catch (e) {
         console.error('createTeamAction error:', e)
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function editTeamAction(data: {
+    team_id: string
+    event_id: string
+    new_name: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // 1. Verify caller is the creator
+        const { data: team } = await admin.from('teams').select('id, created_by').eq('id', data.team_id).single()
+        if (!team) return { success: false, error: 'Team not found' }
+        if (team.created_by !== user.id) return { success: false, error: 'Only the team creator can rename the team' }
+
+        // 2. Check for unique team name in this event (excluding itself)
+        const { data: nameConflict } = await admin.from('teams')
+            .select('id')
+            .eq('event_id', data.event_id)
+            .ilike('team_name', data.new_name.trim())
+            .neq('id', data.team_id)
+            .maybeSingle()
+        if (nameConflict) return { success: false, error: 'A team with this name already exists for this event' }
+
+        // 3. Update name
+        const { error } = await admin.from('teams').update({ team_name: data.new_name.trim() }).eq('id', data.team_id)
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
         return { success: false, error: 'An unexpected error occurred' }
     }
 }
@@ -544,11 +593,12 @@ export type RegisterInput = {
     teamId?: string
     teamName?: string
     isManual: boolean
+    paymentStatus?: 'pending' | 'verified'
 }
 
 export async function registerParticipantAction(
     input: RegisterInput
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; teamId?: string | null; error?: string }> {
     try {
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
@@ -638,11 +688,25 @@ export async function registerParticipantAction(
                 if (tmError) return { success: false, error: 'Failed to add to team: ' + tmError.message }
 
             } else if (input.teamName) {
-                // Creating a new team
+                // 1. Check for unique team name in this event
+                const { data: nameConflict } = await admin.from('teams')
+                    .select('id')
+                    .eq('event_id', input.eventId)
+                    .ilike('team_name', input.teamName.trim())
+                    .maybeSingle()
+                if (nameConflict) return { success: false, error: 'A team with this name already exists for this event' }
+
+                // 2. Creating a new team
+                const { data: eventData } = await admin.from('events').select('is_paid').eq('id', input.eventId).single()
+                const isPaid = eventData?.is_paid ?? false
+
                 const { data: newTeam, error: teamError } = await admin.from('teams').insert({
                     event_id: input.eventId,
                     team_name: input.teamName.trim(),
-                    created_by: input.userId // The target user "owns" this team
+                    created_by: input.userId, // The target user "owns" this team
+                    payment_status: input.isManual && input.paymentStatus ? input.paymentStatus : (isPaid ? 'pending' : 'not_required'),
+                    verified_at: input.isManual && input.paymentStatus === 'verified' ? new Date().toISOString() : null,
+                    verified_by: input.isManual && input.paymentStatus === 'verified' ? user.id : null,
                 }).select('id').single()
 
                 if (teamError || !newTeam) return { success: false, error: 'Failed to create new team' }
@@ -662,12 +726,19 @@ export async function registerParticipantAction(
             }
         }
 
+        // 4. Fetch event info again for payment status
+        const { data: evData } = await admin.from('events').select('is_paid').eq('id', input.eventId).single()
+        const isPaid = evData?.is_paid ?? false
+
         // Final step: insert individual registration
         const { error: regError } = await admin.from('individual_registrations').insert({
             student_id: input.userId,
             event_id: input.eventId,
             team_id: finalTeamId,
-            attendance_status: 'registered'
+            attendance_status: 'registered',
+            payment_status: input.isManual && input.paymentStatus ? input.paymentStatus : (isPaid ? 'pending' : 'not_required'),
+            verified_at: input.isManual && input.paymentStatus === 'verified' ? new Date().toISOString() : null,
+            verified_by: input.isManual && input.paymentStatus === 'verified' ? user.id : null,
         })
 
         if (regError) {
@@ -686,7 +757,7 @@ export async function registerParticipantAction(
         revalidatePath(`/teacher/events/${input.eventId}`)
         revalidatePath(`/events/${input.eventId}`)
 
-        return { success: true }
+        return { success: true, teamId: finalTeamId }
     } catch (error) {
         console.error('registerParticipantAction error:', error)
         return { success: false, error: 'An unexpected error occurred' }
@@ -709,7 +780,7 @@ export async function uploadPaymentProofAction(data: {
 
         // Verify this registration belongs to the current user
         const { data: reg } = await ssr.from('individual_registrations')
-            .select('id, student_id, payment_status')
+            .select('id, student_id, payment_status, team_id')
             .eq('id', data.registration_id)
             .eq('student_id', user.id)
             .maybeSingle()
@@ -722,7 +793,7 @@ export async function uploadPaymentProofAction(data: {
 
         const admin = createAdminClient()
 
-        // Upload to payment-proofs bucket: path = {user_id}/{registration_id}.{ext}
+        // Upload to payment-proofs bucket: path = {user_id}/{registration_id/team_id}.{ext}
         const filePath = `${user.id}/${data.registration_id}.${data.file_ext}`
 
         // Decode base64
@@ -737,17 +808,28 @@ export async function uploadPaymentProofAction(data: {
             })
         if (uploadError) return { success: false, error: 'Upload failed: ' + uploadError.message }
 
-        // Get the public URL (we'll use signed URL at read time, but store the path)
-        const { error: updateError } = await admin.from('individual_registrations').update({
-            payment_status: 'submitted',
-            payment_proof_url: filePath,
-            payment_submitted_at: new Date().toISOString(),
-            rejection_reason: null,
-        }).eq('id', data.registration_id)
-
-        if (updateError) return { success: false, error: updateError.message }
+        // Update either Team or Individual Registration
+        if (reg.team_id) {
+            const { error: teamUpdateError } = await admin.from('teams').update({
+                payment_status: 'submitted',
+                payment_proof_url: filePath,
+                payment_submitted_at: new Date().toISOString(),
+                rejection_reason: null,
+            }).eq('id', reg.team_id)
+            if (teamUpdateError) return { success: false, error: teamUpdateError.message }
+        } else {
+            const { error: updateError } = await admin.from('individual_registrations').update({
+                payment_status: 'submitted',
+                payment_proof_url: filePath,
+                payment_submitted_at: new Date().toISOString(),
+                rejection_reason: null,
+            }).eq('id', data.registration_id)
+            if (updateError) return { success: false, error: updateError.message }
+        }
 
         revalidatePath(`/student/events/${data.event_id}`)
+        revalidatePath(`/admin/events/${data.event_id}`)
+        revalidatePath(`/teacher/events/${data.event_id}`)
         return { success: true }
     } catch (e) {
         console.error('uploadPaymentProofAction error:', e)
@@ -756,7 +838,8 @@ export async function uploadPaymentProofAction(data: {
 }
 
 export async function verifyPaymentAction(data: {
-    registration_id: string
+    registration_id?: string
+    team_id?: string
     event_id: string
 }): Promise<{ success: boolean; error?: string }> {
     try {
@@ -764,21 +847,28 @@ export async function verifyPaymentAction(data: {
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
 
-        // Only admins/teachers (faculty in charge) can verify
         const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
         if (!profile || !['admin', 'teacher'].includes(profile.role)) {
             return { success: false, error: 'Not authorised to verify payments' }
         }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('individual_registrations').update({
-            payment_status: 'verified',
+        const payload = {
+            payment_status: 'verified' as const,
             verified_at: new Date().toISOString(),
             verified_by: user.id,
             rejection_reason: null,
-        }).eq('id', data.registration_id)
+        }
 
-        if (error) return { success: false, error: error.message }
+        if (data.team_id) {
+            const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
+            if (error) return { success: false, error: error.message }
+        } else if (data.registration_id) {
+            const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
+            if (error) return { success: false, error: error.message }
+        } else {
+             return { success: false, error: 'No target specified' }
+        }
 
         revalidatePath(`/admin/events/${data.event_id}`)
         revalidatePath(`/teacher/events/${data.event_id}`)
@@ -790,7 +880,8 @@ export async function verifyPaymentAction(data: {
 }
 
 export async function rejectPaymentAction(data: {
-    registration_id: string
+    registration_id?: string
+    team_id?: string
     event_id: string
     rejection_reason: string
 }): Promise<{ success: boolean; error?: string }> {
@@ -807,14 +898,91 @@ export async function rejectPaymentAction(data: {
         if (!data.rejection_reason.trim()) return { success: false, error: 'Rejection reason is required' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('individual_registrations').update({
-            payment_status: 'rejected',
+        const payload = {
+            payment_status: 'rejected' as const,
             rejection_reason: data.rejection_reason.trim(),
             verified_at: null,
             verified_by: null,
-        }).eq('id', data.registration_id)
+        }
 
-        if (error) return { success: false, error: error.message }
+        if (data.team_id) {
+            const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
+            if (error) return { success: false, error: error.message }
+        } else if (data.registration_id) {
+            const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
+            if (error) return { success: false, error: error.message }
+        }
+
+        revalidatePath(`/admin/events/${data.event_id}`)
+        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function requestRefundAction(data: {
+    registration_id?: string
+    team_id?: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const payload = { payment_status: 'refund_requested' as const }
+
+        if (data.team_id) {
+            // Verify user is the team creator
+            const { data: team } = await admin.from('teams').select('created_by').eq('id', data.team_id).single()
+            if (team?.created_by !== user.id) return { success: false, error: 'Only the team creator can request a refund' }
+            
+            const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
+            if (error) return { success: false, error: error.message }
+        } else if (data.registration_id) {
+            // Verify ownership
+            const { data: reg } = await admin.from('individual_registrations').select('student_id').eq('id', data.registration_id).single()
+            if (reg?.student_id !== user.id) return { success: false, error: 'Not authorised' }
+
+            const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
+            if (error) return { success: false, error: error.message }
+        }
+
+        revalidatePath(`/student/events/${data.event_id}`)
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function processRefundAction(data: {
+    registration_id?: string
+    team_id?: string
+    event_id: string
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile || !['admin', 'teacher'].includes(profile.role)) {
+            return { success: false, error: 'Not authorised' }
+        }
+
+        const admin = createAdminClient()
+        const payload = { payment_status: 'refunded' as const }
+
+        if (data.team_id) {
+            const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
+            if (error) return { success: false, error: error.message }
+        } else if (data.registration_id) {
+            const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
+            if (error) return { success: false, error: error.message }
+        }
 
         revalidatePath(`/admin/events/${data.event_id}`)
         revalidatePath(`/teacher/events/${data.event_id}`)

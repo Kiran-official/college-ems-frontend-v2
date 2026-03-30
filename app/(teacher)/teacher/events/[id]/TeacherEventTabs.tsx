@@ -3,16 +3,19 @@
 import { useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { RegistrationsPanel } from '@/components/events/RegistrationsPanel'
+import { TeamsPanel } from '@/components/events/TeamsPanel'
 import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
+import { PaymentsPanel } from '@/components/events/PaymentsPanel'
 import { Button } from '@/components/ui/Button'
 import { openEventAction, closeEventAction, publishResultsAction, completeEventAction } from '@/lib/actions/eventActions'
 import { syncEventCertificatesAction } from '@/lib/actions/certificateActions'
 import type { Event, IndividualRegistration, Team, Winner, Certificate, CertificateTemplate } from '@/lib/types/db'
 import { AlertTriangle } from 'lucide-react'
+import { EventActionHeader } from '@/components/events/EventActionHeader'
 
-type Tab = 'registrations' | 'attendance' | 'winners' | 'certificates' | 'actions'
+type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates'
 
 interface TeacherEventTabsProps {
     event: Event
@@ -29,7 +32,11 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
     const searchParams = useSearchParams()
     const pathname = usePathname()
     
-    const validTabs: Tab[] = ['registrations', 'attendance', 'winners', 'certificates', 'actions']
+    const validTabs: Tab[] = ['registrations']
+    if (event.participant_type === 'multiple') validTabs.push('teams')
+    if (event.is_paid) validTabs.push('payments')
+    validTabs.push('attendance', 'winners', 'certificates')
+
     const queryTab = searchParams.get('tab') as Tab | null
     const tab: Tab = queryTab && validTabs.includes(queryTab) ? queryTab : 'registrations'
 
@@ -55,8 +62,10 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
 
     return (
         <div>
-            <div className="tab-bar">
-                {(['registrations', 'attendance', 'winners', 'certificates', 'actions'] as Tab[]).map(t => {
+            <EventActionHeader event={event} registrations={registrations} />
+
+            <div className="tab-bar overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
+                {validTabs.map(t => {
                     const hasMissingTemplates = t === 'certificates' && (
                         (registrations.length > 0 && !hasParticipationTemplate) ||
                         (winners.length > 0 && !hasWinnerTemplate)
@@ -74,7 +83,9 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
             </div>
 
             <div style={{ marginTop: 24 }}>
-                {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} />}
+                {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} teams={teams} />}
+                {tab === 'teams' && <TeamsPanel event={event} teams={teams} registrations={registrations} />}
+                {tab === 'payments' && <PaymentsPanel event={event} registrations={registrations} teams={teams} />}
                 {tab === 'attendance' && <AttendancePanel event={event} registrations={registrations} />}
                 {tab === 'winners' && <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} />}
                 {tab === 'certificates' && (
@@ -86,79 +97,6 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
                         createTemplatePath="/teacher/templates/create"
                         winners={winners}
                     />
-                )}
-                {tab === 'actions' && (
-                    <div className="glass" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Event Actions</h3>
-
-                        {event.status === 'open' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Button variant="outline" onClick={() => handleAction(() => closeEventAction(event.id))} loading={actionPending}>Close Registrations</Button>
-                                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>Stop registrations and enable attendance marking.</span>
-                            </div>
-                        )}
-                        {event.status === 'closed' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                {incompleteAttendanceCount > 0 && (
-                                    <div className="glass" style={{ padding: 16, border: '1px solid var(--warning-bg)', color: 'var(--warning)', fontSize: '0.875rem', fontWeight: 500 }}>
-                                        ⚠️ Attendance marking is incomplete ({incompleteAttendanceCount} students left). Please mark all students as Attended or Absent before finalizing.
-                                    </div>
-                                )}
-                                {!event.results_published && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => handleAction(() => publishResultsAction(event.id))} 
-                                            loading={actionPending}
-                                            disabled={incompleteAttendanceCount > 0}
-                                        >
-                                            Publish Results
-                                        </Button>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>Make winners visible to students.</span>
-                                    </div>
-                                )}
-                                {event.results_published && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <Button 
-                                            variant="primary" 
-                                            onClick={() => handleAction(() => completeEventAction(event.id))} 
-                                            loading={actionPending}
-                                            disabled={incompleteAttendanceCount > 0}
-                                        >
-                                            Complete Event
-                                        </Button>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>Finalize everything.</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {event.status === 'completed' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div style={{ fontSize: '0.9375rem', color: 'var(--success)' }}>
-                                    ✓ This event is completed.
-                                </div>
-                                <div className="glass" style={{ padding: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                                    <div style={{ fontSize: '0.875rem', marginBottom: 12 }}>
-                                        <strong>Certificate Recovery:</strong> If any participation or winner certificates are missing, you can sync them now.
-                                    </div>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => handleAction(async () => {
-                                            const res = await syncEventCertificatesAction(event.id)
-                                            if (res.success) {
-                                                alert(`Successfully synced! Queued ${res.queued} missing certificates.`)
-                                            }
-                                            return res
-                                        })} 
-                                        loading={actionPending}
-                                    >
-                                        Sync Missing Certificates
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
                 )}
             </div>
         </div>

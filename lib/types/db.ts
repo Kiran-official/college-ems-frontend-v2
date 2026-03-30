@@ -11,7 +11,7 @@ export type AttendanceStatus = 'registered' | 'attended' | 'absent'
 export type CertificateType = 'participation' | 'winner'
 export type CertificateStatus = 'pending' | 'processing' | 'generated' | 'failed'
 export type WinnerType = 'student' | 'team'
-export type PaymentStatus = 'not_required' | 'pending' | 'submitted' | 'verified' | 'rejected'
+export type PaymentStatus = 'not_required' | 'pending' | 'submitted' | 'verified' | 'rejected' | 'refund_requested' | 'refunded'
 
 // ── Core Entities ──────────────────────────────────────────────
 
@@ -104,6 +104,13 @@ export interface Team {
     team_name: string
     created_by: string
     created_at: string
+    // Payment fields
+    payment_status: PaymentStatus
+    payment_proof_url?: string | null
+    payment_submitted_at?: string | null
+    verified_at?: string | null
+    verified_by?: string | null
+    rejection_reason?: string | null
     // Joined fields
     members?: TeamMember[]
     creator?: User

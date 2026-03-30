@@ -1107,15 +1107,17 @@ img {
   /* Lightened slate */
   margin-bottom: 40px;
   font-weight: 500;
+  opacity: 1 !important;
 }
 
 /* Premium Inputs */
 .login-page .form-input,
-.register-page .form-input {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+.register-page .form-input,
+.change-password-page .form-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 14px !important;
-  color: #F8FAFC !important;
+  color: #FFFFFF !important;
   height: 48px !important;
   padding: 0 16px !important;
   transition: all 0.3s ease !important;
@@ -1129,11 +1131,13 @@ img {
 }
 
 .login-page .form-label,
-.register-page .form-label {
-  color: #CBD5E1 !important;
+.register-page .form-label,
+.change-password-page .form-label {
+  color: #FFFFFF !important;
   font-weight: 600 !important;
   font-size: 0.8125rem !important;
   margin-bottom: 8px !important;
+  opacity: 1 !important;
 }
 
 /* Premium Primary Button */
@@ -1216,35 +1220,55 @@ img {
 /* ── Change Password Page ───────────────────────────────────────── */
 .change-password-page {
   min-height: 100vh;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
-  background: var(--bg-void);
-  background-image: url('/assets/login_bg.png');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background: #05040f !important; /* Force dark background */
+  background-image: url('/assets/login_bg.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.change-password-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at bottom right, rgba(192, 38, 211, 0.15) 0%, transparent 50%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .change-password-card {
   width: 100%;
   max-width: 440px;
   padding: 44px;
+  background: rgba(13, 12, 34, 0.85) !important; /* Darker glass background */
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important; /* Stronger purple border */
+  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.8),
+              inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
 }
 
 .first-login-banner {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   margin-bottom: 24px;
-  background: var(--warning-bg);
-  border: 1px solid rgba(245, 166, 35, 0.3);
-  border-radius: var(--r-md);
-  color: var(--warning);
+  background: rgba(245, 166, 35, 0.12) !important;
+  border: 1px solid rgba(245, 166, 35, 0.4) !important;
+  border-radius: 16px;
+  color: #FBBF24 !important; /* Brighter orange for dark bg */
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  box-shadow: 0 0 15px rgba(245, 166, 35, 0.1);
 }
 
 /* ── Buttons ────────────────────────────────────────────────────── */
