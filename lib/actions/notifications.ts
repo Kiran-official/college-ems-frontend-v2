@@ -216,3 +216,49 @@ export async function sendManualEventNotification(
         return { success: false, error: err.message || 'Failed to send notifications' }
     }
 }
+
+export async function sendTestNotification(): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { data: subscriptions, error: subsError } = await admin
+            .from('push_subscriptions')
+            .select('id, subscription')
+            .eq('user_id', user.id)
+
+        if (subsError) return { success: false, error: 'DB Error: ' + subsError.message }
+        if (!subscriptions || subscriptions.length === 0) {
+            return { success: false, error: 'No active push tokens found for your account. Please enable notifications first.' }
+        }
+
+        const payload = JSON.stringify({
+            title: 'Test Notification',
+            body: 'It works! You are correctly subscribed to push notifications.',
+            url: '/'
+        })
+
+        const deleteIds: string[] = []
+        await Promise.allSettled(
+            subscriptions.map(async (sub) => {
+                try {
+                    await webpush.sendNotification(sub.subscription as webpush.PushSubscription, payload)
+                } catch (error: any) {
+                    if (error.statusCode === 410 || error.statusCode === 404) {
+                        deleteIds.push(sub.id)
+                    }
+                }
+            })
+        )
+
+        if (deleteIds.length > 0) {
+            await admin.from('push_subscriptions').delete().in('id', deleteIds)
+        }
+
+        return { success: true }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to send test notification' }
+    }
+}
