@@ -134,7 +134,9 @@ export async function sendManualEventNotification(
         const admin = createAdminClient()
 
         // 1. Authorisation: Admin or Faculty In Charge
-        const { data: userProfile } = await admin.from('users').select('role').eq('id', userId).single()
+        const { data: userProfile, error: profileError } = await admin.from('users').select('role').eq('id', userId).single()
+        if (profileError) return { success: false, error: 'Could not verify authorization: ' + profileError.message }
+
         const isAdmin = userProfile?.role === 'admin'
 
         if (!isAdmin) {
@@ -143,7 +145,7 @@ export async function sendManualEventNotification(
                 .select('id')
                 .eq('event_id', eventId)
                 .eq('teacher_id', userId)
-                .single()
+                .maybeSingle()
             
             const { data: ev } = await admin.from('events').select('created_by').eq('id', eventId).single()
             const isCreator = ev?.created_by === userId
@@ -153,19 +155,16 @@ export async function sendManualEventNotification(
             }
         }
 
-        // 2. Fetch all unique student user_ids for this event
-        // a) Individual registrations
-        const { data: indies } = await admin.from('individual_registrations').select('student_id').eq('event_id', eventId)
+        // 2. Fetch all unique student user_ids for this event from individual_registrations
+        const { data: participants, error: partError } = await admin
+            .from('individual_registrations')
+            .select('student_id')
+            .eq('event_id', eventId)
         
-        // b) Team members
-        const { data: teamMembers } = await admin
-            .from('team_members')
-            .select('student_id, team:teams!inner(event_id)')
-            .eq('teams.event_id', eventId)
+        if (partError) return { success: false, error: 'Failed to fetch participants' }
 
         const studentIds = new Set<string>()
-        indies?.forEach(i => studentIds.add(i.student_id))
-        teamMembers?.forEach(tm => studentIds.add(tm.student_id))
+        participants?.forEach(p => studentIds.add(p.student_id))
 
         if (studentIds.size === 0) {
             return { success: false, error: 'No participants registered for this event yet' }
@@ -179,8 +178,10 @@ export async function sendManualEventNotification(
             .select('id, user_id, subscription')
             .in('user_id', uniqueStudentIds)
 
-        if (subsError || !subscriptions || subscriptions.length === 0) {
-            return { success: false, error: 'No participants have enabled push notifications yet' }
+        if (subsError) return { success: false, error: 'Failed to fetch push tokens' }
+        
+        if (!subscriptions || subscriptions.length === 0) {
+            return { success: false, error: 'No participants have enabled push notifications on their devices yet.' }
         }
 
         // 4. Send notifications
