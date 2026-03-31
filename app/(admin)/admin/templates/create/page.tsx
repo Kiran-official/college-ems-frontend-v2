@@ -1,7 +1,7 @@
 import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
 import { TemplatePickerScreen } from '@/components/templates/TemplatePickerScreen'
 import { getActiveEvents } from '@/lib/queries/events'
-import { getGlobalTemplates } from '@/lib/queries/templates'
+import { getAllTemplates } from '@/lib/queries/templates'
 
 interface Props {
     searchParams: Promise<{ mode?: string; eventId?: string; type?: string }>
@@ -17,7 +17,9 @@ export default async function AdminCreateTemplatePage({ searchParams }: Props) {
     }
 
     // Otherwise show the picker screen
-    const globalTemplates = await getGlobalTemplates()
+    const existingTemplates = await getAllTemplates()
+    const initialEventId = params.eventId || ''
+    const initialType = (params.type === 'winner' ? 'winner' : 'participation') as 'participation' | 'winner'
 
     return (
         <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -27,8 +29,10 @@ export default async function AdminCreateTemplatePage({ searchParams }: Props) {
             </div>
             <TemplatePickerScreen
                 events={events}
-                globalTemplates={globalTemplates}
+                existingTemplates={existingTemplates}
                 basePath="/admin/templates"
+                initialEventId={initialEventId}
+                initialType={initialType}
             />
         </div>
     )

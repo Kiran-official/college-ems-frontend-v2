@@ -112,3 +112,103 @@ export async function sendEventNotification(eventId: string) {
         console.error('Error in sendEventNotification:', error)
     }
 }
+
+export async function sendManualEventNotification(
+    eventId: string,
+    title: string,
+    body: string
+): Promise<{ success: boolean; error?: string; recipientCount?: number }> {
+    // Validation
+    if (!title || title.trim().length < 3) return { success: false, error: 'Title must be at least 3 characters' }
+    if (!body || body.trim().length < 5) return { success: false, error: 'Message must be at least 5 characters' }
+    if (title.length > 100) return { success: false, error: 'Title too long (max 100)' }
+    if (body.length > 500) return { success: false, error: 'Message too long (max 500)' }
+
+    try {
+        const admin = createAdminClient()
+        const ssr = await admin.auth.getUser()
+        const userId = ssr.data.user?.id
+        if (!userId) return { success: false, error: 'Not authenticated' }
+
+        // 1. Authorisation: Admin or Faculty In Charge
+        const { data: userProfile } = await admin.from('users').select('role').eq('id', userId).single()
+        const isAdmin = userProfile?.role === 'admin'
+
+        if (!isAdmin) {
+            const { data: fic } = await admin
+                .from('faculty_in_charge')
+                .select('id')
+                .eq('event_id', eventId)
+                .eq('teacher_id', userId)
+                .single()
+            
+            const { data: ev } = await admin.from('events').select('created_by').eq('id', eventId).single()
+            const isCreator = ev?.created_by === userId
+
+            if (!fic && !isCreator) {
+                return { success: false, error: 'Not authorised to send notifications for this event' }
+            }
+        }
+
+        // 2. Fetch all unique student user_ids for this event
+        // a) Individual registrations
+        const { data: indies } = await admin.from('individual_registrations').select('student_id').eq('event_id', eventId)
+        
+        // b) Team members
+        const { data: teamMembers } = await admin
+            .from('team_members')
+            .select('student_id, team:teams!inner(event_id)')
+            .eq('teams.event_id', eventId)
+
+        const studentIds = new Set<string>()
+        indies?.forEach(i => studentIds.add(i.student_id))
+        teamMembers?.forEach(tm => studentIds.add(tm.student_id))
+
+        if (studentIds.size === 0) {
+            return { success: false, error: 'No participants registered for this event yet' }
+        }
+
+        const uniqueStudentIds = Array.from(studentIds)
+
+        // 3. Fetch push subscriptions
+        const { data: subscriptions, error: subsError } = await admin
+            .from('push_subscriptions')
+            .select('id, user_id, subscription')
+            .in('user_id', uniqueStudentIds)
+
+        if (subsError || !subscriptions || subscriptions.length === 0) {
+            return { success: false, error: 'No participants have enabled push notifications yet' }
+        }
+
+        // 4. Send notifications
+        const payload = JSON.stringify({
+            title: title.trim(),
+            body: body.trim(),
+            url: `/events/${eventId}`
+        })
+
+        const deleteIds: string[] = []
+        await Promise.allSettled(
+            subscriptions.map(async (sub) => {
+                try {
+                    await webpush.sendNotification(sub.subscription as webpush.PushSubscription, payload)
+                } catch (error: any) {
+                    if (error.statusCode === 410 || error.statusCode === 404) {
+                        deleteIds.push(sub.id)
+                    }
+                }
+            })
+        )
+
+        // Stale cleanup
+        if (deleteIds.length > 0) {
+            await admin.from('push_subscriptions').delete().in('id', deleteIds)
+        }
+
+        return { success: true, recipientCount: subscriptions.length }
+
+    } catch (err: any) {
+        console.error('sendManualEventNotification error:', err)
+        return { success: false, error: err.message || 'Failed to send notifications' }
+    }
+}

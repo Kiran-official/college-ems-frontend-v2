@@ -59,7 +59,7 @@ export async function issueEventCertificates(
         if (hasWinnerTemplate) {
             const { data: winners } = await admin
                 .from('winners')
-                .select('student_id, team_id, winner_type')
+                .select('id, student_id, team_id, winner_type')
                 .eq('event_id', eventId)
 
             if (winners) {
@@ -67,11 +67,13 @@ export async function issueEventCertificates(
                     if (w.winner_type === 'student' && w.student_id) {
                         if (!existingMap.has(`${w.student_id}_winner`)) {
                             allToInsert.push({
+                                winner_id: w.id,
                                 student_id: w.student_id,
                                 event_id: eventId,
                                 certificate_type: 'winner',
                                 status: 'pending'
                             })
+                            existingMap.add(`${w.student_id}_winner`)
                         }
                     } else if (w.winner_type === 'team' && w.team_id) {
                         const { data: members } = await admin
@@ -83,11 +85,13 @@ export async function issueEventCertificates(
                         members?.forEach(m => {
                             if (!existingMap.has(`${m.student_id}_winner`)) {
                                 allToInsert.push({
+                                    winner_id: w.id,
                                     student_id: m.student_id,
                                     event_id: eventId,
                                     certificate_type: 'winner',
                                     status: 'pending'
                                 })
+                                existingMap.add(`${m.student_id}_winner`)
                             }
                         })
                     }
@@ -119,6 +123,7 @@ export async function issueEventCertificates(
                         certificate_type: 'participation',
                         status: 'pending'
                     })
+                    existingMap.add(idKey)
                 }
             }
         }

@@ -45,45 +45,72 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
     const hasParticipation = templates.some(t => t.certificate_type === 'participation')
     const hasWinner = templates.some(t => t.certificate_type === 'winner')
 
-    const renderTemplateStatus = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasParticipation ? 'var(--success-bg)' : 'var(--warning-bg)'}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasParticipation ? 'var(--success-bg)' : 'var(--warning-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {hasParticipation ? <Check size={16} color="var(--success)" /> : <FileWarning size={16} color="var(--warning)" />}
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Participation Template</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{hasParticipation ? 'Template attached' : 'Template missing'}</div>
-                    </div>
-                </div>
-                {!hasParticipation && (
-                    <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
-                        <Button size="sm" variant="outline">Create</Button>
-                    </Link>
-                )}
-            </div>
+    const renderTemplateStatus = () => {
+        const pTemplate = templates.find(t => t.certificate_type === 'participation')
+        const wTemplate = templates.find(t => t.certificate_type === 'winner')
 
-            <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasWinner ? 'var(--success-bg)' : (winners.length > 0 ? 'var(--warning-bg)' : 'var(--border-glass)')}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasWinner ? 'var(--success-bg)' : (winners.length > 0 ? 'var(--warning-bg)' : 'var(--border)'), display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasWinner || winners.length > 0 ? 1 : 0.5 }}>
-                        {hasWinner ? <Check size={16} color="var(--success)" /> : (winners.length > 0 ? <FileWarning size={16} color="var(--warning)" /> : <Award size={16} color="var(--text-tertiary)" />)}
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Winner Template</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                            {hasWinner ? 'Template attached' : (winners.length > 0 ? 'Template missing' : 'Not required (No winners declared)')}
+        return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+                {/* Participation Template */}
+                <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasParticipation ? 'rgba(16, 224, 154, 0.3)' : 'rgba(245, 166, 35, 0.3)'}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {pTemplate?.background_image_url ? (
+                            <div style={{ width: 44, height: 32, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+                                <img src={pTemplate.background_image_url} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                        ) : (
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasParticipation ? 'rgba(16, 224, 154, 0.1)' : 'rgba(245, 166, 35, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {hasParticipation ? <Check size={16} color="var(--success)" /> : <FileWarning size={16} color="var(--warning)" />}
+                            </div>
+                        )}
+                        <div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>Participation Template</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{hasParticipation ? 'Ready to use • Attached' : 'Missing design'}</div>
                         </div>
                     </div>
+                    {hasParticipation && pTemplate ? (
+                        <Link href={`${createTemplatePath.replace('/create', '')}/${pTemplate.id}`}>
+                            <Button size="sm" variant="ghost">Edit</Button>
+                        </Link>
+                    ) : (
+                        <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
+                            <Button size="sm" variant="outline">Create</Button>
+                        </Link>
+                    )}
                 </div>
-                {!hasWinner && (
-                    <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
-                        <Button size="sm" variant="outline">Create</Button>
-                    </Link>
-                )}
+
+                {/* Winner Template */}
+                <div className="glass" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: `1px solid ${hasWinner ? 'rgba(16, 224, 154, 0.3)' : (winners.length > 0 ? 'rgba(245, 166, 35, 0.3)' : 'rgba(255,255,255,0.05)')}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {wTemplate?.background_image_url ? (
+                            <div style={{ width: 44, height: 32, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+                                <img src={wTemplate.background_image_url} alt="W" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                        ) : (
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: hasWinner ? 'rgba(16, 224, 154, 0.1)' : (winners.length > 0 ? 'rgba(245, 166, 35, 0.1)' : 'rgba(255,255,255,0.05)'), display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasWinner || winners.length > 0 ? 1 : 0.5 }}>
+                                {hasWinner ? <Check size={16} color="var(--success)" /> : (winners.length > 0 ? <FileWarning size={16} color="var(--warning)" /> : <Award size={16} color="var(--text-tertiary)" />)}
+                            </div>
+                        )}
+                        <div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>Winner Template</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                {hasWinner ? 'Ready to use • Attached' : (winners.length > 0 ? 'Missing design' : 'Not required')}
+                            </div>
+                        </div>
+                    </div>
+                    {hasWinner && wTemplate ? (
+                        <Link href={`${createTemplatePath.replace('/create', '')}/${wTemplate.id}`}>
+                            <Button size="sm" variant="ghost">Edit</Button>
+                        </Link>
+                    ) : (
+                        <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
+                            <Button size="sm" variant="outline">Create</Button>
+                        </Link>
+                    )}
+                </div>
             </div>
-        </div>
-    )
+        )
+    }
 
     const renderTable = (certs: Certificate[]) => (
         <div className="table-wrap" style={{ marginTop: 12 }}>

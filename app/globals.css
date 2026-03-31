@@ -4229,14 +4229,16 @@ input[type="radio"]:focus-visible {
   max-width: calc(100vw - 32px);
 }
 .cb-toast--error {
-  background: rgba(255, 77, 106, 0.15);
-  border: 1px solid rgba(255, 77, 106, 0.3);
-  color: #ff6b82;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #991b1b;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 .cb-toast--success {
-  background: rgba(16, 224, 154, 0.15);
-  border: 1px solid rgba(16, 224, 154, 0.3);
-  color: #10e09a;
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  color: #166534;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 .cb-toast__close {
   color: inherit;
@@ -4682,6 +4684,15 @@ input[type="radio"]:focus-visible {
   flex-shrink: 0;
 }
 
+/* ── Marquee Box ─────────────────────────────────────────────── */
+.cb-marquee-box {
+  position: absolute;
+  background: rgba(139, 61, 255, 0.15);
+  border: 1px solid rgba(139, 61, 255, 0.4);
+  pointer-events: none;
+  z-index: 100;
+}
+
 /* ── Elements ────────────────────────────────────────────────── */
 .cb-element {
   position: absolute;
@@ -4699,12 +4710,24 @@ input[type="radio"]:focus-visible {
 /* ── Resize Handles ──────────────────────────────────────────── */
 .cb-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: #fff;
   border: 2px solid #8b3dff;
   border-radius: 50%;
   z-index: 60;
+  cursor: pointer;
+}
+.cb-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border-radius: 50%;
 }
 .cb-handle--nw { top: -5px; left: -5px; cursor: nw-resize; }
 .cb-handle--ne { top: -5px; right: -5px; cursor: ne-resize; }

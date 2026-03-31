@@ -24,12 +24,5 @@ export default async function TeacherTemplateDetailPage({ params }: Props) {
     for (const e of [...created, ...fic]) eventMap.set(e.id, e)
     const events = Array.from(eventMap.values())
 
-    return (
-        <div className="page">
-            <div className="page-header">
-                <h1 className="page-title">Edit Template: {template.template_name}</h1>
-            </div>
-            <TemplateBuilder events={events} template={template} basePath="/teacher/templates" />
-        </div>
-    )
+    return <TemplateBuilder events={events} template={template} basePath="/teacher/templates" />
 }

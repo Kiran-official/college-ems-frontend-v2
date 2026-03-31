@@ -62,11 +62,6 @@ export default async function TeacherTemplatesPage() {
                                     </div>
 
                                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                        {t.is_global && (
-                                            <span className="template-global-badge">
-                                                <Globe size={10} /> Global
-                                            </span>
-                                        )}
                                         <Badge variant={t.is_active ? 'generated' : 'failed'}>{t.is_active ? 'Active' : 'Inactive'}</Badge>
                                     </div>
                                 </div>
@@ -76,7 +71,7 @@ export default async function TeacherTemplatesPage() {
                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 20, flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
-                                        Event: <span style={{ color: 'var(--text-primary)' }}>{t.event?.title ?? (t.is_global ? 'Global (All Events)' : '—')}</span>
+                                        Event: <span style={{ color: 'var(--text-primary)' }}>{t.event?.title ?? '—'}</span>
                                     </div>
                                 </div>
 

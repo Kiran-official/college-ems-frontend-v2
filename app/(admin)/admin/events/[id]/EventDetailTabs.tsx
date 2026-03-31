@@ -8,6 +8,7 @@ import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
 import { PaymentsPanel } from '@/components/events/PaymentsPanel'
+import { NotificationPanel } from '@/components/events/NotificationPanel'
 import { Button } from '@/components/ui/Button'
 import { openEventAction, closeEventAction, publishResultsAction } from '@/lib/actions/eventActions'
 import { syncEventCertificatesAction } from '@/lib/actions/certificateActions'
@@ -15,7 +16,7 @@ import type { Event, IndividualRegistration, Team, Winner, Certificate, Certific
 import { AlertTriangle } from 'lucide-react'
 import { EventActionHeader } from '@/components/events/EventActionHeader'
 
-type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates'
+type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates' | 'announcements'
 
 interface EventDetailTabsProps {
     event: Event
@@ -35,7 +36,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
     const baseTabs: Tab[] = ['registrations']
     if (event.participant_type === 'multiple') baseTabs.push('teams')
     if (event.is_paid) baseTabs.push('payments')
-    baseTabs.push('attendance', 'winners', 'certificates')
+    baseTabs.push('attendance', 'winners', 'certificates', 'announcements')
 
     const queryTab = searchParams.get('tab') as Tab | null
     const tab: Tab = queryTab && baseTabs.includes(queryTab) ? queryTab : 'registrations'
@@ -106,6 +107,9 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                 )}
                 {tab === 'certificates' && (
                     <CertificatesPanel certificates={certificates} stats={certStats} templates={templates} eventId={event.id} createTemplatePath="/admin/templates/create" winners={winners} />
+                )}
+                {tab === 'announcements' && (
+                    <NotificationPanel event={event} />
                 )}
             </div>
         </div>

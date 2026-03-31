@@ -145,6 +145,7 @@ export async function updateTemplateAction(
         layout_json?: TemplateLayout
         background_image_url?: string
         is_active?: boolean
+        certificate_type?: 'participation' | 'winner'
     }
 ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -219,7 +220,7 @@ export async function deleteTemplateAction(
     }
 }
 
-export async function cloneTemplateAction(sourceTemplateId: string, targetEventId: string): Promise<{ success: boolean; template_id?: string; error?: string }> {
+export async function cloneTemplateAction(sourceTemplateId: string, targetEventId: string, targetType?: 'participation' | 'winner'): Promise<{ success: boolean; template_id?: string; error?: string }> {
     try {
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
@@ -233,7 +234,7 @@ export async function cloneTemplateAction(sourceTemplateId: string, targetEventI
             event_id: targetEventId,
             is_global: false,
             template_name: `${source.template_name} (Clone)`,
-            certificate_type: source.certificate_type,
+            certificate_type: targetType || source.certificate_type,
             layout_json: source.layout_json,
             background_image_url: source.background_image_url,
             is_active: true,

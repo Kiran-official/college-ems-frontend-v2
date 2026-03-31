@@ -8,6 +8,7 @@ import { AttendancePanel } from '@/components/events/AttendancePanel'
 import { WinnersPanel } from '@/components/events/WinnersPanel'
 import { CertificatesPanel } from '@/components/events/CertificatesPanel'
 import { PaymentsPanel } from '@/components/events/PaymentsPanel'
+import { NotificationPanel } from '@/components/events/NotificationPanel'
 import { Button } from '@/components/ui/Button'
 import { openEventAction, closeEventAction, publishResultsAction, completeEventAction } from '@/lib/actions/eventActions'
 import { syncEventCertificatesAction } from '@/lib/actions/certificateActions'
@@ -15,7 +16,7 @@ import type { Event, IndividualRegistration, Team, Winner, Certificate, Certific
 import { AlertTriangle } from 'lucide-react'
 import { EventActionHeader } from '@/components/events/EventActionHeader'
 
-type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates'
+type Tab = 'registrations' | 'teams' | 'payments' | 'attendance' | 'winners' | 'certificates' | 'announcements'
 
 interface TeacherEventTabsProps {
     event: Event
@@ -35,7 +36,7 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
     const validTabs: Tab[] = ['registrations']
     if (event.participant_type === 'multiple') validTabs.push('teams')
     if (event.is_paid) validTabs.push('payments')
-    validTabs.push('attendance', 'winners', 'certificates')
+    validTabs.push('attendance', 'winners', 'certificates', 'announcements')
 
     const queryTab = searchParams.get('tab') as Tab | null
     const tab: Tab = queryTab && validTabs.includes(queryTab) ? queryTab : 'registrations'
@@ -97,6 +98,9 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
                         createTemplatePath="/teacher/templates/create"
                         winners={winners}
                     />
+                )}
+                {tab === 'announcements' && (
+                    <NotificationPanel event={event} />
                 )}
             </div>
         </div>

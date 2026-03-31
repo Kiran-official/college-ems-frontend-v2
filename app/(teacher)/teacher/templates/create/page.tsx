@@ -3,7 +3,7 @@ import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
 import { TemplatePickerScreen } from '@/components/templates/TemplatePickerScreen'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getTeacherEvents, getEventsByCreator } from '@/lib/queries/events'
-import { getGlobalTemplates } from '@/lib/queries/templates'
+import { getAllTemplates } from '@/lib/queries/templates'
 
 interface Props {
     searchParams: Promise<{ mode?: string; eventId?: string; type?: string }>
@@ -30,7 +30,10 @@ export default async function TeacherCreateTemplatePage({ searchParams }: Props)
     }
 
     // Otherwise show the picker screen
-    const globalTemplates = await getGlobalTemplates()
+    const existingTemplates = await getAllTemplates()
+
+    const initialEventId = params.eventId || ''
+    const initialType = (params.type === 'winner' ? 'winner' : 'participation') as 'participation' | 'winner'
 
     return (
         <div className="page">
@@ -40,8 +43,10 @@ export default async function TeacherCreateTemplatePage({ searchParams }: Props)
             </div>
             <TemplatePickerScreen
                 events={events}
-                globalTemplates={globalTemplates}
+                existingTemplates={existingTemplates}
                 basePath="/teacher/templates"
+                initialEventId={initialEventId}
+                initialType={initialType}
             />
         </div>
     )

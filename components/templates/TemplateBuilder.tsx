@@ -66,8 +66,8 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     const [fields, setFields] = useState<TemplateField[]>(
         template?.layout_json?.fields ?? [...DEFAULT_TEMPLATE_FIELDS]
     )
-    const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
-    const [dragging, setDragging] = useState<string | null>(null)
+    const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set())
+    const [draggingFields, setDraggingFields] = useState<boolean>(false)
     const [resizing, setResizing] = useState<{ fieldId: string; handle: ResizeHandle; startX: number; startWidth: number } | null>(null)
     const [viewMode, setViewMode] = useState<'design' | 'preview'>('design')
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -76,7 +76,15 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     const [zoom, setZoom] = useState(100)
     const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
 
-    const selectedField = fields.find(f => f.id === selectedFieldId) ?? null
+    const initialPinchDistRef = useRef<number | null>(null)
+    const initialZoomRef = useRef<number>(100)
+
+    const dragStartRef = useRef<{ clientX: number; clientY: number } | null>(null)
+    const dragSnapshotRef = useRef<{ id: string; x: number; y: number }[]>([])
+    const [marquee, setMarquee] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null)
+
+    const selectedFields = fields.filter(f => selectedFieldIds.has(f.id))
+    const primarySelectedField = selectedFields[0] ?? null
 
     // ─── Auto-zoom on resize ──────────────────────────────────
     useEffect(() => {
@@ -108,22 +116,22 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
             const target = e.target as HTMLElement
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
 
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedFieldId) {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedFieldIds.size > 0) {
                 e.preventDefault()
-                removeField(selectedFieldId)
+                removeFields(Array.from(selectedFieldIds))
             }
             if (e.key === 'Escape') {
-                setSelectedFieldId(null)
+                setSelectedFieldIds(new Set())
                 setActiveTool(null)
             }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedFieldId) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedFieldIds.size > 0) {
                 e.preventDefault()
-                duplicateField(selectedFieldId)
+                duplicateFields(Array.from(selectedFieldIds))
             }
         }
         window.addEventListener('keydown', handleKey)
         return () => window.removeEventListener('keydown', handleKey)
-    }, [selectedFieldId, isSettingsOpen, fields])
+    }, [selectedFieldIds, isSettingsOpen, fields])
 
     // ─── Field operations ─────────────────────────────────────
     function addField(fieldType: string) {
@@ -137,24 +145,32 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
             ...(fieldType === 'custom' ? { customText: 'Custom Text' } : {}),
         }
         setFields(prev => [...prev, newField])
-        setSelectedFieldId(newField.id)
+        setSelectedFieldIds(new Set([newField.id]))
     }
 
-    function updateField(id: string, updates: Partial<TemplateField>) {
-        setFields(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
+    function updateFields(ids: string[], updates: Partial<TemplateField>) {
+        setFields(prev => prev.map(f => ids.includes(f.id) ? { ...f, ...updates } : f))
     }
 
-    function removeField(id: string) {
-        setFields(prev => prev.filter(f => f.id !== id))
-        if (selectedFieldId === id) setSelectedFieldId(null)
+    function removeFields(ids: string[]) {
+        setFields(prev => prev.filter(f => !ids.includes(f.id)))
+        setSelectedFieldIds(prev => {
+            const next = new Set(prev)
+            ids.forEach(id => next.delete(id))
+            return next
+        })
     }
 
-    function duplicateField(id: string) {
-        const field = fields.find(f => f.id === id)
-        if (!field) return
-        const newField = { ...field, id: `field_${Date.now()}`, x: Math.min(95, field.x + 3), y: Math.min(95, field.y + 3) }
-        setFields(prev => [...prev, newField])
-        setSelectedFieldId(newField.id)
+    function duplicateFields(ids: string[]) {
+        const toCopy = fields.filter(f => ids.includes(f.id))
+        const newFields = toCopy.map((field, i) => ({
+            ...field,
+            id: `field_${Date.now()}_${i}`,
+            x: Math.min(95, field.x + 3),
+            y: Math.min(95, field.y + 3)
+        }))
+        setFields(prev => [...prev, ...newFields])
+        setSelectedFieldIds(new Set([...Array.from(selectedFieldIds), ...newFields.map(f => f.id)]))
     }
 
     // ─── Drag handling (mouse) ────────────────────────────────
@@ -166,17 +182,35 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
         return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
     }, [])
 
-    const handleMouseDown = useCallback((fieldId: string, e: React.MouseEvent) => {
-        e.preventDefault()
+    const handleFieldPointerDown = useCallback((fieldId: string, e: React.MouseEvent | React.TouchEvent) => {
+        if (viewMode !== 'design') return
         e.stopPropagation()
-        setDragging(fieldId)
-        setSelectedFieldId(fieldId)
-    }, [])
+        const isMulti = e.shiftKey || e.metaKey || e.ctrlKey // e might not have these for touch, but we check if present
 
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
+        let nextSelected = new Set(selectedFieldIds)
+        if (isMulti) {
+            if (nextSelected.has(fieldId)) nextSelected.delete(fieldId)
+            else nextSelected.add(fieldId)
+            setSelectedFieldIds(nextSelected)
+        } else {
+            if (!nextSelected.has(fieldId)) {
+                nextSelected = new Set([fieldId])
+                setSelectedFieldIds(nextSelected)
+            }
+        }
+
+        // Init dragging
+        setDraggingFields(true)
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY
+        dragStartRef.current = { clientX, clientY }
+        dragSnapshotRef.current = fields.filter(f => nextSelected.has(f.id)).map(f => ({ id: f.id, x: f.x, y: f.y }))
+    }, [viewMode, selectedFieldIds, fields])
+
+    const handlePointerMove = useCallback((clientX: number, clientY: number) => {
         if (resizing && canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect()
-            const deltaXPct = ((e.clientX - resizing.startX) / rect.width) * 100
+            const deltaXPct = ((clientX - resizing.startX) / rect.width) * 100
             let newWidth = resizing.startWidth
             if (resizing.handle === 'e' || resizing.handle === 'ne' || resizing.handle === 'se') {
                 newWidth = resizing.startWidth + deltaXPct * 2
@@ -184,53 +218,133 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                 newWidth = resizing.startWidth - deltaXPct * 2
             }
             newWidth = Math.max(10, Math.min(100, Math.round(newWidth)))
-            updateField(resizing.fieldId, { width: newWidth })
+            updateFields([resizing.fieldId], { width: newWidth })
             return
         }
-        if (!dragging || !canvasRef.current) return
-        const { x, y } = getCanvasCoords(e.clientX, e.clientY)
-        updateField(dragging, { x, y })
-    }, [dragging, resizing, getCanvasCoords])
+        
+        if (draggingFields && canvasRef.current && dragStartRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect()
+            const deltaX = ((clientX - dragStartRef.current.clientX) / rect.width) * 100
+            const deltaY = ((clientY - dragStartRef.current.clientY) / rect.height) * 100
 
-    const handleMouseUp = useCallback(() => {
-        setDragging(null)
-        setResizing(null)
-    }, [])
+            setFields(prev => prev.map(f => {
+                const snapshot = dragSnapshotRef.current.find(s => s.id === f.id)
+                if (snapshot) {
+                    return { 
+                        ...f, 
+                        x: Math.max(2, Math.min(98, Math.round((snapshot.x + deltaX) * 10) / 10)),
+                        y: Math.max(2, Math.min(98, Math.round((snapshot.y + deltaY) * 10) / 10))
+                    }
+                }
+                return f
+            }))
+            return
+        }
 
-    // ─── Touch handling ───────────────────────────────────────
-    const handleTouchStart = useCallback((fieldId: string, e: React.TouchEvent) => {
-        e.stopPropagation()
-        setDragging(fieldId)
-        setSelectedFieldId(fieldId)
-    }, [])
+        if (marquee && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect()
+            const currX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+            const currY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+            setMarquee(prev => prev ? { ...prev, currentX: currX, currentY: currY } : null)
+            
+            // Auto-select objects in marquee
+            const minX = Math.min(marquee.startX, currX)
+            const maxX = Math.max(marquee.startX, currX)
+            const minY = Math.min(marquee.startY, currY)
+            const maxY = Math.max(marquee.startY, currY)
+
+            const newlySelected = new Set<string>()
+            fields.forEach(f => {
+                const fMinX = f.x - f.width / 2
+                const fMaxX = f.x + f.width / 2
+                const fMinY = f.y - Math.max(2, (f.fontSize / rect.height) * 100) // approx
+                const fMaxY = f.y + Math.max(2, (f.fontSize / rect.height) * 100)
+                
+                // Intersection logic
+                if (fMinX < maxX && fMaxX > minX && fMinY < maxY && fMaxY > minY) {
+                    newlySelected.add(f.id)
+                }
+            })
+            setSelectedFieldIds(newlySelected)
+        }
+    }, [resizing, draggingFields, marquee, fields])
+
+    const handleMouseMove = useCallback((e: React.MouseEvent) => {
+        handlePointerMove(e.clientX, e.clientY)
+    }, [handlePointerMove])
 
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        if (!dragging || !canvasRef.current) return
-        const touch = e.touches[0]
-        const { x, y } = getCanvasCoords(touch.clientX, touch.clientY)
-        updateField(dragging, { x, y })
-    }, [dragging, getCanvasCoords])
+        if (e.touches.length === 2 && initialPinchDistRef.current !== null) {
+            e.preventDefault()
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            const distance = Math.hypot(dx, dy)
+            const scale = distance / initialPinchDistRef.current
+            const newZoom = Math.min(200, Math.max(20, initialZoomRef.current * scale))
+            setZoom(Math.round(newZoom))
+            return
+        }
+        handlePointerMove(e.touches[0].clientX, e.touches[0].clientY)
+    }, [handlePointerMove])
 
-    const handleTouchEnd = useCallback(() => {
-        setDragging(null)
+    const handlePointerUp = useCallback(() => {
+        setDraggingFields(false)
         setResizing(null)
+        setMarquee(null)
+        dragStartRef.current = null
+        dragSnapshotRef.current = []
+        initialPinchDistRef.current = null
     }, [])
 
+    const handleCanvasPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+        if (e.target !== canvasRef.current) return
+        
+        let clientX = 0, clientY = 0
+        if ('touches' in e) {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX
+                const dy = e.touches[0].clientY - e.touches[1].clientY
+                initialPinchDistRef.current = Math.hypot(dx, dy)
+                initialZoomRef.current = zoom
+                return
+            }
+            clientX = e.touches[0].clientX
+            clientY = e.touches[0].clientY
+        } else {
+            clientX = (e as React.MouseEvent).clientX
+            clientY = (e as React.MouseEvent).clientY
+        }
+
+        // Init marquee selection
+        setSelectedFieldIds(new Set())
+        const rect = canvasRef.current.getBoundingClientRect()
+        const startX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+        const startY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+        setMarquee({ startX, startY, currentX: startX, currentY: startY })
+    }, [zoom])
+
     // ─── Resize handle start ──────────────────────────────────
-    const handleResizeStart = useCallback((fieldId: string, handle: ResizeHandle, e: React.MouseEvent) => {
+    const handleResizeStart = useCallback((fieldId: string, handle: ResizeHandle, e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault()
         e.stopPropagation()
         const field = fields.find(f => f.id === fieldId)
         if (!field) return
-        setResizing({ fieldId, handle, startX: e.clientX, startWidth: field.width })
-        setSelectedFieldId(fieldId)
+        
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+        setResizing({ fieldId, handle, startX: clientX, startWidth: field.width })
+        setSelectedFieldIds(new Set([fieldId]))
     }, [fields])
 
     // ─── Display value ────────────────────────────────────────
     function getFieldDisplayValue(f: TemplateField) {
         if (f.field_type === 'custom') return f.customText || 'Custom Text'
         const ft = FIELD_TYPES.find(t => t.value === f.field_type)
-        if (viewMode === 'preview') return ft?.mock ?? f.field_type
+        if (viewMode === 'preview') {
+            if (f.field_type === 'certificate_type') {
+                return certType === 'winner' ? 'Winner Certificate' : 'Participation Certificate'
+            }
+            return ft?.mock ?? f.field_type
+        }
         return ft?.placeholder ?? f.field_type
     }
 
@@ -296,9 +410,15 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                     template_name: templateName,
                     layout_json: layout,
                     background_image_url: bgUrl || undefined,
+                    certificate_type: certType,
                 })
                 if (result.success) {
                     setToast({ message: 'Template saved!', type: 'success' })
+                    let nextPath = basePath;
+                    if (eventId) {
+                        nextPath = basePath.replace('/templates', `/events/${eventId}?tab=certificates`);
+                    }
+                    setTimeout(() => router.push(nextPath), 1000)
                 } else {
                     setToast({ message: result.error || 'Failed to save', type: 'error' })
                 }
@@ -476,7 +596,7 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                 )}
 
                 {/* ─── CANVAS AREA ───────────────────────────── */}
-                <main className="cb-canvas-area" onClick={() => setSelectedFieldId(null)}>
+                <main className="cb-canvas-area" onClick={() => setSelectedFieldIds(new Set())}>
                     {/* Zoom controls */}
                     <div className="cb-zoom-controls">
                         <button onClick={zoomOut} className="cb-zoom-btn" title="Zoom Out"><ZoomOut size={16} /></button>
@@ -498,15 +618,24 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                             backgroundSize: bgUrl ? 'cover' : undefined,
                             backgroundPosition: 'center',
                         }}
+                        onPointerDown={handleCanvasPointerDown}
                         onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
+                        onMouseUp={handlePointerUp}
+                        onMouseLeave={handlePointerUp}
                         onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onClick={() => setSelectedFieldId(null)}
+                        onTouchEnd={handlePointerUp}
+                        onClick={() => setSelectedFieldIds(new Set())}
                     >
+                        {marquee && (
+                            <div className="cb-marquee-box" style={{
+                                "left": `${Math.min(marquee.startX, marquee.currentX)}%`,
+                                "top": `${Math.min(marquee.startY, marquee.currentY)}%`,
+                                "width": `${Math.abs(marquee.currentX - marquee.startX)}%`,
+                                "height": `${Math.abs(marquee.currentY - marquee.startY)}%`,
+                            } as React.CSSProperties} />
+                        )}
                         {fields.map(f => {
-                            const isSelected = selectedFieldId === f.id
+                            const isSelected = selectedFieldIds.has(f.id)
                             return (
                                 <div
                                     key={f.id}
@@ -521,12 +650,12 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                                         fontStyle: f.italic ? 'italic' : 'normal',
                                         color: f.color,
                                         textAlign: f.align,
-                                        cursor: viewMode === 'preview' ? 'default' : (dragging === f.id ? 'grabbing' : 'grab'),
+                                        cursor: viewMode === 'preview' ? 'default' : ((draggingFields && isSelected) ? 'grabbing' : 'grab'),
                                         zIndex: isSelected ? 50 : 10,
                                     }}
-                                    onMouseDown={(e) => viewMode === 'design' && handleMouseDown(f.id, e)}
-                                    onTouchStart={(e) => viewMode === 'design' && handleTouchStart(f.id, e)}
-                                    onClick={(e) => { e.stopPropagation(); setSelectedFieldId(f.id) }}
+                                    onMouseDown={(e) => viewMode === 'design' && handleFieldPointerDown(f.id, e)}
+                                    onTouchStart={(e) => viewMode === 'design' && handleFieldPointerDown(f.id, e)}
+                                    onClick={(e) => { e.stopPropagation(); if (viewMode === 'design' && !e.shiftKey && !e.metaKey && !e.ctrlKey) setSelectedFieldIds(new Set([f.id])) }}
                                 >
                                     {/* Resize handles */}
                                     {isSelected && viewMode === 'design' && (
@@ -540,10 +669,10 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
 
                                             {/* Floating pill (Desktop only) */}
                                             <div className="cb-pill">
-                                                <button onClick={(e) => { e.stopPropagation(); duplicateField(f.id) }} className="cb-pill__btn" title="Duplicate">
+                                                <button onClick={(e) => { e.stopPropagation(); duplicateFields([f.id]) }} className="cb-pill__btn" title="Duplicate">
                                                     <Copy size={16} />
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); removeField(f.id) }} className="cb-pill__btn cb-pill__btn--danger" title="Delete">
+                                                <button onClick={(e) => { e.stopPropagation(); removeFields([f.id]) }} className="cb-pill__btn cb-pill__btn--danger" title="Delete">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -557,15 +686,15 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                 </main>
             </div>
 
-            {selectedField && viewMode === 'design' && (
+            {primarySelectedField && viewMode === 'design' && (
                 <div className={`cb-contextbar ${isBarExpanded ? '' : 'cb-contextbar--collapsed'}`}>
                     {/* Secondary Fixed Mobile Action Bar for Duplicate/Delete */}
                     <div className="cb-mobile-secondary-bar">
-                        <button onClick={(e) => { e.stopPropagation(); duplicateField(selectedField.id) }} className="cb-mobile-secondary-btn" title="Duplicate">
+                        <button onClick={(e) => { e.stopPropagation(); duplicateFields(Array.from(selectedFieldIds)) }} className="cb-mobile-secondary-btn" title="Duplicate">
                             <Copy size={16} /> <span>Duplicate</span>
                         </button>
                         <div className="cb-mobile-secondary-sep" />
-                        <button onClick={(e) => { e.stopPropagation(); removeField(selectedField.id) }} className="cb-mobile-secondary-btn cb-mobile-secondary-btn--danger" title="Delete">
+                        <button onClick={(e) => { e.stopPropagation(); removeFields(Array.from(selectedFieldIds)) }} className="cb-mobile-secondary-btn cb-mobile-secondary-btn--danger" title="Delete">
                             <Trash2 size={16} /> <span>Delete</span>
                         </button>
                     </div>
@@ -575,12 +704,12 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         <div className="cb-drag-handle__pill" />
                     </div>
                     {/* Custom text input row */}
-                    {selectedField.field_type === 'custom' && (
+                    {selectedFieldIds.size === 1 && primarySelectedField.field_type === 'custom' && (
                         <div className="cb-contextbar__custom-row">
                             <input
                                 type="text"
-                                value={selectedField.customText || ''}
-                                onChange={e => updateField(selectedField.id, { customText: e.target.value })}
+                                value={primarySelectedField.customText || ''}
+                                onChange={e => updateFields([primarySelectedField.id], { customText: e.target.value })}
                                 className="cb-contextbar__text-input"
                                 placeholder="Enter custom text..."
                                 onClick={e => e.stopPropagation()}
@@ -588,25 +717,25 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         </div>
                     )}
                     <div className="cb-contextbar__controls">
-                        <button onClick={() => setSelectedFieldId(null)} className="cb-contextbar__done" aria-label="Done">
+                        <button onClick={() => setSelectedFieldIds(new Set())} className="cb-contextbar__done" aria-label="Done">
                             <Check size={16} />
                         </button>
                         <div className="cb-contextbar__sep" />
                         {/* Font size */}
                         <div className="cb-contextbar__group cb-contextbar__group--bordered">
                             <button
-                                onClick={() => updateField(selectedField.id, { fontSize: Math.max(8, selectedField.fontSize - 1) })}
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { fontSize: Math.max(8, primarySelectedField.fontSize - 1) })}
                                 className="cb-contextbar__step-btn" title="Decrease Font Size"  
                             ><Minus size={14} /></button>
                             <input
                                 type="number" min={8} max={100}
-                                value={selectedField.fontSize}
-                                onChange={e => updateField(selectedField.id, { fontSize: Math.max(8, Math.min(100, Number(e.target.value) || 8)) })}
+                                value={primarySelectedField.fontSize}
+                                onChange={e => updateFields(Array.from(selectedFieldIds), { fontSize: Math.max(8, Math.min(100, Number(e.target.value) || 8)) })}
                                 className="cb-contextbar__num-input"
                                 onClick={e => e.stopPropagation()}
                             />
                             <button
-                                onClick={() => updateField(selectedField.id, { fontSize: Math.min(100, selectedField.fontSize + 1) })}
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { fontSize: Math.min(100, primarySelectedField.fontSize + 1) })}
                                 className="cb-contextbar__step-btn" title="Increase Font Size"
                             ><Plus size={14} /></button>
                         </div>
@@ -616,8 +745,8 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                             <MoveVertical size={16} className="cb-contextbar__icon" />
                             <input
                                 type="number" step={0.1} min={0.5} max={3}
-                                value={selectedField.lineHeight ?? 1.2}
-                                onChange={e => updateField(selectedField.id, { lineHeight: Number(e.target.value) })}
+                                value={primarySelectedField.lineHeight ?? 1.2}
+                                onChange={e => updateFields(Array.from(selectedFieldIds), { lineHeight: Number(e.target.value) })}
                                 className="cb-contextbar__num-input"
                             />
                         </div>
@@ -627,8 +756,8 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                             <Space size={16} className="cb-contextbar__icon" />
                             <input
                                 type="number" step={0.5} min={-5} max={20}
-                                value={selectedField.letterSpacing ?? 0}
-                                onChange={e => updateField(selectedField.id, { letterSpacing: Number(e.target.value) })}
+                                value={primarySelectedField.letterSpacing ?? 0}
+                                onChange={e => updateFields(Array.from(selectedFieldIds), { letterSpacing: Number(e.target.value) })}
                                 className="cb-contextbar__num-input"
                             />
                         </div>
@@ -637,13 +766,13 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         {/* Typography Grouping (Bold, Italic, Align) */}
                         <div className="cb-contextbar__group cb-contextbar__group--bordered">
                             <button
-                                onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
-                                className={`cb-contextbar__toggle ${selectedField.bold ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Bold"
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { bold: !primarySelectedField.bold })}
+                                className={`cb-contextbar__toggle ${primarySelectedField.bold ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Bold"
                                 title="Bold"
                             ><Bold size={16} /></button>
                             <button
-                                onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
-                                className={`cb-contextbar__toggle ${selectedField.italic ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Italic"
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { italic: !primarySelectedField.italic })}
+                                className={`cb-contextbar__toggle ${primarySelectedField.italic ? 'cb-contextbar__toggle--on' : ''}`} aria-label="Italic"
                                 title="Italic"
                             ><Italic size={16} /></button>
 
@@ -651,8 +780,8 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                                 {(['left', 'center', 'right'] as const).map(a => (
                                     <button
                                         key={a}
-                                        onClick={() => updateField(selectedField.id, { align: a })}
-                                        className={`cb-contextbar__align-btn ${selectedField.align === a ? 'cb-contextbar__align-btn--on' : ''}`} aria-label={`Align ${a}`}
+                                        onClick={() => updateFields(Array.from(selectedFieldIds), { align: a })}
+                                        className={`cb-contextbar__align-btn ${primarySelectedField.align === a ? 'cb-contextbar__align-btn--on' : ''}`} aria-label={`Align ${a}`}
                                         title={`Align ${a}`}
                                     >
                                         {a === 'left' && <AlignLeft size={16} />}
@@ -669,8 +798,8 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         <div className="cb-contextbar__color-wrap" title="Text Color">
                             <input
                                 type="color"
-                                value={selectedField.color}
-                                onChange={e => updateField(selectedField.id, { color: e.target.value })}
+                                value={primarySelectedField.color}
+                                onChange={e => updateFields(Array.from(selectedFieldIds), { color: e.target.value })}
                                 className="cb-contextbar__color"
                                 aria-label="Color"
                             />
@@ -680,18 +809,18 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         <div className="cb-contextbar__group cb-contextbar__width-group cb-contextbar__group--bordered">
                             <span className="cb-contextbar__label" style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginRight: '4px' }}>W</span>
                             <button
-                                onClick={() => updateField(selectedField.id, { width: Math.max(10, selectedField.width - 1) })}
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { width: Math.max(10, primarySelectedField.width - 1) })}
                                 className="cb-contextbar__step-btn" title="Decrease Width"
                             ><Minus size={14} /></button>
                             <input
                                 type="number" min={10} max={100}
-                                value={selectedField.width}
-                                onChange={e => updateField(selectedField.id, { width: Math.max(10, Math.min(100, Number(e.target.value) || 10)) })}
+                                value={primarySelectedField.width}
+                                onChange={e => updateFields(Array.from(selectedFieldIds), { width: Math.max(10, Math.min(100, Number(e.target.value) || 10)) })}
                                 className="cb-contextbar__num-input"
                                 onClick={e => e.stopPropagation()}
                             />
                             <button
-                                onClick={() => updateField(selectedField.id, { width: Math.min(100, selectedField.width + 1) })}
+                                onClick={() => updateFields(Array.from(selectedFieldIds), { width: Math.min(100, primarySelectedField.width + 1) })}
                                 className="cb-contextbar__step-btn" title="Increase Width"
                             ><Plus size={14} /></button>
                         </div>
@@ -700,7 +829,7 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
             )}
 
             {/* ─── MOBILE FAB (no field selected) ────────────── */}
-            {!selectedField && viewMode === 'design' && (
+            {selectedFields.length === 0 && viewMode === 'design' && (
                 <div className="cb-mobile-fab">
                     <button onClick={() => setActiveTool('elements')} className="cb-mobile-fab__btn">
                         <Plus size={18} /> Add
