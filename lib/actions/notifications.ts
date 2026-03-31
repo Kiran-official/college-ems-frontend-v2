@@ -5,11 +5,15 @@ import { createSSRClient } from '@/lib/supabase/server'
 import webpush from 'web-push'
 
 // Configure web-push
-if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.replace(/['"]/g, '').trim()
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY?.replace(/['"]/g, '').trim()
+const VAPID_EMAIL = process.env.VAPID_EMAIL?.replace(/['"]/g, '').trim()
+
+if (VAPID_PUBLIC && VAPID_PRIVATE && VAPID_EMAIL) {
     webpush.setVapidDetails(
-        `mailto:${process.env.VAPID_EMAIL}`,
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-        process.env.VAPID_PRIVATE_KEY
+        `mailto:${VAPID_EMAIL}`,
+        VAPID_PUBLIC,
+        VAPID_PRIVATE
     )
 }
 
@@ -219,9 +223,22 @@ export async function sendManualEventNotification(
 
 export async function sendTestNotification(): Promise<{ success: boolean; error?: string }> {
     try {
+        console.log('--- Push Notification Test: Start ---')
+        
+        // Log VAPID config (masked)
+        console.log('VAPID Config Check:')
+        console.log('- Email:', process.env.VAPID_EMAIL)
+        console.log('- Public Key Length:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.length ?? 0)
+        console.log('- Private Key Length:', process.env.VAPID_PRIVATE_KEY?.length ?? 0)
+
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
+        if (!user) {
+            console.log('Auth Failure: No user found in session')
+            return { success: false, error: 'Not authenticated' }
+        }
+
+        console.log(`User attempting test: ${user.email} (${user.id})`)
 
         const admin = createAdminClient()
         const { data: subscriptions, error: subsError } = await admin
@@ -229,10 +246,17 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
             .select('id, subscription')
             .eq('user_id', user.id)
 
-        if (subsError) return { success: false, error: 'DB Error: ' + subsError.message }
+        if (subsError) {
+            console.log('DB Error:', subsError.message)
+            return { success: false, error: 'DB Error: ' + subsError.message }
+        }
+
         if (!subscriptions || subscriptions.length === 0) {
+            console.log('No subscriptions found in DB for this user.')
             return { success: false, error: 'No active push tokens found for your account. Please enable notifications first.' }
         }
+
+        console.log(`Found ${subscriptions.length} subscription(s) for user.`)
 
         const payload = JSON.stringify({
             title: 'Test Notification',
@@ -241,24 +265,50 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
         })
 
         const deleteIds: string[] = []
-        await Promise.allSettled(
-            subscriptions.map(async (sub) => {
-                try {
-                    await webpush.sendNotification(sub.subscription as webpush.PushSubscription, payload)
-                } catch (error: any) {
-                    if (error.statusCode === 410 || error.statusCode === 404) {
-                        deleteIds.push(sub.id)
-                    }
+        let successCount = 0
+
+        for (const sub of subscriptions) {
+            try {
+                console.log(`Sending to sub ID: ${sub.id}`)
+                const result = await webpush.sendNotification(sub.subscription as webpush.PushSubscription, payload)
+                console.log(`Push Service Response (Status: ${result.statusCode}):`, result.headers['location'] || 'Sent')
+                successCount++
+            } catch (error: any) {
+                console.log(`Push Service Error (Status: ${error.statusCode}):`, error.body || error.message)
+                if (error.statusCode === 410 || error.statusCode === 404) {
+                    deleteIds.push(sub.id)
                 }
-            })
-        )
+            }
+        }
 
         if (deleteIds.length > 0) {
+            console.log(`Cleaning up ${deleteIds.length} stale subscriptions.`)
             await admin.from('push_subscriptions').delete().in('id', deleteIds)
         }
 
+        console.log(`--- Push Notification Test: End (${successCount} successes) ---`)
         return { success: true }
     } catch (err: any) {
+        console.error('sendTestNotification critical error:', err)
         return { success: false, error: err.message || 'Failed to send test notification' }
+    }
+}
+
+export async function clearUserSubscriptions(): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { error } = await admin
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', user.id)
+
+        if (error) return { success: false, error: error.message }
+        return { success: true }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to clear subscriptions' }
     }
 }

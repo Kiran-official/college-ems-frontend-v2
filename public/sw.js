@@ -77,20 +77,39 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push Received.');
+  
   if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body,
-      icon: '/assets/icon-192x192.png',
-      badge: '/assets/icon-192x192.png',
-      data: {
-        url: data.url || '/'
-      }
-    };
+    try {
+      const data = event.data.json();
+      console.log('[Service Worker] Push Data:', data);
 
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
+      const options = {
+        body: data.body,
+        icon: '/assets/icon-192x192.png',
+        badge: '/assets/icon-192x192.png',
+        data: {
+          url: data.url || '/'
+        }
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title, options)
+          .then(() => console.log('[Service Worker] Notification Shown.'))
+          .catch(err => console.error('[Service Worker] Failed to show notification:', err))
+      );
+    } catch (e) {
+      console.error('[Service Worker] Push event data was not JSON:', e);
+      // Optional: show a fallback notification if data isn't JSON
+      event.waitUntil(
+        self.registration.showNotification('SICM EMS', {
+          body: event.data.text(),
+          icon: '/assets/icon-192x192.png',
+        })
+      );
+    }
+  } else {
+    console.warn('[Service Worker] Push event received but no data found.');
   }
 });
 

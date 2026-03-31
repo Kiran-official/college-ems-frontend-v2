@@ -27,20 +27,24 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
-    const PUBLIC_PATHS = ['/login', '/register', '/sw.js', '/manifest.json', '/offline.html'];
-    const isPublic = PUBLIC_PATHS.some(path => pathname === path) || pathname.startsWith('/api/');
+    const PUBLIC_PATHS = ['/sw.js', '/manifest.json', '/offline.html'];
+    const AUTH_PAGES = ['/login', '/register', '/'];
+    
+    const isPublicAsset = PUBLIC_PATHS.some(path => pathname === path) || pathname.startsWith('/api/');
+    const isAuthPage = AUTH_PAGES.some(path => pathname === path);
 
-    // 1. Public routes
-    if (isPublic) {
-        if (user) {
-            // Already logged in? Redirect to role dashboard
-            try {
-                const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
-                if (profile) return NextResponse.redirect(new URL(`/${profile.role}`, request.url));
-            } catch {
-                return response;
-            }
+    // 1. Auth pages: If logged in, redirect to dashboard
+    if (isAuthPage && user) {
+        try {
+            const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (profile) return NextResponse.redirect(new URL(`/${profile.role}`, request.url));
+        } catch {
+            return response;
         }
+    }
+
+    // 2. Public assets/APIs or Auth pages (not logged in): Allow access
+    if (isPublicAsset || isAuthPage) {
         return response;
     }
 

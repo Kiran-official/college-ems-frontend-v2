@@ -5500,3 +5500,100 @@ input[type="radio"]:focus-visible {
   .tp-header { margin-bottom: 24px; }
   .tp-header h2 { font-size: 1.25rem; }
 }
+
+/* ── Profile Info Grid ────────────────────────────────────────── */
+.profile-info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .profile-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+}
+
+.profile-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--r-xl);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all var(--t-base);
+  height: 100%;
+}
+
+.profile-info-item:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+.profile-info-item__icon-container {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  background: var(--bg-void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: all var(--t-base);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.profile-info-item:hover .profile-info-item__icon-container {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+  box-shadow: var(--glow-sm);
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.profile-info-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.profile-info-item__label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+  line-height: 1.2;
+}
+
+.profile-info-item__value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: all var(--t-base);
+}
+
+.profile-info-item:hover .profile-info-item__value {
+  color: var(--text-primary);
+  transform: translateX(4px);
+}
+
+.profile-info-item--full {
+  grid-column: 1 / -1;
+}
+
+/* Adjustments for Badge within info item */
+.profile-info-item .badge {
+  margin-top: 4px;
+  align-self: flex-start;
+}

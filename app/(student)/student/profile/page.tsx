@@ -2,12 +2,24 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/queries/users'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
+import { User, Mail, Phone, Building, GraduationCap, BookOpen, Hash, Calendar } from 'lucide-react'
 import { ChangePasswordForm } from './ChangePasswordForm'
 import { NotificationStatus } from '@/components/pwa/NotificationStatus'
 
 export default async function StudentProfilePage() {
     const user = await getCurrentUser()
     if (!user) redirect('/login')
+
+    const infoItems = [
+        { label: 'Full Name', value: user.name, icon: User, fullWidth: true },
+        { label: 'Email', value: user.email, icon: Mail },
+        { label: 'Phone Number', value: user.phone_number ?? '—', icon: Phone },
+        { label: 'Department', value: user.department?.name ?? '—', icon: Building },
+        { label: 'Programme', value: user.programme ?? '—', icon: GraduationCap },
+        { label: 'Semester', value: user.semester ?? '—', icon: BookOpen },
+        { label: 'Student Type', value: user.student_type?.toUpperCase() ?? 'INTERNAL', icon: Hash, isBadge: true },
+        { label: 'Member Since', value: format(new Date(user.created_at), 'dd MMM yyyy'), icon: Calendar },
+    ]
 
     return (
         <div className="page">
@@ -25,62 +37,36 @@ export default async function StudentProfilePage() {
 
             <div className="flex flex-col lg:grid lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">
                 <div className="flex flex-col gap-6">
-                    <div className="glass-premium" style={{ padding: 24 }}>
-                        <h3 className="section-title" style={{ marginBottom: 24 }}>Personal Info</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="sm:col-span-2">
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Full Name
-                                </div>
-                                <div style={{ fontSize: '1.125rem', fontWeight: 500 }}>{user.name}</div>
+                    <div className="glass-premium" style={{ padding: '32px 24px' }}>
+                        <h3 className="section-title" style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="w-8 h-8 rounded-lg bg-accent-dim flex items-center justify-center text-accent">
+                                <User size={18} />
                             </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Email
-                                </div>
-                                <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{user.email}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Phone Number
-                                </div>
-                                <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{user.phone_number ?? '—'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Department
-                                </div>
-                                <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{user.department?.name ?? '—'}</div>
-                            </div>
-                            {user.programme && (
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                        Programme
+                            Personal Info
+                        </h3>
+                        
+                        <div className="profile-info-grid">
+                            {infoItems.map((item, idx) => (
+                                <div key={idx} className={`profile-info-item ${item.fullWidth ? 'profile-info-item--full' : ''}`}>
+                                    <div className="profile-info-item__icon-container">
+                                        <item.icon size={18} />
                                     </div>
-                                    <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{user.programme}</div>
-                                </div>
-                            )}
-                            {user.semester && (
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                        Semester
+                                    <div className="profile-info-item__content">
+                                        <div className="profile-info-item__label">
+                                            {item.label}
+                                        </div>
+                                        {item.isBadge ? (
+                                            <Badge variant="info">
+                                                {item.value}
+                                            </Badge>
+                                        ) : (
+                                            <div className="profile-info-item__value">
+                                                {item.value}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{user.semester}</div>
                                 </div>
-                            )}
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Student Type
-                                </div>
-                                <Badge variant="info">{user.student_type?.toUpperCase() ?? 'INTERNAL'}</Badge>
-                            </div>
-
-                            <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                                    Member Since
-                                </div>
-                                <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{format(new Date(user.created_at), 'dd MMM yyyy')}</div>
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </div>
