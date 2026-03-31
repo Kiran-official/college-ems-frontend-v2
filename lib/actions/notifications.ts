@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createSSRClient } from '@/lib/supabase/server'
 import webpush from 'web-push'
 
 // Configure web-push
@@ -125,10 +126,12 @@ export async function sendManualEventNotification(
     if (body.length > 500) return { success: false, error: 'Message too long (max 500)' }
 
     try {
-        const admin = createAdminClient()
-        const ssr = await admin.auth.getUser()
-        const userId = ssr.data.user?.id
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        const userId = user?.id
         if (!userId) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
 
         // 1. Authorisation: Admin or Faculty In Charge
         const { data: userProfile } = await admin.from('users').select('role').eq('id', userId).single()
