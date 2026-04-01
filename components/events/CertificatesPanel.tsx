@@ -3,9 +3,9 @@
 import { useTransition } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { retryCertificateAction, triggerCertificateProcessingAction } from '@/lib/actions/certificateActions'
+import { retryCertificateAction, triggerCertificateProcessingAction, deleteTemplateAction } from '@/lib/actions/certificateActions'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Award, RotateCcw } from 'lucide-react'
+import { Award, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { Certificate, CertificateTemplate, Winner } from '@/lib/types/db'
 import Link from 'next/link'
@@ -26,6 +26,15 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
     function retry(certId: string) {
         startTransition(async () => {
             await retryCertificateAction(certId)
+            window.location.reload()
+        })
+    }
+
+    function removeTemplate(templateId: string) {
+        if (!confirm('Are you sure you want to remove this certificate template? If certificates have already been generated, this will only deactivate it.')) return
+        startTransition(async () => {
+            const res = await deleteTemplateAction(templateId)
+            if (!res.success) alert(`Error: ${res.error}`)
             window.location.reload()
         })
     }
@@ -69,9 +78,14 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                         </div>
                     </div>
                     {hasParticipation && pTemplate ? (
-                        <Link href={`${createTemplatePath.replace('/create', '')}/${pTemplate.id}`}>
-                            <Button size="sm" variant="ghost">Edit</Button>
-                        </Link>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <Link href={`${createTemplatePath.replace('/create', '')}/${pTemplate.id}`}>
+                                <Button size="sm" variant="ghost">Edit</Button>
+                            </Link>
+                            <Button size="sm" variant="ghost" onClick={() => removeTemplate(pTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
+                                <Trash2 size={14} />
+                            </Button>
+                        </div>
                     ) : (
                         <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
                             <Button size="sm" variant="outline">Create</Button>
@@ -99,9 +113,14 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                         </div>
                     </div>
                     {hasWinner && wTemplate ? (
-                        <Link href={`${createTemplatePath.replace('/create', '')}/${wTemplate.id}`}>
-                            <Button size="sm" variant="ghost">Edit</Button>
-                        </Link>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <Link href={`${createTemplatePath.replace('/create', '')}/${wTemplate.id}`}>
+                                <Button size="sm" variant="ghost">Edit</Button>
+                            </Link>
+                            <Button size="sm" variant="ghost" onClick={() => removeTemplate(wTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
+                                <Trash2 size={14} />
+                            </Button>
+                        </div>
                     ) : (
                         <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
                             <Button size="sm" variant="outline">Create</Button>
