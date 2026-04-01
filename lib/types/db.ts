@@ -103,6 +103,7 @@ export interface Team {
     event_id: string
     team_name: string
     created_by: string
+    leader_id: string
     created_at: string
     // Payment fields
     payment_status: PaymentStatus

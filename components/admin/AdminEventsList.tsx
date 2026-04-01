@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { SearchInput } from '@/components/forms/SearchInput'
 import { format } from 'date-fns'
-import { Settings, Archive } from 'lucide-react'
+import { Settings, Archive, ChevronDown } from 'lucide-react'
 import { ArchiveRestoreButtons } from '@/app/(admin)/admin/events/ArchiveRestoreButtons'
 import { DeleteEventButton } from '@/app/(admin)/admin/events/DeleteEventButton'
 import type { Event } from '@/lib/types/db'
@@ -20,16 +20,16 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
 
     const filtered = initialEvents.filter(e => {
         const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
-        
+
         let matchesStatus = statusFilter === 'all' || e.status === statusFilter
-        
+
         // Smart derived statuses
         if (statusFilter === 'processing') {
             matchesStatus = e.status === 'closed' && !e.results_published
         } else if (statusFilter === 'published') {
             matchesStatus = e.status === 'closed' && e.results_published
         }
-        
+
         return matchesSearch && matchesStatus
     })
 
@@ -85,28 +85,49 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
 
     return (
         <div className="admin-events-list">
-            <div style={{ marginBottom: 24, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-                <SearchInput 
-                    value={searchQuery} 
-                    onChange={setSearchQuery} 
-                    placeholder="Search events by title..." 
-                />
-                
-                <div style={{ position: 'relative', minWidth: 160 }}>
+            <div style={{ marginBottom: 24, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                    <SearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search events by title..."
+                    />
+                </div>
+
+                <div style={{ position: "relative", flexShrink: 0 }}>
                     <select
                         className="form-input"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{ paddingRight: 32 }}
+                        style={{
+                            appearance: "none",
+                            WebkitAppearance: "none",
+                            MozAppearance: "none",
+                            paddingRight: "36px",
+                            minWidth: 0,
+                            width: "auto",
+                        }}
                     >
                         <option value="all">All Statuses</option>
                         <option value="draft">Draft</option>
-                        <option value="open">Open (Registration)</option>
-                        <option value="closed">Closed (Event Over)</option>
-                        <option value="processing">Processing (Selecting Winners)</option>
-                        <option value="published">Published (Results Out)</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                        <option value="processing">Processing</option>
+                        <option value="published">Published</option>
                         <option value="completed">Completed</option>
                     </select>
+
+                    <ChevronDown
+                        size={16}
+                        style={{
+                            position: "absolute",
+                            right: "12px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            pointerEvents: "none",
+                            color: "#6b7280",
+                        }}
+                    />
                 </div>
             </div>
 

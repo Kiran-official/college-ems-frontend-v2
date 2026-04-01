@@ -5617,3 +5617,253 @@ input[type="radio"]:focus-visible {
   margin-top: 4px;
   align-self: flex-start;
 }
+
+/* ── Teams Search Bar ──────────────────────────────────────────── */
+.teams-search-bar:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+.teams-search-bar input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE TABLE ↔ CARD SYSTEM
+   Shared classes for all data tables across the app.
+   Desktop: show .resp-table, hide .resp-cards
+   Mobile (≤768px): hide .resp-table, show .resp-cards
+   ══════════════════════════════════════════════════════════════════ */
+.resp-table { display: block; }
+.resp-cards { display: none; }
+
+@media (max-width: 768px) {
+  .resp-table { display: none !important; }
+  .resp-cards { display: block !important; }
+}
+
+/* ── Mobile Card (.m-card) ─────────────────────────────────────── */
+.m-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.m-card__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.m-card__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-card__sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.m-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+  padding-left: 1px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.m-card__detail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.m-card__detail::after {
+  content: '';
+}
+
+/* Separator dot between details */
+.m-card__details > .m-card__detail + .m-card__detail::before {
+  content: '·';
+  margin-right: 4px;
+  color: var(--text-tertiary);
+  font-weight: 700;
+}
+
+/* ── Teams Panel Responsive Layout ─────────────────────────────── */
+
+/* Toolbar */
+.teams-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+/* Desktop: cap search bar width */
+.teams-toolbar .teams-search-bar {
+  max-width: 600px;
+}
+
+.teams-create-form {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Mobile: Teams toolbar overrides */
+@media (max-width: 768px) {
+
+  .teams-toolbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .teams-toolbar .teams-search-bar {
+    max-width: none !important;
+    flex: 1 1 0 !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+  }
+
+  .teams-create-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teams-create-form .form-input {
+    width: 100% !important;
+  }
+
+  .teams-create-btn {
+    height: 38px !important;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+}
+
+/* Button label: desktop = full, mobile = short */
+.teams-btn-label--short { display: none; }
+.teams-btn-label--full  { display: inline; }
+
+@media (max-width: 768px) {
+  .teams-btn-label--short { display: inline; }
+  .teams-btn-label--full  { display: none; }
+}
+
+/* ── Team Card (mobile) ─────────────────────────────────────────── */
+.teams-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.teams-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.teams-card-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.teams-card-header__name {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teams-card-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.teams-card-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.teams-card-body {
+  padding: 6px;
+}
+
+/* ── Member Card (inside team card, mobile) ──────────────────── */
+.teams-member-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.teams-member-card:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.teams-member-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.teams-member-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+/* Extra breathing room between phone icon and number */
+.teams-member-card__details .lucide-phone {
+  margin-right: 2px;
+}

@@ -61,7 +61,6 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
             const res = await retryAllFailedCertificatesAction()
             if (res.success) {
                 alert(`Retrying ${res.count} failed certificates.`)
-                // Trigger auto-processing if any were reset
                 if (res.count && res.count > 0) {
                     await triggerCertificateProcessingAction()
                 }
@@ -153,43 +152,73 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
     }
 
     const renderTable = (certs: Certificate[]) => (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Generated At</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {certs.map(cert => (
-                        <tr key={cert.id}>
-                            <td data-label="Student">{cert.student?.name ?? '—'}</td>
-                            <td data-label="Type"><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
-                            <td data-label="Status"><Badge variant={cert.status}>{cert.status}</Badge></td>
-                            <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
-                            <td data-label="Action">
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    {cert.status === 'failed' && (
-                                        <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Retry Failed Certificate">
-                                            <RotateCcw size={14} /> Retry
-                                        </Button>
-                                    )}
-                                    {cert.status === 'generated' && (
-                                        <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Regenerate Certificate">
-                                            <Award size={14} /> Regenerate
-                                        </Button>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+        <>
+            {/* Desktop table */}
+            <div className="resp-table">
+                <div className="table-wrap" style={{ marginTop: 12 }}>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Generated At</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {certs.map(cert => (
+                                <tr key={cert.id}>
+                                    <td data-label="Student">{cert.student?.name ?? '—'}</td>
+                                    <td data-label="Type"><Badge variant={cert.certificate_type}>{cert.certificate_type}</Badge></td>
+                                    <td data-label="Status"><Badge variant={cert.status}>{cert.status}</Badge></td>
+                                    <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
+                                    <td data-label="Action">
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            {cert.status === 'failed' && (
+                                                <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Retry Failed Certificate">
+                                                    <RotateCcw size={14} /> Retry
+                                                </Button>
+                                            )}
+                                            {cert.status === 'generated' && (
+                                                <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Regenerate Certificate">
+                                                    <Award size={14} /> Regenerate
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="resp-cards" style={{ marginTop: 12 }}>
+                {certs.map(cert => (
+                    <div key={cert.id} className="m-card">
+                        <div className="m-card__row">
+                            <span className="m-card__name">{cert.student?.name ?? '—'}</span>
+                            <Badge variant={cert.certificate_type} style={{ fontSize: '9px', padding: '1px 6px' }}>{cert.certificate_type}</Badge>
+                            <Badge variant={cert.status} style={{ fontSize: '9px', padding: '1px 6px' }}>{cert.status}</Badge>
+                        </div>
+                        <div className="m-card__details" style={{ marginTop: 4 }}>
+                            <span className="m-card__detail">
+                                {cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : 'Not generated'}
+                            </span>
+                        </div>
+                        {(cert.status === 'failed' || cert.status === 'generated') && (
+                            <div style={{ marginTop: 8 }}>
+                                <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} style={{ fontSize: '12px', padding: '2px 8px', height: '28px' }}>
+                                    <RotateCcw size={12} style={{ marginRight: 4 }} /> {cert.status === 'failed' ? 'Retry' : 'Regenerate'}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </>
     )
 
     const renderSummary = () => (

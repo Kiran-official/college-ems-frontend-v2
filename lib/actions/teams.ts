@@ -14,7 +14,8 @@ export async function createTeam(eventId: string, name: string): Promise<{ succe
         const { data: team, error } = await admin.from('teams').insert({
             event_id: eventId,
             team_name: name.trim(),
-            created_by: user.id
+            created_by: user.id,
+            leader_id: user.id
         }).select().single()
 
         if (error) return { success: false, error: error.message }

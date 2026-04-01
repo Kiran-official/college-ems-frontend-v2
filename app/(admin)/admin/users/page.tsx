@@ -289,7 +289,7 @@ function UsersContent() {
                 </div>
             )}
 
-            {/* Table */}
+            {/* Table / Cards */}
             {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 48, borderRadius: 'var(--r-md)' }} />)}
@@ -297,64 +297,88 @@ function UsersContent() {
             ) : filtered.length === 0 ? (
                 <EmptyState icon={Users} title={`No ${tabRole.toLowerCase()}s found`} subtitle={search ? 'Try a different search term' : `No ${tabRole.toLowerCase()}s have been added yet.`} />
             ) : (
-                <div className="table-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                {tab !== 'admins' && <th>Department</th>}
-                                {tab === 'students' && <th>Programme</th>}
-                                {tab === 'students' && <th>Semester</th>}
-                                {tab === 'students' && <th>Type</th>}
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(u => (
-                                <tr key={u.id}>
-                                    <td data-label="Name">{u.name}</td>
-                                    <td data-label="Email">{u.email}</td>
-                                    <td data-label="Phone">{u.phone_number ?? '—'}</td>
-                                    {tab !== 'admins' && <td data-label="Department">{u.department?.name ?? '—'}</td>}
-                                    {tab === 'students' && <td data-label="Programme">{u.programme ?? '—'}</td>}
-                                    {tab === 'students' && <td data-label="Semester">{u.semester ?? 1}</td>}
-                                    {tab === 'students' && (
-                                        <td data-label="Type"><Badge variant={u.student_type ?? 'internal'}>{u.student_type ?? 'internal'}</Badge></td>
-                                    )}
-                                    <td data-label="Status">
-                                        <Badge variant={u.is_active ? 'generated' : 'failed'}>
-                                            {u.is_active ? 'Active' : 'Inactive'}
-                                        </Badge>
-                                    </td>
-                                    <td data-label="Created">{format(new Date(u.created_at), 'dd/MM/yyyy')}</td>
-                                    <td data-label="Actions" style={{ display: 'flex', gap: '8px', minWidth: 'max-content' }}>
-                                        <div className="table-actions">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setEditingUser(u)}
-                                            >
-                                                <Edit2 size={12} /> <span className="hidden sm:inline">Edit</span>
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant={u.is_active ? 'danger' : 'outline'}
-                                                onClick={() => toggleActive(u.id, u.is_active)}
-                                                loading={togglePending}
-                                            >
-                                                <Power size={12} /> <span className="hidden sm:inline">{u.is_active ? 'Deactivate' : 'Activate'}</span>
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <>
+                    {/* Desktop table */}
+                    <div className="resp-table">
+                        <div className="table-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        {tab !== 'admins' && <th>Department</th>}
+                                        {tab === 'students' && <th>Programme</th>}
+                                        {tab === 'students' && <th>Semester</th>}
+                                        {tab === 'students' && <th>Type</th>}
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map(u => (
+                                        <tr key={u.id}>
+                                            <td data-label="Name">{u.name}</td>
+                                            <td data-label="Email">{u.email}</td>
+                                            <td data-label="Phone">{u.phone_number ?? '—'}</td>
+                                            {tab !== 'admins' && <td data-label="Department">{u.department?.name ?? '—'}</td>}
+                                            {tab === 'students' && <td data-label="Programme">{u.programme ?? '—'}</td>}
+                                            {tab === 'students' && <td data-label="Semester">{u.semester ?? 1}</td>}
+                                            {tab === 'students' && (
+                                                <td data-label="Type"><Badge variant={u.student_type ?? 'internal'}>{u.student_type ?? 'internal'}</Badge></td>
+                                            )}
+                                            <td data-label="Status">
+                                                <Badge variant={u.is_active ? 'generated' : 'failed'}>
+                                                    {u.is_active ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                            </td>
+                                            <td data-label="Created">{format(new Date(u.created_at), 'dd/MM/yyyy')}</td>
+                                            <td data-label="Actions" style={{ display: 'flex', gap: '8px', minWidth: 'max-content' }}>
+                                                <div className="table-actions">
+                                                    <Button size="sm" variant="outline" onClick={() => setEditingUser(u)}>
+                                                        <Edit2 size={12} /> <span className="hidden sm:inline">Edit</span>
+                                                    </Button>
+                                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => toggleActive(u.id, u.is_active)} loading={togglePending}>
+                                                        <Power size={12} /> <span className="hidden sm:inline">{u.is_active ? 'Deactivate' : 'Activate'}</span>
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Mobile cards */}
+                    <div className="resp-cards">
+                        {filtered.map(u => (
+                            <div key={u.id} className="m-card">
+                                <div className="m-card__row">
+                                    <span className="m-card__name">{u.name}</span>
+                                    <Badge variant={u.is_active ? 'generated' : 'failed'} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                                        {u.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingUser(u)} style={{ height: '24px', width: '24px', padding: 0 }} title="Edit">
+                                        <Edit2 size={12} />
+                                    </Button>
+                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => toggleActive(u.id, u.is_active)} loading={togglePending} style={{ height: '24px', width: '24px', padding: 0 }} title={u.is_active ? 'Deactivate' : 'Activate'}>
+                                        <Power size={12} />
+                                    </Button>
+                                </div>
+                                <div className="m-card__sub">{u.email}</div>
+                                <div className="m-card__details">
+                                    {u.phone_number && <span className="m-card__detail">{u.phone_number}</span>}
+                                    {tab !== 'admins' && u.department?.name && <span className="m-card__detail">{u.department.name}</span>}
+                                    {tab === 'students' && u.programme && <span className="m-card__detail">{u.programme} {u.semester ? `(S${u.semester})` : ''}</span>}
+                                    {tab === 'students' && <span className="m-card__detail">{u.student_type ?? 'internal'}</span>}
+                                    <span className="m-card__detail">{format(new Date(u.created_at), 'dd/MM')}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
             )}
 
             {/* Create user modal */}

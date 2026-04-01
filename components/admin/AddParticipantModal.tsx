@@ -17,9 +17,11 @@ interface AddParticipantModalProps {
     open: boolean
     onClose: () => void
     onSuccess: () => void
+    preselectedUser?: { id: string; name: string }
+    preselectedTeamId?: string
 }
 
-export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSize, open, onClose, onSuccess }: AddParticipantModalProps) {
+export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSize, open, onClose, onSuccess, preselectedUser, preselectedTeamId }: AddParticipantModalProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([])
     const [selectedUsers, setSelectedUsers] = useState<Array<{ id: string; name: string }>>([])
@@ -28,6 +30,7 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
     const [teamOption, setTeamOption] = useState<'existing' | 'new'>('existing')
     const [selectedTeamId, setSelectedTeamId] = useState('')
     const [newTeamName, setNewTeamName] = useState('')
+    const [selectedLeaderId, setSelectedLeaderId] = useState('')
     const [markAsVerified, setMarkAsVerified] = useState(true)
 
     const [error, setError] = useState('')
@@ -39,14 +42,15 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
         if (open) {
             setSearchQuery('')
             setSearchResults([])
-            setSelectedUsers([])
-            setTeamOption('existing')
-            setSelectedTeamId('')
+            setSelectedUsers(preselectedUser ? [preselectedUser] : [])
+            setTeamOption(preselectedTeamId ? 'existing' : 'existing') // default to existing, or rename to mode
+            setSelectedTeamId(preselectedTeamId || '')
             setNewTeamName('')
+            setSelectedLeaderId(preselectedUser ? preselectedUser.id : '')
             setMarkAsVerified(true)
             setError('')
         }
-    }, [open])
+    }, [open, preselectedUser, preselectedTeamId])
 
     // Debounced search
     useEffect(() => {
@@ -99,6 +103,7 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
                     // For subsequent users, pass the currentTeamId we got back
                     teamId: eventType === 'team' ? (currentTeamId || undefined) : undefined,
                     teamName: eventType === 'team' && teamOption === 'new' && !currentTeamId ? newTeamName.trim() : undefined,
+                    leaderId: eventType === 'team' && teamOption === 'new' && !currentTeamId ? (selectedLeaderId || user.id) : undefined,
                     paymentStatus: isPaid ? (markAsVerified ? 'verified' as const : 'pending' as const) : undefined,
                 }
 
@@ -122,8 +127,8 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
         })
     }
 
-    // Filter out full teams
-    const availableTeams = teams.filter(t => !teamSize || t.memberCount < teamSize)
+    // Show all teams for manual override, but mark full ones
+    const availableTeams = teams
 
     return (
         <Modal open={open} onClose={onClose} title="Add Participant (Manual Override)">
@@ -144,7 +149,13 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
                                 <span style={{ fontWeight: 500 }}>{user.name}</span>
                                 <button 
                                     type="button"
-                                    onClick={() => setSelectedUsers(prev => prev.filter(u => u.id !== user.id))}
+                                    onClick={() => {
+                                        const newUsers = selectedUsers.filter(u => u.id !== user.id)
+                                        setSelectedUsers(newUsers)
+                                        if (selectedLeaderId === user.id) {
+                                            setSelectedLeaderId(newUsers.length > 0 ? newUsers[0].id : '')
+                                        }
+                                    }}
                                     style={{ color: 'var(--text-tertiary)', background: 'transparent', cursor: 'pointer', display: 'flex' }}
                                     className="hover:text-danger"
                                 >
@@ -176,7 +187,11 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
                                             key={user.id}
                                             onClick={() => {
                                                 if (!isAlreadySelected) {
-                                                    setSelectedUsers(prev => [...prev, { id: user.id, name: user.name }])
+                                                    setSelectedUsers(prev => {
+                                                        const newUsers = [...prev, { id: user.id, name: user.name }]
+                                                        if (newUsers.length === 1) setSelectedLeaderId(user.id)
+                                                        return newUsers
+                                                    })
                                                 }
                                                 setSearchQuery('')
                                                 setSearchResults([])
@@ -225,18 +240,46 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
                         {teamOption === 'existing' ? (
                             <select className="form-select" value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)}>
                                 <option value="">Select Team...</option>
-                                {availableTeams.map(t => (
-                                    <option key={t.id} value={t.id}>{t.team_name} ({t.memberCount}{teamSize ? `/${teamSize}` : ''} members)</option>
-                                ))}
+                                {availableTeams.map(t => {
+                                    const isFull = teamSize ? t.memberCount >= teamSize : false
+                                    return (
+                                        <option key={t.id} value={t.id} disabled={false}>
+                                            {t.team_name} ({t.memberCount}{teamSize ? `/${teamSize}` : ''} members) {isFull ? '— FULL' : ''}
+                                        </option>
+                                    )
+                                })}
                                 {availableTeams.length === 0 && <option value="" disabled>No available teams (all full or none created)</option>}
                             </select>
                         ) : (
-                            <input 
-                                className="form-input" 
-                                placeholder="Enter bold new team name" 
-                                value={newTeamName} 
-                                onChange={e => setNewTeamName(e.target.value)} 
-                            />
+                            <div className="flex flex-col gap-3">
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Enter new team name" 
+                                    value={newTeamName} 
+                                    onChange={e => setNewTeamName(e.target.value)} 
+                                />
+
+                                {selectedUsers.length > 1 && (
+                                    <div className="p-3 rounded-md bg-white/5 border border-border/50">
+                                        <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Designate Team Leader</div>
+                                        <div className="flex flex-col gap-1.5">
+                                            {selectedUsers.map(user => (
+                                                <label key={user.id} className="flex items-center gap-2 text-sm cursor-pointer p-1.5 rounded hover:bg-white/5 transition-colors">
+                                                    <input 
+                                                        type="radio"
+                                                        checked={selectedLeaderId === user.id} 
+                                                        onChange={() => setSelectedLeaderId(user.id)} 
+                                                    />
+                                                    <span>{user.name}</span>
+                                                    {selectedLeaderId === user.id && (
+                                                        <span className="text-[10px] bg-accent text-white px-1.5 py-0.5 rounded-full font-bold ml-auto">Leader</span>
+                                                    )}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </FormGroup>
                 )}

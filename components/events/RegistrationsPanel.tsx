@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
-import { ClipboardList, Filter, Plus } from 'lucide-react'
+import { ClipboardList, Filter, Plus, Phone } from 'lucide-react'
 import { format } from 'date-fns'
 import type { IndividualRegistration, Event, Team } from '@/lib/types/db'
 import { AddParticipantModal } from '@/components/admin/AddParticipantModal'
@@ -26,96 +26,153 @@ interface RegistrationsPanelProps {
     teams?: Team[]
 }
 
-function RegistrationTable({ rows, isPaid }: { rows: IndividualRegistration[], isPaid: boolean }) {
+function paymentBadgeVariant(status: string) {
+    return status === 'verified' ? 'generated' as const :
+        status === 'submitted' ? 'processing' as const :
+        status === 'rejected' ? 'failed' as const : 'pending' as const
+}
+
+function attendanceBadgeVariant(status: string) {
+    return status === 'attended' ? 'generated' as const :
+        status === 'registered' ? 'pending' as const : 'failed' as const
+}
+
+// ── Mobile card for a single registration row ───────────────────
+function RegCard({ r, isPaid }: { r: IndividualRegistration; isPaid: boolean }) {
+    const student = r.student as any
     return (
-        <div className="table-wrap">
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Department</th>
-                        {isPaid && <th>Payment</th>}
-                        <th>Registered At</th>
-                        <th>Attendance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map(r => (
-                        <tr key={r.id}>
-                            <td data-label="Name">{r.student?.name ?? '—'}</td>
-                            <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
-                            <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-                            {isPaid && (
-                                <td data-label="Payment">
-                                    <Badge variant={
-                                        r.payment_status === 'verified' ? 'generated' :
-                                        r.payment_status === 'submitted' ? 'processing' :
-                                        r.payment_status === 'rejected' ? 'failed' : 'pending'
-                                    }>
-                                        {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
-                                    </Badge>
-                                </td>
-                            )}
-                            <td data-label="Registered">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                            <td data-label="Attendance"><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+        <div className="m-card">
+            <div className="m-card__row">
+                <span className="m-card__name">{student?.name ?? '—'}</span>
+                {isPaid && (
+                    <Badge variant={paymentBadgeVariant(r.payment_status)} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                        {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
+                    </Badge>
+                )}
+                <Badge variant={attendanceBadgeVariant(r.attendance_status)} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                    {r.attendance_status === 'attended' ? 'present' : r.attendance_status}
+                </Badge>
+            </div>
+            <div className="m-card__details">
+                {student?.phone_number && (
+                    <span className="m-card__detail">
+                        <Phone size={11} /> {student.phone_number}
+                    </span>
+                )}
+                {student?.department?.name && (
+                    <span className="m-card__detail">{student.department.name}</span>
+                )}
+                <span className="m-card__detail">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</span>
+            </div>
         </div>
     )
 }
 
-function TeamGroupTable({ teams, isPaid }: { teams: Map<string, { name: string; members: IndividualRegistration[] }>, isPaid: boolean }) {
-    const entries = Array.from(teams.entries())
+// ── Desktop table for individual registrations ───────────────────
+function RegistrationTable({ rows, isPaid }: { rows: IndividualRegistration[], isPaid: boolean }) {
     return (
-        <div className="table-wrap">
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Department</th>
-                        {isPaid && <th>Payment</th>}
-                        <th>Registered At</th>
-                        <th>Attendance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {entries.map(([teamId, team], idx) => (
-                        <React.Fragment key={teamId}>
-                            {idx > 0 && (
-                                <tr className="team-group-gap"><td colSpan={isPaid ? 6 : 5} /></tr>
-                            )}
-                            <tr className="team-group-header">
-                                <td colSpan={isPaid ? 6 : 5}>{team.name}</td>
+        <>
+            <div className="resp-table">
+                <div className="table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Department</th>
+                                {isPaid && <th>Payment</th>}
+                                <th>Registered At</th>
+                                <th>Attendance</th>
                             </tr>
-                            {team.members.map(r => (
+                        </thead>
+                        <tbody>
+                            {rows.map(r => (
                                 <tr key={r.id}>
                                     <td data-label="Name">{r.student?.name ?? '—'}</td>
                                     <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
                                     <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
                                     {isPaid && (
                                         <td data-label="Payment">
-                                            <Badge variant={
-                                                r.payment_status === 'verified' ? 'generated' :
-                                                r.payment_status === 'submitted' ? 'processing' :
-                                                r.payment_status === 'rejected' ? 'failed' : 'pending'
-                                            }>
+                                            <Badge variant={paymentBadgeVariant(r.payment_status)}>
                                                 {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
                                             </Badge>
                                         </td>
                                     )}
                                     <td data-label="Registered">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
-                                    <td data-label="Attendance"><Badge variant={r.attendance_status === 'registered' ? 'pending' : r.attendance_status === 'attended' ? 'generated' : 'failed'}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
+                                    <td data-label="Attendance"><Badge variant={attendanceBadgeVariant(r.attendance_status)}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
                                 </tr>
                             ))}
-                        </React.Fragment>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div className="resp-cards">
+                {rows.map(r => <RegCard key={r.id} r={r} isPaid={isPaid} />)}
+            </div>
+        </>
+    )
+}
+
+// ── Desktop table + mobile cards for team-grouped registrations ─
+function TeamGroupTable({ teams, isPaid }: { teams: Map<string, { name: string; members: IndividualRegistration[] }>, isPaid: boolean }) {
+    const entries = Array.from(teams.entries())
+    return (
+        <>
+            <div className="resp-table">
+                <div className="table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Department</th>
+                                {isPaid && <th>Payment</th>}
+                                <th>Registered At</th>
+                                <th>Attendance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {entries.map(([teamId, team], idx) => (
+                                <React.Fragment key={teamId}>
+                                    {idx > 0 && (
+                                        <tr className="team-group-gap"><td colSpan={isPaid ? 6 : 5} /></tr>
+                                    )}
+                                    <tr className="team-group-header">
+                                        <td colSpan={isPaid ? 6 : 5}>{team.name}</td>
+                                    </tr>
+                                    {team.members.map(r => (
+                                        <tr key={r.id}>
+                                            <td data-label="Name">{r.student?.name ?? '—'}</td>
+                                            <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
+                                            <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
+                                            {isPaid && (
+                                                <td data-label="Payment">
+                                                    <Badge variant={paymentBadgeVariant(r.payment_status)}>
+                                                        {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
+                                                    </Badge>
+                                                </td>
+                                            )}
+                                            <td data-label="Registered">{format(new Date(r.registered_at), 'dd/MM/yyyy')}</td>
+                                            <td data-label="Attendance"><Badge variant={attendanceBadgeVariant(r.attendance_status)}>{r.attendance_status === 'attended' ? 'present' : r.attendance_status}</Badge></td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div className="resp-cards">
+                {entries.map(([teamId, team]) => (
+                    <div key={teamId} style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', padding: '0 2px 8px' }}>
+                            {team.name}
+                        </div>
+                        {team.members.map(r => <RegCard key={r.id} r={r} isPaid={isPaid} />)}
+                    </div>
+                ))}
+            </div>
+        </>
     )
 }
 
@@ -134,10 +191,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
         return <EmptyState icon={ClipboardList} title="No registrations yet" subtitle="No one has registered for this event yet." />
     }
 
-    // Get unique departments from registrations for filter
     const depts = Array.from(new Set(registrations.map(r => (r.student?.department as { id: string; name: string } | undefined)?.name).filter(Boolean)))
-
-    // Get programs based on filterDept
     const programmes = filterDept ? (DEPT_PROGRAMMES[filterDept] ?? []) : Object.values(DEPT_PROGRAMMES).flat()
 
     const filtered = registrations.filter(r => {
@@ -152,7 +206,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
     const isTeam = event.participant_type === 'multiple'
 
     const renderActionHeader = () => (
-        <div style={{ paddingBottom: 24 }}> {/* Robust spacer container */}
+        <div style={{ paddingBottom: 24 }}>
             <div className="flex justify-between items-center gap-3">
                 <div>
                     {isAdminOrTeacher && event.status === 'open' && (

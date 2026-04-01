@@ -20,6 +20,8 @@ import {
     editTeamAction,
     uploadPaymentProofAction,
     requestRefundAction,
+    transferLeadershipAction,
+    getPaymentProofSignedUrlAction
 } from '@/lib/actions/registrationActions'
 import { searchStudentsForInviteAction } from '@/lib/actions/userActions'
 import { Users2, Trash2, Check, X, Search, Loader2, UserPlus, LogOut, UserMinus, QrCode, Upload, CheckCircle2, Clock, XCircle, AlertCircle, Edit2 } from 'lucide-react'
@@ -241,7 +243,7 @@ function PaymentProofUpload({ registration, team, event, studentId }: { registra
     // Use team's payment status if in a team, otherwise individual
     const paymentStatus = team ? (team as any).payment_status : (registration?.payment_status ?? 'pending')
     const isTeamRef = !!team
-    const canUpload = !team || team.created_by === studentId
+    const canUpload = !team || team.leader_id === studentId
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const f = e.target.files?.[0]
@@ -417,7 +419,7 @@ function PaymentProofUpload({ registration, team, event, studentId }: { registra
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {!canUpload ? (
                     <div style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                        ℹ️ Only the team creator can upload the payment proof. Please coordinate with them.
+                        ℹ️ Only the team leader can upload the payment proof. Please coordinate with them.
                     </div>
                 ) : (
                     <>
@@ -503,19 +505,19 @@ function RegistrationAction({
     const isRegistered = !!existingReg
 
     // For paid events, "registered" means payment is verified
-    const studentTeam = teams.find(t => t.created_by === studentId || t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
+    const studentTeam = teams.find(t => t.leader_id === studentId || t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
     const paymentStatus = studentTeam ? (studentTeam as any).payment_status : (existingReg?.payment_status ?? null)
     const isPaid = event.is_paid
 
     // Event-level teams
     const eventTeams = teams
-    const studentCreatedTeam = eventTeams.find(t => t.created_by === studentId)
-    const studentMemberTeam = !studentCreatedTeam
+    const studentLedTeam = eventTeams.find(t => t.leader_id === studentId)
+    const studentMemberTeam = !studentLedTeam
         ? eventTeams.find(t => t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
         : undefined
 
     // Pending join request THIS student sent
-    const pendingJoinEntry = !studentCreatedTeam && !studentMemberTeam
+    const pendingJoinEntry = !studentLedTeam && !studentMemberTeam
         ? (() => {
             for (const t of eventTeams) {
                 const m = t.members?.find(m => m.student_id === studentId && m.status === 'pending' && !m.invited_by)
@@ -526,7 +528,7 @@ function RegistrationAction({
         : null
 
     // Incoming invites for this student
-    const incomingInvites = !studentCreatedTeam && !studentMemberTeam
+    const incomingInvites = !studentLedTeam && !studentMemberTeam
         ? eventTeams.flatMap(t =>
             (t.members ?? [])
                 .filter(m => m.student_id === studentId && m.status === 'pending' && !!m.invited_by)
@@ -535,10 +537,10 @@ function RegistrationAction({
         : []
 
     // Other teams
-    const otherTeams = eventTeams.filter(t => t.created_by !== studentId)
+    const otherTeams = eventTeams.filter(t => t.leader_id !== studentId)
 
     // IDs already in / pending for creator's team
-    const creatorTeamMemberIds = studentCreatedTeam?.members?.map(m => m.student_id) ?? []
+    const ledTeamMemberIds = studentLedTeam?.members?.map(m => m.student_id) ?? []
 
     function wrap(fn: () => Promise<{ success: boolean; error?: string }>) {
         setError(null)
@@ -550,8 +552,8 @@ function RegistrationAction({
     }
 
     function handleSendInvite(student: StudentSearchResult) {
-        if (!studentCreatedTeam) return
-        wrap(() => sendInviteAction({ team_id: studentCreatedTeam.id, student_id: student.id, event_id: event.id }))
+        if (!studentLedTeam) return
+        wrap(() => sendInviteAction({ team_id: studentLedTeam.id, student_id: student.id, event_id: event.id }))
     }
 
     function cancelCreateTeam() {
@@ -629,7 +631,7 @@ function RegistrationAction({
             {participantType === 'multiple' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                    {!studentCreatedTeam && studentMemberTeam && (
+                    {!studentLedTeam && studentMemberTeam && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                             <Badge variant="success">Registered</Badge>
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
@@ -682,17 +684,17 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {studentCreatedTeam && (
+                    {studentLedTeam && (
                         <div style={{ padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
                                 <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>
-                                    Manage Team: {studentCreatedTeam.team_name}
+                                    Manage Team: {studentLedTeam.team_name}
                                 </div>
                                 {canRegister && (
                                     <div className="flex flex-row gap-2 w-full sm:w-auto">
                                         <Button size="sm" variant="outline" className="flex-1 sm:flex-none"
                                             onClick={() => {
-                                                setNewTeamName(studentCreatedTeam.team_name)
+                                                setNewTeamName(studentLedTeam.team_name)
                                                 setEditingTeamName(true)
                                             }}
                                             disabled={pending}>
@@ -704,7 +706,7 @@ function RegistrationAction({
                                                     ? 'Are you sure you want to delete this team? Since you have already paid, this will trigger a refund request for the whole team.'
                                                     : 'Are you sure you want to delete this team? All members will be removed.'
                                                 if (!confirm(msg)) return
-                                                wrap(() => deleteTeamAction({ team_id: studentCreatedTeam.id, event_id: event.id }))
+                                                wrap(() => deleteTeamAction({ team_id: studentLedTeam.id, event_id: event.id }))
                                             }}
                                             loading={pending}>
                                             <Trash2 size={14} /> Delete Team
@@ -724,7 +726,7 @@ function RegistrationAction({
                                     />
                                     <div className="flex gap-2">
                                         <Button size="sm" onClick={() => {
-                                            wrap(() => editTeamAction({ team_id: studentCreatedTeam.id, event_id: event.id, new_name: newTeamName }))
+                                            wrap(() => editTeamAction({ team_id: studentLedTeam.id, event_id: event.id, new_name: newTeamName }))
                                             setEditingTeamName(false)
                                         }} loading={pending}>Save</Button>
                                         <Button size="sm" variant="ghost" onClick={() => setEditingTeamName(false)} disabled={pending}>Cancel</Button>
@@ -733,35 +735,48 @@ function RegistrationAction({
                             )}
 
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-                                Members ({studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0}{teamSize ? `/${teamSize}` : ''})
+                                Members ({studentLedTeam.members?.filter((m: any) => m.status === 'approved').length ?? 0}{teamSize ? `/${teamSize}` : ''})
                             </div>
-                            {studentCreatedTeam.members?.filter(m => m.status === 'approved').map(m => (
+                            {studentLedTeam.members?.filter((m: any) => m.status === 'approved').map((m: any) => (
                                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.875rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <Badge variant="success">Approved</Badge>
                                         <span>{m.student?.name ?? m.student_id}</span>
                                         {m.student_id === studentId && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>(you)</span>}
                                     </div>
-                                    {m.student_id !== studentId && canRegister && (
-                                        <button type="button"
-                                            onClick={() => {
-                                                if (!confirm(`Remove ${m.student?.name ?? 'this member'} from the team?`)) return
-                                                wrap(() => removeMemberAction({ team_member_id: m.id, event_id: event.id }))
-                                            }}
-                                            disabled={pending} title="Remove member"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4, display: 'flex', alignItems: 'center', opacity: pending ? 0.5 : 1 }}>
-                                            <UserMinus size={14} />
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {m.student_id !== studentId && canRegister && (
+                                            <button type="button"
+                                                onClick={() => {
+                                                    if (!confirm(`Are you sure you want to promote ${m.student?.name ?? 'this member'} to Team Leader? You will lose leader permissions.`)) return
+                                                    wrap(() => transferLeadershipAction({ team_id: studentLedTeam.id, new_leader_id: m.student_id, event_id: event.id }))
+                                                }}
+                                                disabled={pending} title="Make Leader"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 4, display: 'flex', alignItems: 'center', opacity: pending ? 0.5 : 1 }}>
+                                                <Badge variant="outline" className="text-[10px]">Make Leader</Badge>
+                                            </button>
+                                        )}
+                                        {m.student_id !== studentId && canRegister && (
+                                            <button type="button"
+                                                onClick={() => {
+                                                    if (!confirm(`Remove ${m.student?.name ?? 'this member'} from the team?`)) return
+                                                    wrap(() => removeMemberAction({ team_member_id: m.id, event_id: event.id }))
+                                                }}
+                                                disabled={pending} title="Remove member"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4, display: 'flex', alignItems: 'center', opacity: pending ? 0.5 : 1 }}>
+                                                <UserMinus size={14} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
 
-                            {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).length ?? 0) > 0 && (
+                            {(studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !m.invited_by).length ?? 0) > 0 && (
                                 <div style={{ marginTop: 12 }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warning)', marginBottom: 6 }}>
                                         Join Requests
                                     </div>
-                                    {studentCreatedTeam.members?.filter(m => m.status === 'pending' && !m.invited_by).map(m => (
+                                    {studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !m.invited_by).map((m: any) => (
                                         <div key={m.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-2 border-b border-border/10 gap-2">
                                             <div>
                                                 <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
@@ -780,12 +795,12 @@ function RegistrationAction({
                                 </div>
                             )}
 
-                            {(studentCreatedTeam.members?.filter(m => m.status === 'pending' && !!m.invited_by).length ?? 0) > 0 && (
+                            {(studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !!m.invited_by).length ?? 0) > 0 && (
                                 <div style={{ marginTop: 12 }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
                                         Invite Sent — Awaiting Response
                                     </div>
-                                    {studentCreatedTeam.members?.filter(m => m.status === 'pending' && !!m.invited_by).map(m => (
+                                    {studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !!m.invited_by).map((m: any) => (
                                         <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                                             <div>
                                                 <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
@@ -803,7 +818,7 @@ function RegistrationAction({
                             )}
 
                             {canRegister && (() => {
-                                const approvedCount = studentCreatedTeam.members?.filter(m => m.status === 'approved').length ?? 0
+                                const approvedCount = studentLedTeam.members?.filter((m: any) => m.status === 'approved').length ?? 0
                                 const isFull = teamSize ? approvedCount >= teamSize : false
                                 return !isFull
                             })() && (
@@ -813,7 +828,7 @@ function RegistrationAction({
                                         </div>
                                         <StudentSearchInput
                                             excludeId={studentId}
-                                            excludeIds={creatorTeamMemberIds}
+                                            excludeIds={ledTeamMemberIds}
                                             placeholder="Search student to invite..."
                                             onSelect={handleSendInvite}
                                         />
@@ -825,17 +840,17 @@ function RegistrationAction({
                     {otherTeams.length > 0 && (
                         <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 12, color: 'var(--text-secondary)' }}>
-                                {!studentMemberTeam && !studentCreatedTeam && canRegister ? 'Join an existing team:' : 'Other teams:'}
+                                {!studentMemberTeam && !studentLedTeam && canRegister ? 'Join an existing team:' : 'Other teams:'}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {otherTeams.map(team => {
-                                    const approvedMembers = team.members?.filter(m => m.status === 'approved') ?? []
+                                    const approvedMembers = team.members?.filter((m: any) => m.status === 'approved') ?? []
                                     const approvedCount = approvedMembers.length
                                     const isFull = teamSize ? approvedCount >= teamSize : false
-                                    const myEntry = team.members?.find(m => m.student_id === studentId && m.status === 'pending')
+                                    const myEntry = team.members?.find((m: any) => m.student_id === studentId && m.status === 'pending')
                                     const hasPendingJoin = myEntry && !myEntry.invited_by
                                     const hasIncomingInvite = myEntry && !!myEntry.invited_by
-                                    const canJoin = !studentMemberTeam && !studentCreatedTeam && canRegister && !isFull && !pendingJoinEntry
+                                    const canJoin = !studentMemberTeam && !studentLedTeam && canRegister && !isFull && !pendingJoinEntry
 
                                     return (
                                         <div key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
@@ -851,7 +866,7 @@ function RegistrationAction({
                                                 <Badge variant="pending">Request Pending</Badge>
                                             ) : hasIncomingInvite ? (
                                                 <Badge variant="pending">Invited</Badge>
-                                            ) : !studentMemberTeam && !studentCreatedTeam && canRegister ? (
+                                            ) : !studentMemberTeam && !studentLedTeam && canRegister ? (
                                                 isFull ? (
                                                     <Badge variant="failed">Full</Badge>
                                                 ) : (
@@ -871,7 +886,7 @@ function RegistrationAction({
                         </div>
                     )}
 
-                    {!studentCreatedTeam && !studentMemberTeam && canRegister && (
+                    {!studentLedTeam && !studentMemberTeam && canRegister && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {pendingJoinEntry && (
                                 <div style={{
@@ -943,7 +958,7 @@ function RegistrationAction({
                                 </div>
                             )}
 
-                            {!studentMemberTeam && !studentCreatedTeam && !canRegister && (
+                            {!studentMemberTeam && !studentLedTeam && !canRegister && (
                                 <div style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <Badge variant="pending">Info</Badge>
                                     <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
@@ -951,7 +966,7 @@ function RegistrationAction({
                                     </span>
                                 </div>
                             )}
-                            {(studentCreatedTeam || studentMemberTeam) && !canRegister && (
+                            {(studentLedTeam || studentMemberTeam) && !canRegister && (
                                 <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                                     ℹ️ Event is {event.status !== 'open' ? event.status : 'past deadline'}. Team changes are no longer allowed.
                                 </div>
@@ -981,7 +996,7 @@ export function StudentEventActions({ event, registration, teams, winners, stude
             {/* Payment proof upload — shown only for paid events where student has registered */}
             {event.is_paid && registration && (
                  (() => {
-                     const studentTeam = teams.find(t => t.created_by === studentId || t.members?.some(m => m.student_id === studentId && m.status === 'approved'))
+                     const studentTeam = teams.find(t => t.leader_id === studentId || t.members?.some((m: any) => m.student_id === studentId && m.status === 'approved'))
                      const status = studentTeam ? (studentTeam as any).payment_status : registration.payment_status
                      return status !== 'not_required'
                  })()

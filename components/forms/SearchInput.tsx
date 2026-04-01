@@ -10,7 +10,7 @@ interface SearchInputProps {
 
 export function SearchInput({ value, onChange, placeholder = 'Search…' }: SearchInputProps) {
     return (
-        <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
             <Search
                 size={16}
                 style={{

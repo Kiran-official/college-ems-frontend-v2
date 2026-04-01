@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { updateAttendanceAction, bulkUpdateAttendanceAction } from '@/lib/actions/attendanceActions'
-import { Lock } from 'lucide-react'
+import { Lock, Phone } from 'lucide-react'
 import type { IndividualRegistration, Event } from '@/lib/types/db'
 
 interface AttendancePanelProps {
@@ -18,7 +18,6 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     const [pending, startTransition] = useTransition()
     const isEditable = eventStatus === 'closed'
 
-    // Sync state with props when data is refreshed from server
     useEffect(() => {
         setStatus(reg.attendance_status)
     }, [reg.attendance_status])
@@ -84,16 +83,90 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     )
 }
 
-interface AttendancePanelProps {
-    event: Event
-    registrations: IndividualRegistration[]
+// ── Mobile attendance card ──────────────────────────────────────
+function AttendanceCard({ reg, eventStatus }: { reg: IndividualRegistration; eventStatus: string }) {
+    const [status, setStatus] = useState(reg.attendance_status)
+    const [pending, startTransition] = useTransition()
+    const isEditable = eventStatus === 'closed'
+
+    useEffect(() => {
+        setStatus(reg.attendance_status)
+    }, [reg.attendance_status])
+
+    function mark(newStatus: 'attended' | 'absent' | 'registered') {
+        if (!isEditable) return
+        startTransition(async () => {
+            const result = await updateAttendanceAction({ registration_id: reg.id, status: newStatus })
+            if (result.success) setStatus(newStatus)
+            else alert(result.error || 'Failed to update attendance')
+        })
+    }
+
+    return (
+        <div className="m-card">
+            <div className="m-card__row">
+                <span className="m-card__name">{reg.student?.name ?? '—'}</span>
+                {isEditable ? (
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                            onClick={() => mark('attended')}
+                            disabled={pending}
+                            style={{
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: '1px solid var(--success)',
+                                background: status === 'attended' ? 'var(--success)' : 'var(--success-bg)',
+                                color: status === 'attended' ? 'var(--bg-void)' : 'var(--success)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            Present
+                        </button>
+                        <button
+                            onClick={() => mark('absent')}
+                            disabled={pending}
+                            style={{
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: '1px solid var(--error)',
+                                background: status === 'absent' ? 'var(--error)' : 'var(--error-bg)',
+                                color: status === 'absent' ? 'var(--bg-void)' : 'var(--error)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            Absent
+                        </button>
+                    </div>
+                ) : (
+                    <Badge variant={status === 'registered' ? 'pending' : status === 'attended' ? 'generated' : 'failed'} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                        {status === 'attended' ? 'present' : status}
+                    </Badge>
+                )}
+            </div>
+            <div className="m-card__details" style={{ marginTop: 4 }}>
+                {reg.student?.phone_number && (
+                    <span className="m-card__detail">
+                        <Phone size={11} /> {reg.student.phone_number}
+                    </span>
+                )}
+                <span className="m-card__detail">
+                    {status !== 'registered' ? '✓ Marked' : 'Pending'}
+                </span>
+            </div>
+        </div>
+    )
 }
 
 export function AttendancePanel({ event, registrations }: AttendancePanelProps) {
     const router = useRouter()
     const [bulkPending, startBulk] = useTransition()
 
-    // Locked states
     if (event.status === 'open') {
         return (
             <div className="attendance-locked">
@@ -145,22 +218,33 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
                     </Button>
                 </div>
             </div>
-            <div className="table-wrap">
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Attendance</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {registrations.map(r => (
-                            <AttendanceRow key={r.id} reg={r} eventStatus={event.status} />
-                        ))}
-                    </tbody>
-                </table>
+
+            {/* Desktop table */}
+            <div className="resp-table">
+                <div className="table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Attendance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {registrations.map(r => (
+                                <AttendanceRow key={r.id} reg={r} eventStatus={event.status} />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="resp-cards">
+                {registrations.map(r => (
+                    <AttendanceCard key={r.id} reg={r} eventStatus={event.status} />
+                ))}
             </div>
         </div>
     )
