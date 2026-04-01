@@ -21,6 +21,9 @@ export async function retryCertificateAction(
             .update({
                 status: 'pending',
                 error_message: null,
+                file_path: null,
+                storage_path: null,
+                generated_at: null,
                 retry_count: 0,
                 last_retried_at: new Date().toISOString(),
             })
@@ -59,6 +62,9 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
             .update({
                 status: 'pending',
                 error_message: null,
+                file_path: null,
+                storage_path: null,
+                generated_at: null,
                 retry_count: 0,
                 last_retried_at: new Date().toISOString(),
             })

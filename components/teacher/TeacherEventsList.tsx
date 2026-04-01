@@ -11,19 +11,48 @@ interface TeacherEventsListProps {
 
 export function TeacherEventsList({ initialEvents }: TeacherEventsListProps) {
     const [searchQuery, setSearchQuery] = useState('')
+    const [statusFilter, setStatusFilter] = useState<string>('all')
 
-    const filtered = initialEvents.filter(e => 
-        e.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filtered = initialEvents.filter(e => {
+        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
+        
+        let matchesStatus = statusFilter === 'all' || e.status === statusFilter
+        
+        // Smart derived statuses
+        if (statusFilter === 'processing') {
+            matchesStatus = e.status === 'closed' && !e.results_published
+        } else if (statusFilter === 'published') {
+            matchesStatus = e.status === 'closed' && e.results_published
+        }
+        
+        return matchesSearch && matchesStatus
+    })
 
     return (
         <div className="teacher-events-list">
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 24, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
                 <SearchInput 
                     value={searchQuery} 
                     onChange={setSearchQuery} 
                     placeholder="Search your events..." 
                 />
+
+                <div style={{ position: 'relative', minWidth: 160 }}>
+                    <select
+                        className="form-input"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{ paddingRight: 32 }}
+                    >
+                        <option value="all">All Statuses</option>
+                        <option value="draft">Draft</option>
+                        <option value="open">Open (Registration)</option>
+                        <option value="closed">Closed (Event Over)</option>
+                        <option value="processing">Processing (Selecting Winners)</option>
+                        <option value="published">Published (Results Out)</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
             </div>
 
             {filtered.length === 0 ? (

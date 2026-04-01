@@ -18,22 +18,24 @@ function createAdmin() {
     })
 }
 
-/** Convert a hex colour string to pdf-lib rgb() values. Supports 3 and 6 digit hex. */
+/** Convert a hex colour string to pdf-lib rgb() values. Supports 3 and 6 digit hex. Falls back to black on error. */
 function hexToRgb(hex: string) {
     try {
-        const clean = hex.replace('#', '')
+        const clean = (hex || '#000000').replace('#', '')
         if (clean.length === 3) {
             const r = parseInt(clean[0] + clean[0], 16) / 255
             const g = parseInt(clean[1] + clean[1], 16) / 255
             const b = parseInt(clean[2] + clean[2], 16) / 255
-            return rgb(r, g, b)
+            return rgb(r || 0, g || 0, b || 0)
         }
-        const r = parseInt(clean.substring(0, 2), 16) / 255
-        const g = parseInt(clean.substring(2, 4), 16) / 255
-        const b = parseInt(clean.substring(4, 6), 16) / 255
-        
-        if (isNaN(r) || isNaN(g) || isNaN(b)) return rgb(0, 0, 0)
-        return rgb(r, g, b)
+        if (clean.length === 6) {
+            const r = parseInt(clean.substring(0, 2), 16) / 255
+            const g = parseInt(clean.substring(2, 4), 16) / 255
+            const b = parseInt(clean.substring(4, 6), 16) / 255
+            return rgb(r || 0, g || 0, b || 0)
+        }
+        // Fallback for non-hex or malformed strings
+        return rgb(0, 0, 0)
     } catch {
         return rgb(0, 0, 0)
     }
@@ -208,11 +210,16 @@ export async function processPendingCertificates() {
                 const text = resolveFieldText(field, context)
                 if (!text) continue
 
-                const xPt = (field.x / 100) * PAGE_WIDTH
-                const yFromTop = (field.y / 100) * PAGE_HEIGHT
+                // Robust coordinate parsing: Fallback to center if malformed
+                const xPct = Number(field.x)
+                const yPct = Number(field.y)
+                const fSize = Number(field.fontSize) || 12
+                const fWidth = Number(field.width) || 20
+
+                const xPt = (isNaN(xPct) ? 50 : xPct / 100) * PAGE_WIDTH
+                const yFromTop = (isNaN(yPct) ? 50 : yPct / 100) * PAGE_HEIGHT
                 const yPt = PAGE_HEIGHT - yFromTop
 
-                const fontSize = field.fontSize
                 const color = hexToRgb(field.color || '#000000')
 
                 let font = helvetica
@@ -220,22 +227,24 @@ export async function processPendingCertificates() {
                 else if (field.bold) font = helveticaBold
                 else if (field.italic) font = helveticaOblique
 
-                const textWidth = font.widthOfTextAtSize(text, fontSize)
-                const fieldWidth = (field.width / 100) * PAGE_WIDTH
-                let drawX = xPt - fieldWidth / 2
+                const textWidth = font.widthOfTextAtSize(text, fSize)
+                const fieldWidthPt = (fWidth / 100) * PAGE_WIDTH
+                let drawX = xPt - fieldWidthPt / 2
 
                 if (field.align === 'center') {
                     drawX = xPt - textWidth / 2
                 } else if (field.align === 'right') {
-                    drawX = xPt + fieldWidth / 2 - textWidth
-                } else {
-                    drawX = xPt - fieldWidth / 2
+                    drawX = xPt + fieldWidthPt / 2 - textWidth
                 }
 
+                // Ensure text is within page bounds
+                const finalX = Math.max(0, Math.min(PAGE_WIDTH - textWidth, drawX))
+                const finalY = Math.max(0, Math.min(PAGE_HEIGHT - fSize, yPt - fSize / 2))
+
                 page.drawText(text, {
-                    x: Math.max(0, drawX),
-                    y: Math.max(0, yPt - fontSize / 2),
-                    size: fontSize,
+                    x: finalX,
+                    y: finalY,
+                    size: fSize,
                     font,
                     color,
                 })
