@@ -325,8 +325,8 @@ function PaymentProofUpload({ registration, team, event, studentId }: { registra
         refund_requested: {
             icon: <Clock size={16} />,
             label: 'Refund requested. Admin will process it soon.',
-            color: '#f59e0b',
-            bg: 'rgba(245, 158, 11, 0.08)',
+            color: 'var(--warning)',
+            bg: 'var(--warning-bg)',
         },
         refunded: {
             icon: <XCircle size={16} />,
@@ -382,12 +382,12 @@ function PaymentProofUpload({ registration, team, event, studentId }: { registra
             {paymentStatus === 'rejected' && registration.rejection_reason && (
                 <div style={{
                     padding: '10px 14px', borderRadius: 'var(--r-md)',
-                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                    background: 'var(--error-bg)', border: '1px solid var(--error-border)',
                     display: 'flex', alignItems: 'flex-start', gap: 8,
                 }}>
-                    <XCircle size={15} style={{ color: '#ef4444', marginTop: 1, flexShrink: 0 }} />
+                    <XCircle size={15} style={{ color: 'var(--error)', marginTop: 1, flexShrink: 0 }} />
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ef4444' }}>Payment Rejected</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--error)' }}>Payment Rejected</div>
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: 2 }}>
                             Reason: {registration.rejection_reason}
                         </div>
@@ -566,8 +566,8 @@ function RegistrationAction({
             {error && (
                 <div style={{
                     padding: '12px 16px', marginBottom: 20, borderRadius: 'var(--r-md)',
-                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                    fontSize: '0.875rem', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.2)',
+                    background: 'var(--error-bg)', color: 'var(--error)',
+                    fontSize: '0.875rem', fontWeight: 600, border: '1px solid var(--error-border)',
                 }}>
                     {error}
                 </div>
@@ -878,7 +878,7 @@ function RegistrationAction({
                                     padding: '10px 14px', borderRadius: 'var(--r-md)',
                                     background: 'var(--warning-bg)', color: 'var(--warning)',
                                     fontSize: '0.875rem', fontWeight: 500,
-                                    border: '1px solid rgba(245, 166, 35, 0.3)',
+                                    border: '1px solid var(--warning-border)',
                                 }}>
                                     Your join request to <strong>{pendingJoinEntry.teamName}</strong> is pending.
                                     Creating a team will automatically cancel it.

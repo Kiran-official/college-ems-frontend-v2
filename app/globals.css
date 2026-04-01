@@ -96,6 +96,21 @@ img {
   --stat-icon-bg: var(--accent-dim);
   --stat-icon-border: var(--accent-glow);
   --stat-icon-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+
+  /* Semantic - Default (Dark) */
+  --success: #10E09A;
+  --success-bg: rgba(16, 224, 154, 0.1);
+  --warning: #F5A623;
+  --warning-bg: rgba(245, 166, 35, 0.1);
+  --warning-border: rgba(245, 166, 35, 0.2);
+  --error: #FF4D6A;
+  --error-bg: rgba(255, 77, 106, 0.1);
+  --error-border: rgba(255, 77, 106, 0.2);
+  --info: #2E6FFF;
+  --info-bg: rgba(46, 111, 255, 0.1);
+  --info-border: rgba(46, 111, 255, 0.2);
+  --neutral: #94A3B8;
+  --neutral-bg: rgba(148, 163, 184, 0.1);
 }
 
 /* ── Light Mode ─────────────────────────────────────────────────── */
@@ -117,6 +132,21 @@ img {
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
 
+  /* Semantic - Light overrides */
+  --success: #059669;
+  --success-bg: rgba(5, 150, 105, 0.15);
+  --warning: #B45309; /* Darker amber for better contrast */
+  --warning-bg: rgba(180, 83, 9, 0.15);
+  --warning-border: rgba(180, 83, 9, 0.25);
+  --error: #DC2626;
+  --error-bg: rgba(220, 38, 38, 0.15);
+  --error-border: rgba(220, 38, 38, 0.25);
+  --info: #2563EB;
+  --info-bg: rgba(37, 99, 235, 0.15);
+  --info-border: rgba(37, 99, 235, 0.25);
+  --neutral: #475569;
+  --neutral-bg: rgba(71, 85, 105, 0.15);
+
   /* Stat Icon Pods */
   --stat-icon-bg: rgba(255, 255, 255, 0.95);
   --stat-icon-border: rgba(0, 0, 0, 0.05);
@@ -134,16 +164,6 @@ img {
   --gold: #D4A017;
   --gold-glow: rgba(212, 160, 23, 0.3);
   --gold-dim: rgba(212, 160, 23, 0.12);
-
-  /* Semantic */
-  --success: #10E09A;
-  --success-bg: rgba(16, 224, 154, 0.1);
-  --warning: #F5A623;
-  --warning-bg: rgba(245, 166, 35, 0.1);
-  --error: #FF4D6A;
-  --error-bg: rgba(255, 77, 106, 0.1);
-  --info: #2E6FFF;
-  --info-bg: rgba(46, 111, 255, 0.1);
 
   /* Layout */
   --sidebar-w: 240px;
@@ -2265,48 +2285,48 @@ input[type="radio"]:focus-visible {
 }
 
 .badge--open {
-  background: #10E09A;
-  color: #ffffff;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .badge--closed {
-  background: rgba(245, 166, 35, 0.12);
+  background: var(--warning-bg);
   color: var(--warning);
 }
 
 .badge--completed {
-  background: rgba(160, 174, 203, 0.1);
-  color: #A0AECB;
+  background: var(--neutral-bg);
+  color: var(--neutral);
 }
 
 .badge--generated {
-  background: rgba(16, 224, 154, 0.12);
-  color: #10E09A;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .badge--processing {
-  background: rgba(46, 111, 255, 0.12);
-  color: #2E6FFF;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .badge--pending {
-  background: rgba(245, 166, 35, 0.12);
-  color: #F5A623;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .badge--failed {
-  background: rgba(255, 77, 106, 0.12);
-  color: #FF4D6A;
+  background: var(--error-bg);
+  color: var(--error);
 }
 
 .badge--present {
-  background: rgba(16, 224, 154, 0.12);
-  color: #10E09A;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .badge--absent {
-  background: rgba(255, 77, 106, 0.12);
-  color: #FF4D6A;
+  background: var(--error-bg);
+  color: var(--error);
 }
 
 .badge--success {

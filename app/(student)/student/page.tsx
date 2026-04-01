@@ -37,10 +37,10 @@ export default async function StudentDashboard() {
                     <StatCard label="Total Registrations" value={regCount} icon={Calendar} />
                 </div>
                 <div className="bento-item">
-                    <StatCard label="Upcoming Events" value={upcomingCount} icon={Activity} />
+                    <StatCard label="Upcoming Events" value={upcomingCount} icon={Activity} href="/student/events" />
                 </div>
                 <div className="bento-item">
-                    <StatCard label="Certificates Earned" value={certCount} icon={Award} />
+                    <StatCard label="Certificates Earned" value={certCount} icon={Award} href="/student/certificates" />
                 </div>
                 <div className="bento-item">
                     <StatCard label="Pending Results" value={pendingResults} icon={Hourglass} />
