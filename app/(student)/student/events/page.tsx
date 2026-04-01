@@ -2,9 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getUpcomingEvents, getClosedEvents, getCompletedEvents } from '@/lib/queries/events'
 import { getRegistrationsByStudent } from '@/lib/queries/registrations'
-import { EventCard } from '@/components/events/EventCard'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { Calendar } from 'lucide-react'
+import { StudentEventsList } from '@/components/student/StudentEventsList'
 
 export default async function StudentEventsPage() {
     const user = await getCurrentUser()
@@ -46,60 +44,12 @@ export default async function StudentEventsPage() {
                 </div>
             </div>
 
-            {/* Section 1: Open for Registration */}
-            <section style={{ marginBottom: 64 }}>
-                <div className="section-header">
-                    <div className="status-indicator status-indicator--open" />
-                    <h2 className="section-title">Open for Registration</h2>
-                </div>
-                {visibleUpcoming.length === 0 ? (
-                    <EmptyState icon={Calendar} title="No open events" subtitle="Check back later for new events." />
-                ) : (
-                    <div className="event-card-grid">
-                        {visibleUpcoming.map(e => (
-                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            {/* Section 2: Ongoing / Closed */}
-            <section style={{ marginBottom: 64 }}>
-                <div className="section-header">
-                    <div className="status-indicator status-indicator--closed" />
-                    <h2 className="section-title">Ongoing / Closed</h2>
-                </div>
-                {visibleClosed.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', background: 'var(--bg-glass)', borderRadius: 'var(--r-xl)', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                        No ongoing events right now.
-                    </div>
-                ) : (
-                    <div className="event-card-grid">
-                        {visibleClosed.map(e => (
-                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            {/* Section 3: Completed */}
-            <section>
-                <div className="section-header">
-                    <div className="status-indicator status-indicator--completed" />
-                    <h2 className="section-title">Completed</h2>
-                </div>
-                {visibleCompleted.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', background: 'var(--bg-glass)', borderRadius: 'var(--r-xl)', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
-                        No completed events yet.
-                    </div>
-                ) : (
-                    <div className="event-card-grid">
-                        {visibleCompleted.map(e => (
-                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
-                        ))}
-                    </div>
-                )}
-            </section>
+            <StudentEventsList 
+                upcoming={visibleUpcoming} 
+                closed={visibleClosed} 
+                completed={visibleCompleted} 
+                registeredIds={registeredIds} 
+            />
         </div>
     )
 }

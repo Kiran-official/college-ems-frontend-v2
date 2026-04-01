@@ -618,7 +618,7 @@ export async function registerParticipantAction(
 
         // 1. Fetch event
         const { data: event } = await admin.from('events')
-            .select('status, registration_deadline, type, team_size')
+            .select('status, registration_deadline, visibility, participant_type, team_size')
             .eq('id', input.eventId)
             .single()
 
@@ -639,10 +639,10 @@ export async function registerParticipantAction(
         if (!targetUser.is_active) return { success: false, error: 'User is not active' }
 
         // Eligibility check
-        if (event.type === 'internal' && targetUser.student_type !== 'internal') {
+        if (event.visibility === 'internal_only' && targetUser.student_type !== 'internal') {
             return { success: false, error: 'This event is for internal students only' }
         }
-        if (event.type === 'external' && targetUser.student_type !== 'external') {
+        if (event.visibility === 'external_only' && targetUser.student_type !== 'external') {
             return { success: false, error: 'This event is for external students only' }
         }
 
@@ -660,7 +660,7 @@ export async function registerParticipantAction(
         let finalTeamId: string | null = null
 
         // Team Logic
-        if (event.type === 'team') {
+        if (event.participant_type === 'multiple') {
             if (!input.teamId && !input.teamName) {
                 return { success: false, error: 'Team event requires either a existing team ID or a new team name' }
             }

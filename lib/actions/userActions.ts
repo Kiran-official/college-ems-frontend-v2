@@ -237,12 +237,17 @@ export async function searchStudentsForInviteAction(
         if (!query.trim() || query.trim().length < 2) return []
 
         const admin = createAdminClient()
-        const { data, error } = await admin
+        let queryBuilder = admin
             .from('users')
             .select('id, name, email, programme, semester')
             .eq('role', 'student')
             .eq('is_active', true)
-            .neq('id', excludeId)
+
+        if (excludeId && excludeId.trim()) {
+            queryBuilder = queryBuilder.neq('id', excludeId)
+        }
+
+        const { data, error } = await queryBuilder
             .or(`name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`)
             .order('name')
             .limit(8)

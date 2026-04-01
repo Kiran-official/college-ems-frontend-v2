@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -18,11 +18,20 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
     const [pending, startTransition] = useTransition()
     const isEditable = eventStatus === 'closed'
 
+    // Sync state with props when data is refreshed from server
+    useEffect(() => {
+        setStatus(reg.attendance_status)
+    }, [reg.attendance_status])
+
     function mark(newStatus: 'attended' | 'absent' | 'registered') {
         if (!isEditable) return
         startTransition(async () => {
             const result = await updateAttendanceAction({ registration_id: reg.id, status: newStatus })
-            if (result.success) setStatus(newStatus)
+            if (result.success) {
+                setStatus(newStatus)
+            } else {
+                alert(result.error || 'Failed to update attendance')
+            }
         })
     }
 
@@ -104,15 +113,23 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
 
     function markAllPresent() {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'attended' })
-            router.refresh()
+            const result = await bulkUpdateAttendanceAction({ event_id: event.id, status: 'attended' })
+            if (result.success) {
+                router.refresh()
+            } else {
+                alert(result.error || 'Failed to mark all as present')
+            }
         })
     }
 
     function resetAll() {
         startBulk(async () => {
-            await bulkUpdateAttendanceAction({ event_id: event.id, status: 'registered' })
-            router.refresh()
+            const result = await bulkUpdateAttendanceAction({ event_id: event.id, status: 'registered' })
+            if (result.success) {
+                router.refresh()
+            } else {
+                alert(result.error || 'Failed to reset attendance')
+            }
         })
     }
 

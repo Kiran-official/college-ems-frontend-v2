@@ -191,8 +191,8 @@ export function AddParticipantModal({ eventId, eventType, isPaid, teams, teamSiz
                                             className={isAlreadySelected ? '' : 'hover:bg-muted'}
                                             disabled={isAlreadySelected}
                                         >
-                                            <div style={{ fontWeight: 600 }}>{user.name} {isAlreadySelected && '(Added)'}</div>
-                                            <div style={{ color: 'var(--text-tertiary)' }}>{user.email}</div>
+                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.name} {isAlreadySelected && '(Added)'}</div>
+                                            <div style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>{user.email}</div>
                                         </button>
                                     )
                                 })}

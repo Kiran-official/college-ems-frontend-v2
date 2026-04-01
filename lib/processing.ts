@@ -12,25 +12,44 @@ const PAGE_HEIGHT = 595.28
 function createAdmin() {
     return createClient(SUPABASE_URL, SERVICE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
+        global: {
+            fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' })
+        }
     })
 }
 
-/** Convert a hex colour string like #FFFFFF to pdf-lib rgb() values */
+/** Convert a hex colour string to pdf-lib rgb() values. Supports 3 and 6 digit hex. */
 function hexToRgb(hex: string) {
-    const clean = hex.replace('#', '')
-    const r = parseInt(clean.substring(0, 2), 16) / 255
-    const g = parseInt(clean.substring(2, 4), 16) / 255
-    const b = parseInt(clean.substring(4, 6), 16) / 255
-    return rgb(r, g, b)
+    try {
+        const clean = hex.replace('#', '')
+        if (clean.length === 3) {
+            const r = parseInt(clean[0] + clean[0], 16) / 255
+            const g = parseInt(clean[1] + clean[1], 16) / 255
+            const b = parseInt(clean[2] + clean[2], 16) / 255
+            return rgb(r, g, b)
+        }
+        const r = parseInt(clean.substring(0, 2), 16) / 255
+        const g = parseInt(clean.substring(2, 4), 16) / 255
+        const b = parseInt(clean.substring(4, 6), 16) / 255
+        
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return rgb(0, 0, 0)
+        return rgb(r, g, b)
+    } catch {
+        return rgb(0, 0, 0)
+    }
 }
 
-/** Download a remote image as ArrayBuffer (or null on failure) */
+/** Download a remote image as ArrayBuffer (or null on failure). Uses no-cache to avoid Next.js issues. */
 async function fetchImageBytes(url: string): Promise<ArrayBuffer | null> {
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+        const res = await fetch(url, { 
+            signal: AbortSignal.timeout(20000), // Increased from 8s to 20s
+            cache: 'no-store' 
+        })
         if (!res.ok) return null
         return await res.arrayBuffer()
-    } catch {
+    } catch (e) {
+        console.error(`[fetchImageBytes] Error for ${url}:`, e)
         return null
     }
 }
@@ -97,12 +116,14 @@ export async function processPendingCertificates() {
 
     let processed = 0
     let failed = 0
+    const imageCache = new Map<string, ArrayBuffer | null>()
 
     for (const cert of pending) {
+        console.log(`[processPendingCertificates] Starting ${cert.id} (${cert.certificate_type})`)
         // Mark as processing immediately
         await admin
             .from('certificates')
-            .update({ status: 'processing' })
+            .update({ status: 'processing', error_message: null })
             .eq('id', cert.id)
 
         try {
@@ -143,7 +164,12 @@ export async function processPendingCertificates() {
 
             // Embed background image if available
             if (template.background_image_url) {
-                const imgBytes = await fetchImageBytes(template.background_image_url)
+                let imgBytes = imageCache.get(template.background_image_url)
+                if (imgBytes === undefined) {
+                    imgBytes = await fetchImageBytes(template.background_image_url)
+                    imageCache.set(template.background_image_url, imgBytes)
+                }
+
                 if (imgBytes) {
                     try {
                         let embeddedImg
@@ -165,7 +191,8 @@ export async function processPendingCertificates() {
                                 height: PAGE_HEIGHT,
                             })
                         }
-                    } catch {
+                    } catch (e) {
+                        console.error(`[PDF Gen] Background image embed failed for ${cert.id}:`, e)
                         // Skip background on error — still generate certificate
                     }
                 }

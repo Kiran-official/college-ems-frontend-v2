@@ -25,7 +25,6 @@ export async function retryCertificateAction(
                 last_retried_at: new Date().toISOString(),
             })
             .eq('id', certificateId)
-            .eq('status', 'failed')
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/certificates')
@@ -43,7 +42,9 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
+            return { success: false, error: 'Not authorised' }
+        }
 
         const admin = createAdminClient()
         const { data: failed } = await admin

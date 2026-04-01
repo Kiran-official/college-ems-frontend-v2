@@ -3,7 +3,7 @@
 import { useTransition } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { retryCertificateAction, triggerCertificateProcessingAction, deleteTemplateAction } from '@/lib/actions/certificateActions'
+import { retryCertificateAction, retryAllFailedCertificatesAction, triggerCertificateProcessingAction, deleteTemplateAction } from '@/lib/actions/certificateActions'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Award, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -25,8 +25,12 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
 
     function retry(certId: string) {
         startTransition(async () => {
-            await retryCertificateAction(certId)
-            window.location.reload()
+            const res = await retryCertificateAction(certId)
+            if (res.success) {
+                window.location.reload()
+            } else {
+                alert(`Error: ${res.error ?? 'Failed to retry certificate'}`)
+            }
         })
     }
 
@@ -44,6 +48,23 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
             const res = await triggerCertificateProcessingAction()
             if (res.success) {
                 alert('Processing triggered! It may take a few moments for all certificates to generate.')
+            } else {
+                alert(`Error: ${res.error}`)
+            }
+            window.location.reload()
+        })
+    }
+
+    function retryAll() {
+        if (!confirm('Are you sure you want to retry all failed certificates for this event?')) return
+        startTransition(async () => {
+            const res = await retryAllFailedCertificatesAction()
+            if (res.success) {
+                alert(`Retrying ${res.count} failed certificates.`)
+                // Trigger auto-processing if any were reset
+                if (res.count && res.count > 0) {
+                    await triggerCertificateProcessingAction()
+                }
             } else {
                 alert(`Error: ${res.error}`)
             }
@@ -151,11 +172,18 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                             <td data-label="Status"><Badge variant={cert.status}>{cert.status}</Badge></td>
                             <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
                             <td data-label="Action">
-                                {cert.status === 'failed' && (
-                                    <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending}>
-                                        <RotateCcw size={14} /> Retry
-                                    </Button>
-                                )}
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {cert.status === 'failed' && (
+                                        <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Retry Failed Certificate">
+                                            <RotateCcw size={14} /> Retry
+                                        </Button>
+                                    )}
+                                    {cert.status === 'generated' && (
+                                        <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Regenerate Certificate">
+                                            <Award size={14} /> Regenerate
+                                        </Button>
+                                    )}
+                                </div>
                             </td>
                         </tr>
                     ))}
@@ -164,22 +192,33 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
         </div>
     )
 
+    const renderSummary = () => (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
+            <Badge variant="pending">{stats.pending} Pending</Badge>
+            <Badge variant="processing">{stats.processing} Processing</Badge>
+            <Badge variant="generated">{stats.generated} Generated</Badge>
+            <Badge variant="failed">{stats.failed} Failed</Badge>
+            
+            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                {stats.failed > 0 && (
+                    <Button size="sm" variant="outline" onClick={retryAll} loading={pending} style={{ color: 'var(--warning)', borderColor: 'var(--warning-border)' }}>
+                        <RotateCcw size={14} style={{ marginRight: 6 }} /> Retry All Failed
+                    </Button>
+                )}
+                {(stats.pending > 0 || stats.failed > 0) && (
+                    <Button size="sm" variant="primary" onClick={triggerProcessing} loading={pending}>
+                        <Check size={14} style={{ marginRight: 6 }} /> Process Queue
+                    </Button>
+                )}
+            </div>
+        </div>
+    )
+
     if (certificates.length === 0) {
         return (
             <div>
                 {renderTemplateStatus()}
-                {/* Summary strip */}
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                    <Badge variant="pending">{stats.pending} Pending</Badge>
-                    <Badge variant="processing">{stats.processing} Processing</Badge>
-                    <Badge variant="generated">{stats.generated} Generated</Badge>
-                    <Badge variant="failed">{stats.failed} Failed</Badge>
-                    {(stats.pending > 0 || stats.failed > 0) && (
-                        <Button size="sm" variant="outline" onClick={triggerProcessing} loading={pending}>
-                            <RotateCcw size={14} /> Process Pending Queue
-                        </Button>
-                    )}
-                </div>
+                {renderSummary()}
                 <EmptyState icon={Award} title="No certificates" subtitle="No certificates have been created for this event yet." />
             </div>
         )
@@ -188,19 +227,7 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
     return (
         <div>
             {renderTemplateStatus()}
-            {/* Summary strip */}
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Badge variant="pending">{stats.pending} Pending</Badge>
-                <Badge variant="processing">{stats.processing} Processing</Badge>
-                <Badge variant="generated">{stats.generated} Generated</Badge>
-                <Badge variant="failed">{stats.failed} Failed</Badge>
-                {(stats.pending > 0 || stats.failed > 0) && (
-                    <Button size="sm" variant="outline" onClick={triggerProcessing} loading={pending}>
-                        <RotateCcw size={14} /> Process Pending Queue
-                    </Button>
-                )}
-            </div>
-
+            {renderSummary()}
             {renderTable(certificates)}
         </div>
     )

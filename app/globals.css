@@ -2271,7 +2271,7 @@ input[type="radio"]:focus-visible {
 
 .badge--closed {
   background: rgba(245, 166, 35, 0.12);
-  color: #000000;
+  color: var(--warning);
 }
 
 .badge--completed {
