@@ -13,6 +13,21 @@ export type CertificateStatus = 'pending' | 'processing' | 'generated' | 'failed
 export type WinnerType = 'student' | 'team'
 export type PaymentStatus = 'not_required' | 'pending' | 'submitted' | 'verified' | 'rejected' | 'refund_requested' | 'refunded'
 
+// Forums / Cells that organize events
+export const EVENT_FORUMS = [
+    'PURVI',
+    'LAKSHYA',
+    'Statutory Cell',
+    'NCC',
+    'NSS',
+    'Rangers and Rovers',
+    'YRC',
+    'Sports Department',
+    'Binary Brains',
+    'Other',
+] as const
+export type EventForum = (typeof EVENT_FORUMS)[number]
+
 // ── Core Entities ──────────────────────────────────────────────
 
 export interface Department {
@@ -55,6 +70,7 @@ export interface Event {
     results_published: boolean
     created_by: string
     department_id?: string
+    forum?: EventForum | null
     created_at: string
     updated_at?: string
     // Payment fields

@@ -37,9 +37,9 @@ export default async function StudentEventDetailPage({ params }: Props) {
 
             <div className="page-header">
                 <div className="page-header__title-group">
-                    {event.department && (
+                    {event.forum && (
                         <div style={{ marginBottom: 12 }}>
-                            <Badge variant="info">{event.department.name}</Badge>
+                            <Badge variant="info">{event.forum}</Badge>
                         </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

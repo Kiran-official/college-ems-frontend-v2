@@ -81,12 +81,12 @@ export default async function TeacherEventDetailPage({ params }: Props) {
                     {registrations.length} {registrations.length === 1 ? 'Registration' : 'Registrations'}
                 </span>
                 
-                {event.department && (
+                {event.forum && (
                     <>
                         <div style={{ width: 1, height: 16, background: 'var(--border)' }} className="hidden sm:block"></div>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                             <Building size={14} color="var(--text-tertiary)" />
-                            {event.department.name}
+                            {event.forum}
                         </span>
                     </>
                 )}

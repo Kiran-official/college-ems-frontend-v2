@@ -8,17 +8,17 @@ import { MultiSelect } from '@/components/forms/MultiSelect'
 import { DateTimeInput } from '@/components/forms/DateTimeInput'
 import { createEventAction } from '@/lib/actions/eventActions'
 import { createClient } from '@/lib/supabase/client'
-import type { Department, User } from '@/lib/types/db'
+import type { User } from '@/lib/types/db'
+import { EVENT_FORUMS } from '@/lib/types/db'
 
 interface CreateEventFormProps {
-    departments: Department[]
     currentUser: User
     teachers: Pick<User, 'id' | 'name' | 'email' | 'role' | 'department_id'>[]
     basePath: string
     isAdmin: boolean
 }
 
-export function CreateEventForm({ departments, currentUser, teachers, basePath, isAdmin }: CreateEventFormProps) {
+export function CreateEventForm({ currentUser, teachers, basePath, isAdmin }: CreateEventFormProps) {
     const router = useRouter()
     const [pending, startTransition] = useTransition()
     const [error, setError] = useState('')
@@ -27,7 +27,7 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
     const [description, setDescription] = useState('')
     const [eventDate, setEventDate] = useState('')
     const [regDeadline, setRegDeadline] = useState('')
-    const [departmentId, setDepartmentId] = useState('')
+    const [forum, setForum] = useState('')
     const [visibility, setVisibility] = useState<'public_all' | 'internal_only' | 'external_only'>('public_all')
     const [participantType, setParticipantType] = useState<'single' | 'multiple'>('single')
     const [teamSize, setTeamSize] = useState<number | ''>('')
@@ -92,7 +92,8 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                     description: description || undefined,
                     event_date: eventDate,
                     registration_deadline: regDeadline,
-                    department_id: departmentId || undefined,
+                    department_id: undefined,
+                    forum: forum || undefined,
                     visibility,
                     participant_type: participantType,
                     team_size: participantType === 'multiple' ? (teamSize as number) : undefined,
@@ -148,12 +149,10 @@ export function CreateEventForm({ departments, currentUser, teachers, basePath, 
                         </FormGroup>
                     </div>
 
-                    <FormGroup label="Department">
-                        <select className="form-select" value={departmentId} onChange={e => setDepartmentId(e.target.value)}>
+                    <FormGroup label="Forum">
+                        <select className="form-select" value={forum} onChange={e => setForum(e.target.value)}>
                             <option value="">None</option>
-                            {departments
-                                .filter(d => ['Commerce', 'Computer Science'].includes(d.name))
-                                .map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            {EVENT_FORUMS.map(f => <option key={f} value={f}>{f}</option>)}
                         </select>
                     </FormGroup>
 

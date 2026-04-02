@@ -13,6 +13,7 @@ export async function createEventAction(data: {
     event_date: string
     registration_deadline: string
     department_id?: string
+    forum?: string
     visibility: 'public_all' | 'internal_only' | 'external_only'
     participant_type: 'single' | 'multiple'
     team_size?: number
@@ -40,6 +41,7 @@ export async function createEventAction(data: {
             event_date: data.event_date,
             registration_deadline: data.registration_deadline,
             department_id: data.department_id || null,
+            forum: data.forum || null,
             visibility: data.visibility,
             participant_type: data.participant_type,
             team_size: data.participant_type === 'multiple' ? data.team_size : null,
@@ -87,6 +89,7 @@ export async function updateEventAction(
         event_date?: string
         registration_deadline?: string
         department_id?: string
+        forum?: string | null
         visibility?: 'public_all' | 'internal_only' | 'external_only'
     }
 ): Promise<{ success: boolean; error?: string }> {
