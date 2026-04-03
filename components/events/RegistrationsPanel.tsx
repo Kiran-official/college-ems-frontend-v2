@@ -14,10 +14,12 @@ const DEPT_PROGRAMMES: Record<string, string[]> = {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-    'pending': 'Not Paid',
-    'submitted': 'Still Review',
+    'pending': 'Awaiting Payment',
+    'submitted': 'Under Review',
     'verified': 'Verified',
     'rejected': 'Rejected',
+    'refund_requested': 'Refund Requested',
+    'refunded': 'Refunded',
 }
 
 interface RegistrationsPanelProps {
@@ -27,9 +29,12 @@ interface RegistrationsPanelProps {
 }
 
 function paymentBadgeVariant(status: string) {
-    return status === 'verified' ? 'generated' as const :
-        status === 'submitted' ? 'processing' as const :
-        status === 'rejected' ? 'failed' as const : 'pending' as const
+    if (status === 'verified') return 'generated' as const
+    if (status === 'submitted') return 'processing' as const
+    if (status === 'rejected') return 'failed' as const
+    if (status === 'refunded') return 'failed' as const
+    if (status === 'refund_requested') return 'pending' as const
+    return 'pending' as const
 }
 
 function attendanceBadgeVariant(status: string) {
@@ -44,7 +49,7 @@ function RegCard({ r, isPaid }: { r: IndividualRegistration; isPaid: boolean }) 
         <div className="m-card">
             <div className="m-card__row">
                 <span className="m-card__name">{student?.name ?? '—'}</span>
-                {isPaid && (
+                {isPaid && r.payment_status !== 'not_required' && (
                     <Badge variant={paymentBadgeVariant(r.payment_status)} style={{ fontSize: '9px', padding: '1px 6px' }}>
                         {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
                     </Badge>
@@ -91,7 +96,7 @@ function RegistrationTable({ rows, isPaid }: { rows: IndividualRegistration[], i
                                     <td data-label="Name">{r.student?.name ?? '—'}</td>
                                     <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
                                     <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-                                    {isPaid && (
+                                    {isPaid && r.payment_status !== 'not_required' && (
                                         <td data-label="Payment">
                                             <Badge variant={paymentBadgeVariant(r.payment_status)}>
                                                 {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
@@ -145,7 +150,7 @@ function TeamGroupTable({ teams, isPaid }: { teams: Map<string, { name: string; 
                                             <td data-label="Name">{r.student?.name ?? '—'}</td>
                                             <td data-label="Phone">{(r.student as { phone_number?: string } | undefined)?.phone_number ?? '—'}</td>
                                             <td data-label="Department">{(r.student?.department as { name?: string } | undefined)?.name ?? '—'}</td>
-                                            {isPaid && (
+                                            {isPaid && r.payment_status !== 'not_required' && (
                                                 <td data-label="Payment">
                                                     <Badge variant={paymentBadgeVariant(r.payment_status)}>
                                                         {PAYMENT_LABELS[r.payment_status] ?? r.payment_status}
@@ -194,10 +199,19 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
     // For paid team events, derive payment_status from the team (not the individual registration)
     const isTeam = event.participant_type === 'multiple'
     const effectiveRegistrations = registrations.map(r => {
+        let status = r.payment_status
+        
+        // 1. For team events, prioritize team payment status
         if (isTeam && event.is_paid && r.team_id && (r.team as any)?.payment_status) {
-            return { ...r, payment_status: (r.team as any).payment_status }
+            status = (r.team as any).payment_status
         }
-        return r
+        
+        // 2. For any paid event, fallback to 'pending' if status is 'not_required'
+        if (event.is_paid && status === 'not_required') {
+            status = 'pending'
+        }
+        
+        return { ...r, payment_status: status }
     })
 
     const depts = Array.from(new Set(effectiveRegistrations.map(r => (r.student?.department as { id: string; name: string } | undefined)?.name).filter(Boolean)))
