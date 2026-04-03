@@ -11,9 +11,11 @@ import { AlertCircle, CheckCircle2, Send, Lock } from 'lucide-react'
 interface EventActionHeaderProps {
     event: Event
     registrations: IndividualRegistration[]
+    isFIC?: boolean
+    userRole?: 'admin' | 'teacher' | 'student'
 }
 
-export function EventActionHeader({ event, registrations }: EventActionHeaderProps) {
+export function EventActionHeader({ event, registrations, isFIC = false, userRole }: EventActionHeaderProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
 
@@ -32,6 +34,12 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
     }
 
     if (event.status === 'cancelled') return null
+
+    const canManage = userRole === 'admin' || isFIC
+    
+    // If user cannot manage and there's no warning to show, don't show the header
+    const showHeader = canManage || (event.status === 'closed' && incompleteAttendanceCount > 0)
+    if (!showHeader) return null
 
     return (
         <div className="glass-premium" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--accent-border, rgba(99,102,241,0.2))' }}>
@@ -53,7 +61,7 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {event.status === 'draft' && (
+                    {canManage && event.status === 'draft' && (
                         <Button 
                             size="sm" 
                             variant="primary" 
@@ -68,7 +76,7 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                         </Button>
                     )}
 
-                    {event.status === 'open' && (
+                    {canManage && event.status === 'open' && (
                         <Button 
                             size="sm" 
                             variant="outline" 
@@ -83,7 +91,7 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                         </Button>
                     )}
 
-                    {event.status === 'closed' && !event.results_published && (
+                    {canManage && event.status === 'closed' && !event.results_published && (
                         <Button 
                             size="sm" 
                             variant="primary" 
@@ -103,7 +111,7 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                         </Button>
                     )}
 
-                    {event.status === 'closed' && event.results_published && (
+                    {canManage && event.status === 'closed' && event.results_published && (
                         <Button 
                             size="sm" 
                             variant="primary" 
@@ -118,7 +126,7 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                         </Button>
                     )}
 
-                    {event.status === 'completed' && (
+                    {canManage && event.status === 'completed' && (
                         <div className="flex items-center gap-4">
                             <Button 
                                 size="sm" 
@@ -137,6 +145,11 @@ export function EventActionHeader({ event, registrations }: EventActionHeaderPro
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--success)', fontWeight: 600 }}>
                                 <CheckCircle2 size={16} /> Event Completed
                             </div>
+                        </div>
+                    )}
+                    {!canManage && event.status === 'completed' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--success)', fontWeight: 600 }}>
+                            <CheckCircle2 size={16} /> Event Completed
                         </div>
                     )}
                 </div>

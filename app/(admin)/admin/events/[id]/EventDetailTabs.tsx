@@ -63,7 +63,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
 
     return (
         <div>
-            <EventActionHeader event={event} registrations={registrations} />
+            <EventActionHeader event={event} registrations={registrations} userRole="admin" />
 
             {/* Tab bar */}
             <div className="tab-bar overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">

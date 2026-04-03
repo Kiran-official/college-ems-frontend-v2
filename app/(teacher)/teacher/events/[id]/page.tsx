@@ -24,6 +24,7 @@ export default async function TeacherEventDetailPage({ params }: Props) {
 
     const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
     
+    let isFIC = false
     if (profile?.role === 'teacher') {
         const { data: fic } = await supabase
             .from('faculty_in_charge')
@@ -32,13 +33,18 @@ export default async function TeacherEventDetailPage({ params }: Props) {
             .eq('teacher_id', user.id)
             .maybeSingle()
         
-        if (!fic) redirect('/teacher/events')
+        isFIC = !!fic
     } else if (profile?.role !== 'admin') {
         redirect('/')
     }
 
     const event = await getEventById(id)
     if (!event) notFound()
+
+    // Archived events check (strict check for non-admins)
+    if (!event.is_active && profile?.role !== 'admin') {
+        notFound()
+    }
 
     const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
         getRegistrationsByEvent(id),
@@ -100,6 +106,8 @@ export default async function TeacherEventDetailPage({ params }: Props) {
                 certificates={certificates}
                 certStats={certStats}
                 templates={templates}
+                isFIC={isFIC}
+                userRole={profile?.role as any}
             />
         </div>
     )

@@ -11,6 +11,24 @@ import { AddParticipantModal } from '@/components/admin/AddParticipantModal'
 import { usePathname } from 'next/navigation'
 import { transferLeadershipAction, removeMemberAction, deleteRegistrationAction } from '@/lib/actions/registrationActions'
 
+const PAYMENT_LABELS: Record<string, string> = {
+    'pending': 'Awaiting Payment',
+    'submitted': 'Under Review',
+    'verified': 'Verified',
+    'rejected': 'Rejected',
+    'refund_requested': 'Refund Requested',
+    'refunded': 'Refunded',
+}
+
+function paymentBadgeVariant(status: string) {
+    if (status === 'verified') return 'generated' as const
+    if (status === 'submitted') return 'processing' as const
+    if (status === 'rejected') return 'failed' as const
+    if (status === 'refunded') return 'failed' as const
+    if (status === 'refund_requested') return 'pending' as const
+    return 'pending' as const
+}
+
 interface TeamsPanelProps {
     event: Event
     teams: Team[]
@@ -43,11 +61,20 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                 memberCount: members.length,
                 members: members.map(m => {
                     const tmRecord = t.members?.find(tm => tm.student_id === m.student_id)
-                    return { ...m, team_member_id: tmRecord?.id }
+                    let status = m.payment_status
+                    // 1. For team events, prioritize team payment status
+                    if (event.is_paid && t.payment_status && t.payment_status !== 'not_required') {
+                        status = t.payment_status
+                    }
+                    // 2. For any paid event, fallback to 'pending' if status is 'not_required'
+                    if (event.is_paid && status === 'not_required') {
+                        status = 'pending'
+                    }
+                    return { ...m, team_member_id: tmRecord?.id, payment_status: status }
                 })
             }
         })
-    }, [teams, registrations])
+    }, [teams, registrations, event.is_paid])
 
     const filteredTeams = useMemo(() => {
         if (!searchQuery.trim()) return mappedTeams
@@ -61,10 +88,17 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
 
     const ungroupedRegistrations = useMemo(() => {
         const ungrouped = registrations.filter(r => !r.team_id)
-        if (!searchQuery.trim()) return ungrouped
+        const processed = ungrouped.map(r => {
+            let status = r.payment_status
+            if (event.is_paid && status === 'not_required') {
+                status = 'pending'
+            }
+            return { ...r, payment_status: status }
+        })
+        if (!searchQuery.trim()) return processed
         const query = searchQuery.toLowerCase()
-        return ungrouped.filter(r => r.student?.name?.toLowerCase().includes(query))
-    }, [registrations, searchQuery])
+        return processed.filter(r => r.student?.name?.toLowerCase().includes(query))
+    }, [registrations, searchQuery, event.is_paid])
 
     async function handleCreateTeam() {
         if (!newTeamName.trim()) { setError('Team name is required'); return }
@@ -193,10 +227,10 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                     <span className="text-sm font-semibold truncate flex-1 min-w-0">{m.student?.name}</span>
                     {m.student_id === t.leader_id && <Badge variant="winner" style={{ fontSize: '9px', padding: '0 4px' }}>Leader</Badge>}
                     <Badge
-                        variant={m.payment_status === 'verified' ? 'success' : (m.payment_status === 'pending' ? 'pending' : 'info')}
+                        variant={paymentBadgeVariant(m.payment_status)}
                         style={{ fontSize: '9px', padding: '1px 6px' }}
                     >
-                        {m.payment_status.replace('_', ' ')}
+                        {PAYMENT_LABELS[m.payment_status] ?? m.payment_status.replace('_', ' ')}
                     </Badge>
                     {isAdminOrTeacher && m.team_member_id && (
                         <Button
@@ -409,8 +443,8 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <Badge variant={m.payment_status === 'verified' ? 'success' : (m.payment_status === 'pending' ? 'pending' : 'info')} style={{ fontSize: '9px', padding: '1px 6px' }}>
-                                                                {m.payment_status.replace('_', ' ')}
+                                                            <Badge variant={paymentBadgeVariant(m.payment_status)} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                                                                {PAYMENT_LABELS[m.payment_status] ?? m.payment_status.replace('_', ' ')}
                                                             </Badge>
                                                         </td>
                                                         <td className="text-right">
@@ -479,7 +513,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                             <td><div className="flex flex-col"><span className="font-semibold">{r.student?.name}</span><span className="text-xs text-text-tertiary">{r.student?.email}</span></div></td>
                                             <td>{r.student?.phone_number ? (<div className="flex items-center gap-1 text-sm"><Phone size={12} className="text-text-tertiary" /> {r.student.phone_number}</div>) : <span className="text-text-tertiary italic text-xs">—</span>}</td>
                                             <td><span className="text-sm">{r.student?.programme} {r.student?.semester ? `(Sem ${r.student.semester})` : ''}</span></td>
-                                            <td><Badge variant={r.payment_status === 'verified' ? 'success' : (r.payment_status === 'pending' ? 'pending' : 'info')}>{r.payment_status.replace('_', ' ')}</Badge></td>
+                                            <td><Badge variant={paymentBadgeVariant(r.payment_status)}>{PAYMENT_LABELS[r.payment_status] ?? r.payment_status.replace('_', ' ')}</Badge></td>
                                             <td style={{ textAlign: 'right' }}>
                                                 <div className="table-actions" style={{ justifyContent: 'flex-end' }}>
                                                     {event.status === 'open' && (
@@ -505,7 +539,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                         <span className="text-[11px] text-text-tertiary truncate">{r.student?.email}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <Badge variant={r.payment_status === 'verified' ? 'success' : (r.payment_status === 'pending' ? 'pending' : 'info')} style={{ fontSize: '9px', padding: '1px 6px' }}>{r.payment_status.replace('_', ' ')}</Badge>
+                                        <Badge variant={paymentBadgeVariant(r.payment_status)} style={{ fontSize: '9px', padding: '1px 6px' }}>{PAYMENT_LABELS[r.payment_status] ?? r.payment_status.replace('_', ' ')}</Badge>
                                         {event.status === 'open' && (
                                             <Button variant="ghost" size="sm" style={{ height: '24px', width: '24px', padding: 0 }}
                                                 onClick={() => { setModalTeamId(undefined); setModalStudent({ id: r.student_id, name: r.student?.name || '' }); setShowAddModal(true) }} title="Add to Team"

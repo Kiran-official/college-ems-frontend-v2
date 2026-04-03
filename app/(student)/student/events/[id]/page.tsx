@@ -17,7 +17,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
     if (!user) redirect('/login')
 
     const event = await getEventById(id)
-    if (!event) notFound()
+    if (!event || !event.is_active) notFound()
 
     // Get registration status
     const registration = await getStudentRegistrationForEvent(user.id, id)

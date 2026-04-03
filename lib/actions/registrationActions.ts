@@ -464,12 +464,14 @@ export async function approveJoinRequestAction(data: {
         const admin = createAdminClient()
 
         const { data: tm } = await admin.from('team_members')
-            .select('*, team:teams!inner(event_id, created_by)')
+            .select('*, team:teams!inner(event_id, created_by, leader_id)')
             .eq('id', data.team_member_id)
             .single()
         if (!tm) return { success: false, error: 'Request not found' }
 
-        if ((tm.team as any).created_by !== user.id) return { success: false, error: 'Only the team creator can approve requests' }
+        if ((tm.team as any).created_by !== user.id && (tm.team as any).leader_id !== user.id) {
+            return { success: false, error: 'Only the team creator or leader can approve requests' }
+        }
 
         const eventId = (tm.team as any).event_id
 
@@ -518,10 +520,12 @@ export async function rejectJoinRequestAction(data: {
 
         const admin = createAdminClient()
 
-        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(created_by)').eq('id', data.team_member_id).single()
+        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(created_by, leader_id)').eq('id', data.team_member_id).single()
         if (!tm) return { success: false, error: 'Request not found' }
 
-        if ((tm.team as any).created_by !== user.id) return { success: false, error: 'Only the team creator can reject requests' }
+        if ((tm.team as any).created_by !== user.id && (tm.team as any).leader_id !== user.id) {
+            return { success: false, error: 'Only the team creator or leader can reject requests' }
+        }
 
         await admin.from('team_members').delete().eq('id', data.team_member_id)
 

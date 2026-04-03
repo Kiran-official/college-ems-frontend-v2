@@ -26,9 +26,15 @@ interface TeacherEventTabsProps {
     certificates: Certificate[]
     certStats: { pending: number; processing: number; generated: number; failed: number }
     templates: CertificateTemplate[]
+    isFIC?: boolean
+    userRole?: 'admin' | 'teacher'
 }
 
-export function TeacherEventTabs({ event, registrations, teams, winners, certificates, certStats, templates }: TeacherEventTabsProps) {
+export function TeacherEventTabs({ 
+    event, registrations, teams, winners, certificates, certStats, templates,
+    isFIC = false,
+    userRole
+}: TeacherEventTabsProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const pathname = usePathname()
@@ -63,7 +69,7 @@ export function TeacherEventTabs({ event, registrations, teams, winners, certifi
 
     return (
         <div>
-            <EventActionHeader event={event} registrations={registrations} />
+            <EventActionHeader event={event} registrations={registrations} isFIC={isFIC} userRole={userRole} />
 
             <div className="tab-bar overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {validTabs.map(t => {
