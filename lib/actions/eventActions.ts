@@ -287,6 +287,8 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
+        revalidatePath('/student/events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -306,6 +308,8 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
+        revalidatePath('/student/events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

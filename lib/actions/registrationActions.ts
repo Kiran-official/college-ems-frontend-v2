@@ -370,15 +370,15 @@ export async function acceptInviteAction(data: {
 
         const admin = createAdminClient()
 
-        const { data: tm } = await admin.from('team_member_view')
-            .select('*')
+        const { data: tm } = await admin.from('team_members')
+            .select('*, team:teams!inner(event_id, created_by)')
             .eq('id', data.team_member_id)
             .single()
         if (!tm) return { success: false, error: 'Invite not found' }
         if (tm.student_id !== user.id) return { success: false, error: 'Not authorised' }
         if (!tm.invited_by) return { success: false, error: 'This is a join request, not an invite' }
 
-        const eventId = tm.event_id
+        const eventId = (tm.team as any).event_id
 
         // Check team still has space
         const { data: event } = await admin.from('events').select('team_size').eq('id', eventId).single()
@@ -463,15 +463,15 @@ export async function approveJoinRequestAction(data: {
 
         const admin = createAdminClient()
 
-        const { data: tm } = await admin.from('team_member_view')
-            .select('*')
+        const { data: tm } = await admin.from('team_members')
+            .select('*, team:teams!inner(event_id, created_by)')
             .eq('id', data.team_member_id)
             .single()
         if (!tm) return { success: false, error: 'Request not found' }
 
-        if (tm.team_created_by !== user.id) return { success: false, error: 'Only the team creator can approve requests' }
+        if ((tm.team as any).created_by !== user.id) return { success: false, error: 'Only the team creator can approve requests' }
 
-        const eventId = tm.event_id
+        const eventId = (tm.team as any).event_id
 
         const { data: event } = await admin.from('events').select('team_size').eq('id', eventId).single()
         const maxSize = event?.team_size ?? null
@@ -518,10 +518,10 @@ export async function rejectJoinRequestAction(data: {
 
         const admin = createAdminClient()
 
-        const { data: tm } = await admin.from('team_member_view').select('team_created_by').eq('id', data.team_member_id).single()
+        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(created_by)').eq('id', data.team_member_id).single()
         if (!tm) return { success: false, error: 'Request not found' }
 
-        if (tm.team_created_by !== user.id) return { success: false, error: 'Only the team creator can reject requests' }
+        if ((tm.team as any).created_by !== user.id) return { success: false, error: 'Only the team creator can reject requests' }
 
         await admin.from('team_members').delete().eq('id', data.team_member_id)
 
@@ -543,14 +543,14 @@ export async function removeMemberAction(data: {
 
         const admin = createAdminClient()
 
-        const { data: tm } = await admin.from('team_member_view').select('*').eq('id', data.team_member_id).single()
+        const { data: tm } = await admin.from('team_members').select('*, team:teams!inner(event_id, created_by)').eq('id', data.team_member_id).single()
         if (!tm) return { success: false, error: 'Member not found' }
 
         const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        const isAuthorized = tm.team_created_by === user.id || profile?.role === 'admin' || profile?.role === 'teacher'
+        const isAuthorized = (tm.team as any).created_by === user.id || profile?.role === 'admin' || profile?.role === 'teacher'
         
         if (!isAuthorized) return { success: false, error: 'Not authorised to remove members' }
-        if (tm.student_id === user.id && tm.team_created_by === user.id) return { success: false, error: 'You cannot remove yourself if you are the creator — delete the team instead' }
+        if (tm.student_id === user.id && (tm.team as any).created_by === user.id) return { success: false, error: 'You cannot remove yourself if you are the creator — delete the team instead' }
 
         await admin.from('team_members').delete().eq('id', data.team_member_id)
         await admin.from('individual_registrations').update({ team_id: null }).eq('student_id', tm.student_id).eq('team_id', tm.team_id)

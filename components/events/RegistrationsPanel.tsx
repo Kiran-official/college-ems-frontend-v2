@@ -191,10 +191,19 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
         return <EmptyState icon={ClipboardList} title="No registrations yet" subtitle="No one has registered for this event yet." />
     }
 
-    const depts = Array.from(new Set(registrations.map(r => (r.student?.department as { id: string; name: string } | undefined)?.name).filter(Boolean)))
+    // For paid team events, derive payment_status from the team (not the individual registration)
+    const isTeam = event.participant_type === 'multiple'
+    const effectiveRegistrations = registrations.map(r => {
+        if (isTeam && event.is_paid && r.team_id && (r.team as any)?.payment_status) {
+            return { ...r, payment_status: (r.team as any).payment_status }
+        }
+        return r
+    })
+
+    const depts = Array.from(new Set(effectiveRegistrations.map(r => (r.student?.department as { id: string; name: string } | undefined)?.name).filter(Boolean)))
     const programmes = filterDept ? (DEPT_PROGRAMMES[filterDept] ?? []) : Object.values(DEPT_PROGRAMMES).flat()
 
-    const filtered = registrations.filter(r => {
+    const filtered = effectiveRegistrations.filter(r => {
         const student = r.student as any
         const matchesDept = !filterDept || student?.department?.name === filterDept
         const matchesProg = !filterProgramme || student?.programme === filterProgramme
@@ -202,8 +211,6 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
         const matchesPayment = !filterPaymentStatus || r.payment_status === filterPaymentStatus
         return matchesDept && matchesProg && matchesSem && matchesPayment
     })
-
-    const isTeam = event.participant_type === 'multiple'
 
     const renderActionHeader = () => (
         <div style={{ paddingBottom: 24 }}>
