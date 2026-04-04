@@ -18,10 +18,17 @@ interface CertificatesPanelProps {
     eventId: string
     createTemplatePath: string
     winners: Winner[]
+    isFIC?: boolean
+    userRole?: string
 }
 
-export function CertificatesPanel({ certificates, stats, templates, eventId, createTemplatePath, winners }: CertificatesPanelProps) {
+export function CertificatesPanel({ 
+    certificates, stats, templates, eventId, createTemplatePath, winners,
+    isFIC = false,
+    userRole
+}: CertificatesPanelProps) {
     const [pending, startTransition] = useTransition()
+    const canManage = userRole === 'admin' || isFIC
 
     function retry(certId: string) {
         startTransition(async () => {
@@ -97,19 +104,23 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{hasParticipation ? 'Ready to use • Attached' : 'Missing design'}</div>
                         </div>
                     </div>
-                    {hasParticipation && pTemplate ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                            <Link href={`${createTemplatePath.replace('/create', '')}/${pTemplate.id}`}>
-                                <Button size="sm" variant="ghost">Edit</Button>
-                            </Link>
-                            <Button size="sm" variant="ghost" onClick={() => removeTemplate(pTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
-                                <Trash2 size={14} />
-                            </Button>
-                        </div>
-                    ) : (
-                        <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
-                            <Button size="sm" variant="outline">Create</Button>
-                        </Link>
+                    {canManage && (
+                        <>
+                            {hasParticipation && pTemplate ? (
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <Link href={`${createTemplatePath.replace('/create', '')}/${pTemplate.id}`}>
+                                        <Button size="sm" variant="ghost">Edit</Button>
+                                    </Link>
+                                    <Button size="sm" variant="ghost" onClick={() => removeTemplate(pTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Link href={`${createTemplatePath}?eventId=${eventId}&type=participation`}>
+                                    <Button size="sm" variant="outline">Create</Button>
+                                </Link>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -132,19 +143,23 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                             </div>
                         </div>
                     </div>
-                    {hasWinner && wTemplate ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                            <Link href={`${createTemplatePath.replace('/create', '')}/${wTemplate.id}`}>
-                                <Button size="sm" variant="ghost">Edit</Button>
-                            </Link>
-                            <Button size="sm" variant="ghost" onClick={() => removeTemplate(wTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
-                                <Trash2 size={14} />
-                            </Button>
-                        </div>
-                    ) : (
-                        <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
-                            <Button size="sm" variant="outline">Create</Button>
-                        </Link>
+                    {canManage && (
+                        <>
+                            {hasWinner && wTemplate ? (
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <Link href={`${createTemplatePath.replace('/create', '')}/${wTemplate.id}`}>
+                                        <Button size="sm" variant="ghost">Edit</Button>
+                                    </Link>
+                                    <Button size="sm" variant="ghost" onClick={() => removeTemplate(wTemplate.id)} loading={pending} style={{ color: 'var(--error)' }}>
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Link href={`${createTemplatePath}?eventId=${eventId}&type=winner`}>
+                                    <Button size="sm" variant="outline">Create</Button>
+                                </Link>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -175,12 +190,12 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                                     <td data-label="Generated">{cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : '—'}</td>
                                     <td data-label="Action">
                                         <div style={{ display: 'flex', gap: 8 }}>
-                                            {cert.status === 'failed' && (
+                                            {canManage && cert.status === 'failed' && (
                                                 <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Retry Failed Certificate">
                                                     <RotateCcw size={14} /> Retry
                                                 </Button>
                                             )}
-                                            {cert.status === 'generated' && (
+                                            {canManage && cert.status === 'generated' && (
                                                 <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} title="Regenerate Certificate">
                                                     <Award size={14} /> Regenerate
                                                 </Button>
@@ -208,7 +223,7 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
                                 {cert.generated_at ? format(new Date(cert.generated_at), 'dd/MM/yyyy') : 'Not generated'}
                             </span>
                         </div>
-                        {(cert.status === 'failed' || cert.status === 'generated') && (
+                        {canManage && (cert.status === 'failed' || cert.status === 'generated') && (
                             <div style={{ marginTop: 8 }}>
                                 <Button size="sm" variant="ghost" onClick={() => retry(cert.id)} loading={pending} style={{ fontSize: '12px', padding: '2px 8px', height: '28px' }}>
                                     <RotateCcw size={12} style={{ marginRight: 4 }} /> {cert.status === 'failed' ? 'Retry' : 'Regenerate'}
@@ -228,18 +243,20 @@ export function CertificatesPanel({ certificates, stats, templates, eventId, cre
             <Badge variant="generated">{stats.generated} Generated</Badge>
             <Badge variant="failed">{stats.failed} Failed</Badge>
             
-            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                {stats.failed > 0 && (
-                    <Button size="sm" variant="outline" onClick={retryAll} loading={pending} style={{ color: 'var(--warning)', borderColor: 'var(--warning-border)' }}>
-                        <RotateCcw size={14} style={{ marginRight: 6 }} /> Retry All Failed
-                    </Button>
-                )}
-                {(stats.pending > 0 || stats.failed > 0) && (
-                    <Button size="sm" variant="primary" onClick={triggerProcessing} loading={pending}>
-                        <Check size={14} style={{ marginRight: 6 }} /> Process Queue
-                    </Button>
-                )}
-            </div>
+            {canManage && (
+                <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                    {stats.failed > 0 && (
+                        <Button size="sm" variant="outline" onClick={retryAll} loading={pending} style={{ color: 'var(--warning)', borderColor: 'var(--warning-border)' }}>
+                            <RotateCcw size={14} style={{ marginRight: 6 }} /> Retry All Failed
+                        </Button>
+                    )}
+                    {(stats.pending > 0 || stats.failed > 0) && (
+                        <Button size="sm" variant="primary" onClick={triggerProcessing} loading={pending}>
+                            <Check size={14} style={{ marginRight: 6 }} /> Process Queue
+                        </Button>
+                    )}
+                </div>
+            )}
         </div>
     )
 

@@ -37,9 +37,8 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
 
     const canManage = userRole === 'admin' || isFIC
     
-    // If user cannot manage and there's no warning to show, don't show the header
-    const showHeader = canManage || (event.status === 'closed' && incompleteAttendanceCount > 0)
-    if (!showHeader) return null
+    // Header should only be visible to managers (Admin/FIC)
+    if (!canManage) return null
 
     return (
         <div className="glass-premium" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--accent-border, rgba(99,102,241,0.2))' }}>

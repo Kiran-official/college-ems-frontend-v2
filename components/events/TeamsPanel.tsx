@@ -33,9 +33,11 @@ interface TeamsPanelProps {
     event: Event
     teams: Team[]
     registrations: IndividualRegistration[]
+    isFIC?: boolean
+    userRole?: string
 }
 
-export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
+export function TeamsPanel({ event, teams, registrations, isFIC = false, userRole }: TeamsPanelProps) {
     const [isCreating, startCreate] = useTransition()
     const [isDeleting, startDelete] = useTransition()
     const [newTeamName, setNewTeamName] = useState('')
@@ -50,8 +52,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
     const [modalStudent, setModalStudent] = useState<{ id: string; name: string } | undefined>()
     const [isActionPending, startAction] = useTransition()
 
-    const pathname = usePathname()
-    const isAdminOrTeacher = pathname.includes('/admin') || pathname.includes('/teacher')
+    const canManage = userRole === 'admin' || isFIC
 
     const mappedTeams = useMemo(() => {
         return teams.map(t => {
@@ -180,7 +181,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                         Created by: {t.members.find(m => m.student_id === t.created_by)?.student?.name || 'Admin'}
                     </span>
                 </div>
-                {isAdminOrTeacher && (
+                {canManage && (
                     <div className="teams-card-header__actions">
                         {event.status === 'open' && (
                             <Button
@@ -232,7 +233,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                     >
                         {PAYMENT_LABELS[m.payment_status] ?? m.payment_status.replace('_', ' ')}
                     </Badge>
-                    {isAdminOrTeacher && m.team_member_id && (
+                    {canManage && m.team_member_id && (
                         <Button
                             variant="ghost" size="sm"
                             style={{ height: '22px', width: '22px', padding: 0 }}
@@ -301,7 +302,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                     />
                 </div>
 
-                {isAdminOrTeacher && (
+                {canManage && (
                     <div className="flex items-center shrink-0">
                         {!showCreateForm ? (
                             <Button
@@ -395,7 +396,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                                 </td>
                                                 <td className="py-2.5 pr-4 text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        {isAdminOrTeacher && (
+                                                        {canManage && (
                                                             <>
                                                                 {event.status === 'open' && (
                                                                     <Button variant="ghost" size="sm" style={{ padding: '4px', height: '28px', width: '28px' }}
@@ -448,7 +449,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
                                                             </Badge>
                                                         </td>
                                                         <td className="text-right">
-                                                            {isAdminOrTeacher && m.team_member_id && (
+                                                            {canManage && m.team_member_id && (
                                                                 <Button variant="ghost" size="sm" style={{ height: '24px', width: '24px', padding: 0 }}
                                                                     onClick={() => handleRemoveMember(m.team_member_id!)}
                                                                     className="opacity-0 group-hover:opacity-100 transition-opacity"
@@ -488,7 +489,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
             )}
 
             {/* ── Ungrouped Participants ── */}
-            {isAdminOrTeacher && ungroupedRegistrations.length > 0 && (
+            {canManage && ungroupedRegistrations.length > 0 && (
                 <div style={{ marginTop: 40 }}>
                     <h3 className="section-title flex items-center gap-2 mb-4" style={{ fontSize: '1.1rem' }}>
                         <Users size={18} className="text-accent" /> Ungrouped Participants
@@ -567,7 +568,7 @@ export function TeamsPanel({ event, teams, registrations }: TeamsPanelProps) {
             )}
 
             {/* Add Participant Modal */}
-            {isAdminOrTeacher && (
+            {canManage && (
                 <AddParticipantModal
                     eventId={event.id}
                     eventType="team"

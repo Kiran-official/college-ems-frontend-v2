@@ -90,11 +90,11 @@ export function TeacherEventTabs({
             </div>
 
             <div style={{ marginTop: 24 }}>
-                {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} teams={teams} />}
-                {tab === 'teams' && <TeamsPanel event={event} teams={teams} registrations={registrations} />}
-                {tab === 'payments' && <PaymentsPanel event={event} registrations={registrations} teams={teams} />}
-                {tab === 'attendance' && <AttendancePanel event={event} registrations={registrations} />}
-                {tab === 'winners' && <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} />}
+                {tab === 'registrations' && <RegistrationsPanel event={event} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />}
+                {tab === 'teams' && <TeamsPanel event={event} teams={teams} registrations={registrations} isFIC={isFIC} userRole={userRole} />}
+                {tab === 'payments' && <PaymentsPanel event={event} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />}
+                {tab === 'attendance' && <AttendancePanel event={event} registrations={registrations} isFIC={isFIC} userRole={userRole} />}
+                {tab === 'winners' && <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />}
                 {tab === 'certificates' && (
                     <CertificatesPanel 
                         certificates={certificates} 
@@ -103,6 +103,8 @@ export function TeacherEventTabs({
                         eventId={event.id}
                         createTemplatePath="/teacher/templates/create"
                         winners={winners}
+                        isFIC={isFIC}
+                        userRole={userRole}
                     />
                 )}
                 {tab === 'announcements' && (

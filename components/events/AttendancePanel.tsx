@@ -11,12 +11,14 @@ import type { IndividualRegistration, Event } from '@/lib/types/db'
 interface AttendancePanelProps {
     event: Event
     registrations: IndividualRegistration[]
+    isFIC?: boolean
+    userRole?: string
 }
 
-function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; eventStatus: string }) {
+function AttendanceRow({ reg, eventStatus, canManage }: { reg: IndividualRegistration; eventStatus: string; canManage: boolean }) {
     const [status, setStatus] = useState(reg.attendance_status)
     const [pending, startTransition] = useTransition()
-    const isEditable = eventStatus === 'closed'
+    const isEditable = eventStatus === 'closed' && canManage
 
     useEffect(() => {
         setStatus(reg.attendance_status)
@@ -84,10 +86,10 @@ function AttendanceRow({ reg, eventStatus }: { reg: IndividualRegistration; even
 }
 
 // ── Mobile attendance card ──────────────────────────────────────
-function AttendanceCard({ reg, eventStatus }: { reg: IndividualRegistration; eventStatus: string }) {
+function AttendanceCard({ reg, eventStatus, canManage }: { reg: IndividualRegistration; eventStatus: string; canManage: boolean }) {
     const [status, setStatus] = useState(reg.attendance_status)
     const [pending, startTransition] = useTransition()
-    const isEditable = eventStatus === 'closed'
+    const isEditable = eventStatus === 'closed' && canManage
 
     useEffect(() => {
         setStatus(reg.attendance_status)
@@ -163,9 +165,10 @@ function AttendanceCard({ reg, eventStatus }: { reg: IndividualRegistration; eve
     )
 }
 
-export function AttendancePanel({ event, registrations }: AttendancePanelProps) {
+export function AttendancePanel({ event, registrations, isFIC = false, userRole }: AttendancePanelProps) {
     const router = useRouter()
     const [bulkPending, startBulk] = useTransition()
+    const canManage = userRole === 'admin' || isFIC
 
     if (event.status === 'open') {
         return (
@@ -208,16 +211,18 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
 
     return (
         <div>
-            <div style={{ paddingBottom: 24 }}>
-                <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
-                        Mark All Present
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
-                        Reset All
-                    </Button>
+            {canManage && (
+                <div style={{ paddingBottom: 24 }}>
+                    <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={markAllPresent} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
+                            Mark All Present
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={resetAll} loading={bulkPending} className="flex-1 sm:flex-none justify-center">
+                            Reset All
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Desktop table */}
             <div className="resp-table">
@@ -233,7 +238,7 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
                         </thead>
                         <tbody>
                             {registrations.map(r => (
-                                <AttendanceRow key={r.id} reg={r} eventStatus={event.status} />
+                                <AttendanceRow key={r.id} reg={r} eventStatus={event.status} canManage={canManage} />
                             ))}
                         </tbody>
                     </table>
@@ -243,7 +248,7 @@ export function AttendancePanel({ event, registrations }: AttendancePanelProps) 
             {/* Mobile cards */}
             <div className="resp-cards">
                 {registrations.map(r => (
-                    <AttendanceCard key={r.id} reg={r} eventStatus={event.status} />
+                    <AttendanceCard key={r.id} reg={r} eventStatus={event.status} canManage={canManage} />
                 ))}
             </div>
         </div>

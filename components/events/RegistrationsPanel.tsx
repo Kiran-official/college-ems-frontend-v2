@@ -26,6 +26,8 @@ interface RegistrationsPanelProps {
     event: Event
     registrations: IndividualRegistration[]
     teams?: Team[]
+    isFIC?: boolean
+    userRole?: string
 }
 
 function paymentBadgeVariant(status: string) {
@@ -181,7 +183,7 @@ function TeamGroupTable({ teams, isPaid }: { teams: Map<string, { name: string; 
     )
 }
 
-export function RegistrationsPanel({ event, registrations, teams = [] }: RegistrationsPanelProps) {
+export function RegistrationsPanel({ event, registrations, teams = [], isFIC = false, userRole }: RegistrationsPanelProps) {
     const [showFilters, setShowFilters] = useState(false)
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
@@ -189,8 +191,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
     const [filterPaymentStatus, setFilterPaymentStatus] = useState('')
     const [showAddModal, setShowAddModal] = useState(false)
     
-    const pathname = usePathname()
-    const isAdminOrTeacher = pathname.includes('/admin') || pathname.includes('/teacher')
+    const canManage = userRole === 'admin' || isFIC
 
     if (registrations.length === 0) {
         return <EmptyState icon={ClipboardList} title="No registrations yet" subtitle="No one has registered for this event yet." />
@@ -230,7 +231,7 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
         <div style={{ paddingBottom: 24 }}>
             <div className="flex justify-between items-center gap-3">
                 <div>
-                    {isAdminOrTeacher && event.status === 'open' && (
+                    {canManage && event.status === 'open' && (
                         <Button size="sm" onClick={() => setShowAddModal(true)}>
                             <Plus size={14} /> Add Participant
                         </Button>
@@ -316,15 +317,15 @@ export function RegistrationsPanel({ event, registrations, teams = [] }: Registr
             {renderFilterBar()}
             {content()}
             
-            {isAdminOrTeacher && (
-                <AddParticipantModal 
+            {canManage && event.status === 'open' && (
+                <AddParticipantModal
+                    open={showAddModal}
+                    onClose={() => setShowAddModal(false)}
                     eventId={event.id}
                     eventType={isTeam ? 'team' : 'individual'}
                     isPaid={event.is_paid}
                     teams={mappedTeams}
                     teamSize={event.team_size || undefined}
-                    open={showAddModal}
-                    onClose={() => setShowAddModal(false)}
                     onSuccess={() => {
                         setShowAddModal(false)
                         window.location.reload()

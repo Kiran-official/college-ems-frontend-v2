@@ -74,6 +74,8 @@ interface WinnersPanelProps {
     winners: Winner[]
     registrations: IndividualRegistration[]
     teams: Team[]
+    isFIC?: boolean
+    userRole?: string
 }
 
 function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
@@ -193,11 +195,12 @@ function WinnerForm({ eventId, isTeam, registrations, teams, onDeclared }: {
     )
 }
 
-export function WinnersPanel({ event, winners, registrations, teams }: WinnersPanelProps) {
+export function WinnersPanel({ event, winners, registrations, teams, isFIC = false, userRole }: WinnersPanelProps) {
     const router = useRouter()
     const [key, setKey] = useState(0)
     const refresh = () => { setKey(k => k + 1); router.refresh() }
 
+    const canManage = userRole === 'admin' || isFIC
     const isTeam = event.participant_type === 'multiple'
 
     return (
@@ -212,7 +215,7 @@ export function WinnersPanel({ event, winners, registrations, teams }: WinnersPa
                     ⚠️ Event must be closed before declaring winners.
                 </div>
             )}
-            {!event.results_published && event.status === 'closed' && (
+            {canManage && !event.results_published && event.status === 'closed' && (
                 <WinnerForm
                     eventId={event.id}
                     isTeam={isTeam}
@@ -221,7 +224,7 @@ export function WinnersPanel({ event, winners, registrations, teams }: WinnersPa
                     onDeclared={refresh}
                 />
             )}
-            <WinnerList winners={winners} eventId={event.id} onRemoved={refresh} readOnly={event.results_published} />
+            <WinnerList winners={winners} eventId={event.id} onRemoved={refresh} readOnly={event.results_published || !canManage} />
         </div>
     )
 }

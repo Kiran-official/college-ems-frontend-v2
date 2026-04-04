@@ -30,7 +30,7 @@ const NAV = {
     ],
     teacher: [
         { label: 'Dashboard', href: '/teacher', icon: 'LayoutDashboard' },
-        { label: 'My Events', href: '/teacher/events', icon: 'Calendar' },
+        { label: 'All Events', href: '/teacher/events', icon: 'Calendar' },
         { label: 'Templates', href: '/teacher/templates', icon: 'FileText' },
         { label: 'Certificates', href: '/teacher/certificates', icon: 'Award' },
     ],
