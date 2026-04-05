@@ -13,7 +13,7 @@ import { transferLeadershipAction, removeMemberAction, deleteRegistrationAction 
 
 const PAYMENT_LABELS: Record<string, string> = {
     'pending': 'Awaiting Payment',
-    'submitted': 'Under Review',
+    'submitted': 'Proof Submitted',
     'verified': 'Verified',
     'rejected': 'Rejected',
     'refund_requested': 'Refund Requested',

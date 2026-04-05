@@ -869,6 +869,14 @@ export async function uploadPaymentProofAction(data: {
                 rejection_reason: null,
             }).eq('id', reg.team_id)
             if (teamUpdateError) return { success: false, error: teamUpdateError.message }
+
+            // Sync with all team members
+            await admin.from('individual_registrations').update({
+                payment_status: 'submitted',
+                payment_proof_url: filePath,
+                payment_submitted_at: new Date().toISOString(),
+                rejection_reason: null,
+            }).eq('team_id', reg.team_id)
         } else {
             const { error: updateError } = await admin.from('individual_registrations').update({
                 payment_status: 'submitted',
@@ -915,6 +923,9 @@ export async function verifyPaymentAction(data: {
         if (data.team_id) {
             const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
             if (error) return { success: false, error: error.message }
+
+            // Sync with team members
+            await admin.from('individual_registrations').update(payload).eq('team_id', data.team_id)
         } else if (data.registration_id) {
             const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
             if (error) return { success: false, error: error.message }
@@ -960,6 +971,9 @@ export async function rejectPaymentAction(data: {
         if (data.team_id) {
             const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
             if (error) return { success: false, error: error.message }
+
+            // Sync with team members
+            await admin.from('individual_registrations').update(payload).eq('team_id', data.team_id)
         } else if (data.registration_id) {
             const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
             if (error) return { success: false, error: error.message }
@@ -1029,6 +1043,9 @@ export async function processRefundAction(data: {
         if (data.team_id) {
             const { error } = await admin.from('teams').update(payload).eq('id', data.team_id)
             if (error) return { success: false, error: error.message }
+
+            // Sync with team members
+            await admin.from('individual_registrations').update(payload).eq('team_id', data.team_id)
         } else if (data.registration_id) {
             const { error } = await admin.from('individual_registrations').update(payload).eq('id', data.registration_id)
             if (error) return { success: false, error: error.message }

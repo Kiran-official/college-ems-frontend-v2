@@ -3,6 +3,7 @@ import { getEventById } from '@/lib/queries/events'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent } from '@/lib/queries/certificates'
+import { getCurrentUser } from '@/lib/queries/users'
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
@@ -18,6 +19,7 @@ export default async function AdminEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
+    const currentUser = await getCurrentUser()
     const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
@@ -26,6 +28,9 @@ export default async function AdminEventDetailPage({ params }: Props) {
         getCertificateStatsByEvent(id),
         getTemplatesByEvent(id),
     ])
+
+    const isFIC = event.faculty_in_charge?.some(f => f.teacher_id === currentUser?.id) || false
+    const userRole = currentUser?.role || 'student'
 
     return (
         <div className="page">
@@ -91,6 +96,8 @@ export default async function AdminEventDetailPage({ params }: Props) {
                 certificates={certificates}
                 certStats={certStats}
                 templates={templates}
+                isFIC={isFIC}
+                userRole={userRole}
             />
         </div>
     )

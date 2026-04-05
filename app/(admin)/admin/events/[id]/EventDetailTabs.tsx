@@ -26,9 +26,11 @@ interface EventDetailTabsProps {
     certificates: Certificate[]
     certStats: { pending: number; processing: number; generated: number; failed: number }
     templates: CertificateTemplate[]
+    isFIC?: boolean
+    userRole?: string
 }
 
-export function EventDetailTabs({ event, registrations, teams, winners, certificates, certStats, templates }: EventDetailTabsProps) {
+export function EventDetailTabs({ event, registrations, teams, winners, certificates, certStats, templates, isFIC, userRole }: EventDetailTabsProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const pathname = usePathname()
@@ -63,7 +65,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
 
     return (
         <div>
-            <EventActionHeader event={event} registrations={registrations} userRole="admin" />
+            <EventActionHeader event={event} registrations={registrations} isFIC={isFIC} userRole={userRole as any} />
 
             {/* Tab bar */}
             <div className="tab-bar overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -94,13 +96,13 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                     <RegistrationsPanel event={event} registrations={registrations} teams={teams} />
                 )}
                 {tab === 'teams' && (
-                    <TeamsPanel event={event} teams={teams} registrations={registrations} />
+                    <TeamsPanel event={event} teams={teams} registrations={registrations} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'payments' && (
-                    <PaymentsPanel event={event} registrations={registrations} teams={teams} />
+                    <PaymentsPanel event={event} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'attendance' && (
-                    <AttendancePanel event={event} registrations={registrations} />
+                    <AttendancePanel event={event} registrations={registrations} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'winners' && (
                     <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} />
