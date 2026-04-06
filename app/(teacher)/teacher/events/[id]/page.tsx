@@ -58,7 +58,10 @@ export default async function TeacherEventDetailPage({ params }: Props) {
     return (
         <div className="page">
             <div className="page-header">
-                <h1 className="page-title">{event.title}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <h1 className="page-title" style={{ marginBottom: 0 }}>{event.title}</h1>
+                    {event.status === 'archived' && <Badge variant="archived">Archived</Badge>}
+                </div>
                 {event.description && <p className="page-sub">{event.description}</p>}
             </div>
 

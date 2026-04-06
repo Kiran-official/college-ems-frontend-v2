@@ -8,6 +8,8 @@ import { LifecycleTracker } from '@/components/events/LifecycleTracker'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
 import { Calendar, Globe, Users, Building } from 'lucide-react'
+import { ArchiveRestoreButtons } from '../ArchiveRestoreButtons'
+import { DeleteEventButton } from '../DeleteEventButton'
 import { EventDetailTabs } from './EventDetailTabs'
 
 interface Props {
@@ -34,10 +36,18 @@ export default async function AdminEventDetailPage({ params }: Props) {
 
     return (
         <div className="page">
-            <div className="page-header">
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
                 <div className="page-header__title-group">
-                    <h1 className="page-title">{event.title}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <h1 className="page-title" style={{ marginBottom: 0 }}>{event.title}</h1>
+                        {event.status === 'archived' && <Badge variant="archived">Archived</Badge>}
+                    </div>
                     {event.description && <p className="page-sub">{event.description}</p>}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <ArchiveRestoreButtons eventId={event.id} isActive={event.is_active} />
+                    <DeleteEventButton eventId={event.id} eventTitle={event.title} />
                 </div>
             </div>
 

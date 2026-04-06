@@ -2299,6 +2299,12 @@ input[type="radio"]:focus-visible {
   color: var(--neutral);
 }
 
+.badge--archived {
+  background: rgba(160, 174, 203, 0.15);
+  color: #A0AECB;
+  border: 1px solid rgba(160, 174, 203, 0.2);
+}
+
 .badge--generated {
   background: var(--success-bg);
   color: var(--success);

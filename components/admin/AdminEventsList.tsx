@@ -64,7 +64,11 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
                                         </Link>
                                     </td>
                                     <td data-label="Date">{format(new Date(e.event_date), 'dd/MM/yyyy')}</td>
-                                    <td data-label="Status"><Badge variant={e.status}>{e.status}</Badge></td>
+                                    <td data-label="Status">
+                                        <Badge variant={e.status}>
+                                            {e.status}
+                                        </Badge>
+                                    </td>
                                     <td data-label="Type"><Badge variant={e.participant_type === 'single' ? 'individual' : 'team'}>{e.participant_type}</Badge></td>
                                     <td data-label="Faculty">
                                         <div className="faculty-pills">
@@ -97,7 +101,9 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
                                 {e.title}
                             </Link>
                             <div style={{ display: 'flex', gap: 4 }}>
-                                <Badge variant={e.status} style={{ fontSize: '9px', padding: '1px 6px' }}>{e.status}</Badge>
+                                <Badge variant={e.status} style={{ fontSize: '9px', padding: '1px 6px' }}>
+                                    {e.status}
+                                </Badge>
                                 <Badge variant={e.participant_type === 'single' ? 'individual' : 'team'} style={{ fontSize: '9px', padding: '1px 6px' }}>{e.participant_type}</Badge>
                             </div>
                         </div>

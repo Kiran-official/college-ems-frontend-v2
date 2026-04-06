@@ -283,15 +283,29 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({ is_active: false }).eq('id', eventId)
+        
+        // 1. Get current status to save it
+        const { data: event } = await admin.from('events').select('status').eq('id', eventId).single()
+        if (!event) return { success: false, error: 'Event not found' }
+
+        // 2. Perform archiving
+        const { error } = await admin
+            .from('events')
+            .update({ 
+                is_active: false, 
+                status: 'archived', 
+                previous_status: event.status 
+            })
+            .eq('id', eventId)
+        
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
         return { success: true }
-    } catch {
-        return { success: false, error: 'An unexpected error occurred' }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'An unexpected error occurred' }
     }
 }
 
@@ -304,15 +318,30 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({ is_active: true }).eq('id', eventId)
+
+        // 1. Get previous status
+        const { data: event } = await admin.from('events').select('previous_status').eq('id', eventId).single()
+        if (!event) return { success: false, error: 'Event not found' }
+        
+        const targetStatus = event.previous_status || 'draft'
+
+        // 2. Perform restoration
+        const { error } = await admin
+            .from('events')
+            .update({ 
+                is_active: true, 
+                status: targetStatus 
+            })
+            .eq('id', eventId)
+        
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
         return { success: true }
-    } catch {
-        return { success: false, error: 'An unexpected error occurred' }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'An unexpected error occurred' }
     }
 }
 
