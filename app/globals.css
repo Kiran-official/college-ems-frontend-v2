@@ -370,6 +370,9 @@ img {
   width: 32px;
   height: 32px;
   border-radius: 50%;
+  border: 2px solid white;
+  background: white;
+  padding: 2px;
   flex-shrink: 0;
   object-fit: contain;
   overflow: hidden; /* Ensures circular shape for images with backgrounds */
@@ -1054,6 +1057,7 @@ img {
   filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.3));
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   background: white !important;
+  border: 3px solid white !important;
   border-radius: 50% !important;
   object-fit: contain;
   padding: 4px; /* Gives some breathing room inside the circle */
