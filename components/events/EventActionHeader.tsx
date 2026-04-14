@@ -42,11 +42,11 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
 
     return (
         <div className="glass-premium" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--accent-border, rgba(99,102,241,0.2))' }}>
-            <div className="flex flex-row items-center justify-between gap-4 flex-nowrap overflow-x-auto pb-2 -mb-2">
+            <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>Quick Actions</span>
-                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0 }}></div>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-tertiary)' }}></div>
                         <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
                             {event.status === 'open' ? 'Management' : event.status === 'closed' ? 'Attendance & Results' : 'Post-Event'}
                         </span>
