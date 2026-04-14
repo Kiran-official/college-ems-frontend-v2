@@ -128,7 +128,7 @@ export function ManageFaculty({ eventId, currentFaculty, allTeachers, isManageab
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-                                <Button variant="secondary" onClick={() => setIsModalOpen(false)} disabled={isLoading}>
+                                <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isLoading}>
                                     Cancel
                                 </Button>
                                 <Button onClick={handleAdd} disabled={!selectedTeacherId || isLoading || availableTeachers.length === 0} loading={isLoading}>
