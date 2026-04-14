@@ -13,8 +13,10 @@ export default async function TeacherDashboard() {
     return (
         <div className="page">
             <div className="page-header">
-                <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
-                <p className="page-sub">Your event management overview</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
+                    <p className="page-sub">Your event management overview</p>
+                </div>
             </div>
 
             <div className="card-grid">

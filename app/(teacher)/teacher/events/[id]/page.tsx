@@ -4,7 +4,9 @@ import { getEventById } from '@/lib/queries/events'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent } from '@/lib/queries/certificates'
+import { getActiveTeachers } from '@/lib/queries/users'
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
+import { ManageFaculty } from '@/components/events/ManageFaculty'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
 import { Calendar, Globe, Users, Building } from 'lucide-react'
@@ -24,45 +26,40 @@ export default async function TeacherEventDetailPage({ params }: Props) {
 
     const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
     
-    let isFIC = false
-    if (profile?.role === 'teacher') {
-        const { data: fic } = await supabase
-            .from('faculty_in_charge')
-            .select('id')
-            .eq('event_id', id)
-            .eq('teacher_id', user.id)
-            .maybeSingle()
-        
-        isFIC = !!fic
-    } else if (profile?.role !== 'admin') {
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
         redirect('/')
     }
 
     const event = await getEventById(id)
     if (!event) notFound()
 
+    const isFIC = profile?.role === 'teacher' && (event.faculty_in_charge?.some(f => f.teacher_id === user.id) || false)
+
     // Archived events check (strict check for non-admins)
     if (!event.is_active && profile?.role !== 'admin') {
         notFound()
     }
 
-    const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
+    const [registrations, teams, winners, certificates, certStats, templates, activeTeachers] = await Promise.all([
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
         getWinnersByEvent(id),
         getCertificatesByEvent(id),
         getCertificateStatsByEvent(id),
         getTemplatesByEvent(id),
+        getActiveTeachers(),
     ])
 
     return (
         <div className="page">
             <div className="page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <h1 className="page-title" style={{ marginBottom: 0 }}>{event.title}</h1>
-                    {event.status === 'archived' && <Badge variant="archived">Archived</Badge>}
+                <div className="page-header__title-group">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <h1 className="page-title" style={{ marginBottom: 0 }}>{event.title}</h1>
+                        {event.status === 'archived' && <Badge variant="archived">Archived</Badge>}
+                    </div>
+                    {event.description && <p className="page-sub">{event.description}</p>}
                 </div>
-                {event.description && <p className="page-sub">{event.description}</p>}
             </div>
 
             <div className="glass" style={{ padding: 'clamp(12px, 3vw, 24px)', marginBottom: 24, overflow: 'visible' }}>
@@ -100,6 +97,14 @@ export default async function TeacherEventDetailPage({ params }: Props) {
                     </>
                 )}
             </div>
+
+            {/* Faculty strip */}
+            <ManageFaculty 
+                eventId={event.id}
+                currentFaculty={event.faculty_in_charge || []}
+                allTeachers={activeTeachers}
+                isManageable={isFIC || profile?.role === 'admin'} 
+            />
 
             <TeacherEventTabs
                 event={event}

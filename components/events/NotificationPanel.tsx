@@ -10,9 +10,12 @@ import type { Event } from '@/lib/types/db'
 
 interface NotificationPanelProps {
     event: Event
+    isFIC?: boolean
+    userRole?: 'admin' | 'teacher' | 'student'
 }
 
-export function NotificationPanel({ event }: NotificationPanelProps) {
+export function NotificationPanel({ event, isFIC = false, userRole }: NotificationPanelProps) {
+    const canManage = userRole === 'admin' || isFIC
     const [isPending, startTransition] = useTransition()
     const [title, setTitle] = useState('')
     const [body, setBody] = useState('')
@@ -55,6 +58,20 @@ export function NotificationPanel({ event }: NotificationPanelProps) {
         setBody(`Don't forget! ${event.title} is starting on ${dateStr} at ${timeStr}. We look forward to seeing you there!`)
         setValidationErrors({})
         setStatus(null)
+    }
+
+    if (!canManage) {
+        return (
+            <div className="glass" style={{ padding: 24, borderRadius: 'var(--r-xl)', maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255, 77, 106, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4d6a', margin: '0 auto 16px' }}>
+                    <AlertCircle size={24} />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 8px 0' }}>Access Restricted</h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Only the designated Faculty in Charge or Admins can broadcast announcements to participants.
+                </p>
+            </div>
+        )
     }
 
     return (

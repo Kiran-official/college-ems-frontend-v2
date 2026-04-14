@@ -108,7 +108,7 @@ export function TeacherEventTabs({
                     />
                 )}
                 {tab === 'announcements' && (
-                    <NotificationPanel event={event} />
+                    <NotificationPanel event={event} isFIC={isFIC} userRole={userRole} />
                 )}
             </div>
         </div>

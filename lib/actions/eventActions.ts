@@ -429,6 +429,52 @@ export async function addParticipantAfterCloseAction(data: {
     }
 }
 
+export async function addFacultyInChargeAction(eventId: string, teacherId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile) return { success: false, error: 'User profile not found' }
+
+        const admin = createAdminClient()
+
+        let isManageable = false
+        if (profile.role === 'admin') {
+            isManageable = true
+        } else if (profile.role === 'teacher') {
+            const { data: fic } = await admin.from('faculty_in_charge').select('id').eq('event_id', eventId).eq('teacher_id', user.id).maybeSingle()
+            if (fic) isManageable = true
+        }
+
+        if (!isManageable) return { success: false, error: 'Not authorised to assign faculty to this event' }
+        
+        // Prevent duplicate insertion constraint error
+        const { data: existing } = await admin.from('faculty_in_charge')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('teacher_id', teacherId)
+            .maybeSingle()
+
+        if (existing) {
+             return { success: false, error: 'Teacher is already assigned to this event' }
+        }
+
+        const { error } = await admin.from('faculty_in_charge').insert({
+            event_id: eventId,
+            teacher_id: teacherId
+        })
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/admin/events/${eventId}`)
+        revalidatePath(`/teacher/events/${eventId}`)
+        return { success: true }
+    } catch (e: any) {
+        return { success: false, error: e.message || 'An unexpected error occurred' }
+    }
+}
+
 export async function autoClosePastEventsAction(): Promise<{ success: boolean; closedCount?: number; error?: string }> {
     try {
         const admin = createAdminClient();

@@ -145,6 +145,7 @@ export function CreateEventForm({ currentUser, teachers, basePath, isAdmin }: Cr
                                 onChange={setRegDeadline}
                                 placeholder="Last day to register"
                                 max={eventDate}
+                                min={new Date().toISOString().slice(0, 16)}
                             />
                         </FormGroup>
                     </div>

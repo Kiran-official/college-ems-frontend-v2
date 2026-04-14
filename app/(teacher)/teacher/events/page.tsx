@@ -15,7 +15,7 @@ export default async function TeacherEventsPage() {
     return (
         <div className="page">
             <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
+                <div className="page-header__title-group">
                     <h1 className="page-title">All Events</h1>
                     <p className="page-sub">View and manage college events</p>
                 </div>

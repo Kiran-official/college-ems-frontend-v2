@@ -35,8 +35,10 @@ export default async function TeacherCertificatesPage() {
     return (
         <div className="page">
             <div className="page-header">
-                <h1 className="page-title">Certificates</h1>
-                <p className="page-sub">Certificates for your events</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">Certificates</h1>
+                    <p className="page-sub">Certificates for your events</p>
+                </div>
             </div>
 
             {certificates.length === 0 ? (

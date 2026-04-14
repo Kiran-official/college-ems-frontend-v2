@@ -3,8 +3,9 @@ import { getEventById } from '@/lib/queries/events'
 import { getRegistrationsByEvent, getTeamsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { getCertificatesByEvent, getCertificateStatsByEvent, getTemplatesByEvent } from '@/lib/queries/certificates'
-import { getCurrentUser } from '@/lib/queries/users'
+import { getCurrentUser, getActiveTeachers } from '@/lib/queries/users'
 import { LifecycleTracker } from '@/components/events/LifecycleTracker'
+import { ManageFaculty } from '@/components/events/ManageFaculty'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
 import { Calendar, Globe, Users, Building } from 'lucide-react'
@@ -22,13 +23,14 @@ export default async function AdminEventDetailPage({ params }: Props) {
     if (!event) notFound()
 
     const currentUser = await getCurrentUser()
-    const [registrations, teams, winners, certificates, certStats, templates] = await Promise.all([
+    const [registrations, teams, winners, certificates, certStats, templates, activeTeachers] = await Promise.all([
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
         getWinnersByEvent(id),
         getCertificatesByEvent(id),
         getCertificateStatsByEvent(id),
         getTemplatesByEvent(id),
+        getActiveTeachers(),
     ])
 
     const isFIC = event.faculty_in_charge?.some(f => f.teacher_id === currentUser?.id) || false
@@ -90,13 +92,12 @@ export default async function AdminEventDetailPage({ params }: Props) {
             </div>
 
             {/* Faculty strip */}
-            {event.faculty_in_charge && event.faculty_in_charge.length > 0 && (
-                <div className="faculty-pills" style={{ marginBottom: 24 }}>
-                    {event.faculty_in_charge.map(f => (
-                        <span key={f.teacher_id} className="faculty-pill">{f.teacher?.name}</span>
-                    ))}
-                </div>
-            )}
+            <ManageFaculty 
+                eventId={event.id}
+                currentFaculty={event.faculty_in_charge || []}
+                allTeachers={activeTeachers}
+                isManageable={true} 
+            />
 
             <EventDetailTabs
                 event={event}
