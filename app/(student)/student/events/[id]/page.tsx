@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getEventById } from '@/lib/queries/events'
-import { getStudentRegistrationForEvent, getTeamsByEvent } from '@/lib/queries/registrations'
+import { getStudentRegistrationForEvent, getTeamsByEvent, getRegistrationsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
@@ -24,6 +24,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
 
     // Get teams and winners for display
     const teams = await getTeamsByEvent(id)
+    const registrations = await getRegistrationsByEvent(id)
     const winners = event.results_published ? await getWinnersByEvent(id) : []
 
     const isDeadlinePassed = new Date() >= new Date(event.registration_deadline)
@@ -101,6 +102,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
                 <StudentEventActions
                     event={event}
                     registration={registration}
+                    registrations={registrations}
                     teams={teams}
                     winners={winners}
                     studentId={user.id}

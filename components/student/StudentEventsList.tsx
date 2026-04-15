@@ -19,11 +19,15 @@ export function StudentEventsList({ upcoming, closed, completed, registeredIds }
 
     const filterFn = (e: Event) => e.title.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const filteredUpcoming = upcoming.filter(filterFn)
+    const upcomingUnfiltered = upcoming.filter(filterFn)
     const filteredClosed = closed.filter(filterFn)
     const filteredCompleted = completed.filter(filterFn)
 
-    const hasResults = filteredUpcoming.length > 0 || filteredClosed.length > 0 || filteredCompleted.length > 0
+    // Separate upcoming into Open (unregistered) and Registered Open
+    const registeredOpen = upcomingUnfiltered.filter(e => registeredIds.has(e.id))
+    const filteredUpcoming = upcomingUnfiltered.filter(e => !registeredIds.has(e.id))
+
+    const hasResults = filteredUpcoming.length > 0 || registeredOpen.length > 0 || filteredClosed.length > 0 || filteredCompleted.length > 0
 
     return (
         <div className="student-events-list">
@@ -43,7 +47,7 @@ export function StudentEventsList({ upcoming, closed, completed, registeredIds }
                 />
             ) : (
                 <>
-                    {/* Section 1: Open for Registration */}
+                    {/* Section 1: Open for Registration (Unregistered) */}
                     {filteredUpcoming.length > 0 && (
                         <section style={{ marginBottom: 64 }}>
                             <div className="section-header">
@@ -52,13 +56,28 @@ export function StudentEventsList({ upcoming, closed, completed, registeredIds }
                             </div>
                             <div className="event-card-grid">
                                 {filteredUpcoming.map(e => (
-                                    <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
+                                    <EventCard key={e.id} event={e} basePath="/student/events" />
                                 ))}
                             </div>
                         </section>
                     )}
 
-                    {/* Section 2: Ongoing / Closed */}
+                    {/* Section 2: Registered Events (Open) */}
+                    {registeredOpen.length > 0 && (
+                        <section style={{ marginBottom: 64 }}>
+                            <div className="section-header">
+                                <div className="status-indicator status-indicator--open" style={{ background: 'var(--success)' }} />
+                                <h2 className="section-title">Registered Events</h2>
+                            </div>
+                            <div className="event-card-grid">
+                                {registeredOpen.map(e => (
+                                    <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={true} />
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Section 3: Ongoing / Closed */}
                     {filteredClosed.length > 0 && (
                         <section style={{ marginBottom: 64 }}>
                             <div className="section-header">
@@ -73,7 +92,7 @@ export function StudentEventsList({ upcoming, closed, completed, registeredIds }
                         </section>
                     )}
 
-                    {/* Section 3: Completed */}
+                    {/* Section 4: Completed */}
                     {filteredCompleted.length > 0 && (
                         <section>
                             <div className="section-header">

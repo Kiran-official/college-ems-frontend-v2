@@ -271,6 +271,9 @@ export type UpdateUserInput = {
     student_type?: 'internal' | 'external' | null;
     active?: boolean;
     password?: string;
+    department_id?: string;
+    programme?: string;
+    semester?: number;
 }
 
 export async function updateUserCredentials(
@@ -307,6 +310,9 @@ export async function updateUserCredentials(
         if (fields.phone_number !== undefined) dbUpdate.phone_number = fields.phone_number || null;
         if (fields.student_type !== undefined) dbUpdate.student_type = fields.student_type;
         if (fields.active !== undefined) dbUpdate.is_active = fields.active;
+        if (fields.department_id !== undefined) dbUpdate.department_id = fields.department_id || null;
+        if (fields.programme !== undefined) dbUpdate.programme = fields.programme || null;
+        if (fields.semester !== undefined) dbUpdate.semester = fields.semester || null;
 
         if (Object.keys(dbUpdate).length > 0) {
             const { error } = await admin.from('users').update(dbUpdate).eq('id', userId)

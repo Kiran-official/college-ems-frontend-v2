@@ -38,6 +38,7 @@ type StudentSearchResult = {
 interface StudentEventActionsProps {
     event: Event
     registration: any
+    registrations?: any[]
     teams: Team[]
     winners: Winner[]
     studentId: string
@@ -483,13 +484,14 @@ function RegistrationAction({
     event,
     participantType,
     teamSize,
-    existingReg, teams, studentId, isDeadlinePassed,
+    existingReg, teams, registrations, studentId, isDeadlinePassed,
 }: {
     event: Event
     participantType: 'single' | 'multiple'
     teamSize?: number | null
     existingReg: any
     teams: Team[]
+    registrations?: any[]
     studentId: string
     isDeadlinePassed: boolean
 }) {
@@ -624,6 +626,32 @@ function RegistrationAction({
                             Registration is {event.status !== 'open' ? 'closed' : 'past deadline'}
                         </span>
                     )}
+
+                    {/* Other participants for single events */}
+                    {registrations && registrations.length > (existingReg ? 1 : 0) && (
+                        <div style={{ marginTop: 24 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 12, color: 'var(--text-secondary)' }}>
+                                Other Registered Participants:
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {registrations.filter((r: any) => r.student_id !== studentId).map((r: any) => {
+                                    const programmeText = r.student?.programme ? (r.student.semester ? `${r.student.programme} S${r.student.semester}` : r.student.programme) : ''
+                                    return (
+                                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                                            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                {r.student?.name ?? r.student_id}
+                                            </span>
+                                            {programmeText && (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                    ({programmeText})
+                                                </span>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -632,26 +660,43 @@ function RegistrationAction({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                     {!studentLedTeam && studentMemberTeam && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                            <Badge variant="success">Registered</Badge>
-                            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                Team: {studentMemberTeam.team_name}
-                            </span>
-                            {canRegister && (
-                                <div className="flex flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                                    <Button size="sm" variant="danger" className="flex-1 sm:flex-none"
-                                        onClick={() => {
-                                            const msg = isPaid && paymentStatus === 'verified' 
-                                                ? 'Are you sure you want to leave this team? Since you have already paid, you will need to coordinate with the admin for a manual refund.'
-                                                : 'Are you sure you want to leave this team?'
-                                            if (!confirm(msg)) return
-                                            wrap(() => leaveTeamAction({ team_id: studentMemberTeam.id, event_id: event.id }))
-                                        }}
-                                        loading={pending}>
-                                        <LogOut size={14} /> Leave Team
-                                    </Button>
-                                </div>
-                            )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                <Badge variant="success">Registered</Badge>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                    Team: {studentMemberTeam.team_name}
+                                </span>
+                                {canRegister && (
+                                    <div className="flex flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                        <Button size="sm" variant="danger" className="flex-1 sm:flex-none"
+                                            onClick={() => {
+                                                const msg = isPaid && paymentStatus === 'verified' 
+                                                    ? 'Are you sure you want to leave this team? Since you have already paid, you will need to coordinate with the admin for a manual refund.'
+                                                    : 'Are you sure you want to leave this team?'
+                                                if (!confirm(msg)) return
+                                                wrap(() => leaveTeamAction({ team_id: studentMemberTeam.id, event_id: event.id }))
+                                            }}
+                                            loading={pending}>
+                                            <LogOut size={14} /> Leave Team
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: 12 }}>Team Members</div>
+                                {studentMemberTeam.members?.filter((m: any) => m.status === 'approved').map((m: any) => (
+                                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
+                                                {m.student_id === studentId && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>(you)</span>}
+                                                {studentMemberTeam.leader_id === m.student_id && <Badge variant="winner" style={{ fontSize: '9px', padding: '1px 4px' }}>Leader</Badge>}
+                                            </div>
+                                            {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{m.student.email}</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -778,9 +823,9 @@ function RegistrationAction({
                                     </div>
                                     {studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !m.invited_by).map((m: any) => (
                                         <div key={m.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-2 border-b border-border/10 gap-2">
-                                            <div>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                 <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
-                                                {m.student?.email && <span className="block sm:inline ml-0 sm:ml-2 text-xs text-text-tertiary">{m.student.email}</span>}
+                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{m.student.email}</span>}
                                             </div>
                                             <div className="flex flex-row gap-2 w-full sm:w-auto">
                                                 <Button size="sm" className="flex-1 sm:flex-none" onClick={() => wrap(() => approveJoinRequestAction({ team_member_id: m.id, event_id: event.id }))} loading={pending}>
@@ -802,9 +847,9 @@ function RegistrationAction({
                                     </div>
                                     {studentLedTeam.members?.filter((m: any) => m.status === 'pending' && !!m.invited_by).map((m: any) => (
                                         <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                                            <div>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                 <span style={{ fontSize: '0.875rem' }}>{m.student?.name ?? m.student_id}</span>
-                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>{m.student.email}</span>}
+                                                {m.student?.email && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{m.student.email}</span>}
                                             </div>
                                             <button type="button"
                                                 onClick={() => wrap(() => rejectJoinRequestAction({ team_member_id: m.id, event_id: event.id }))}
@@ -853,31 +898,44 @@ function RegistrationAction({
                                     const canJoin = !studentMemberTeam && !studentLedTeam && canRegister && !isFull && !pendingJoinEntry
 
                                     return (
-                                        <div key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{team.team_name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                                                    {approvedCount}{teamSize ? `/${teamSize}` : ''} member{approvedCount !== 1 ? 's' : ''}
-                                                    {isFull && <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 600 }}>• Full</span>}
+                                        <div key={team.id} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{team.team_name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                                        {approvedCount}{teamSize ? `/${teamSize}` : ''} member{approvedCount !== 1 ? 's' : ''}
+                                                        {isFull && <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 600 }}>• Full</span>}
+                                                    </div>
                                                 </div>
+
+                                                {hasPendingJoin ? (
+                                                    <Badge variant="pending">Request Pending</Badge>
+                                                ) : hasIncomingInvite ? (
+                                                    <Badge variant="pending">Invited</Badge>
+                                                ) : !studentMemberTeam && !studentLedTeam && canRegister ? (
+                                                    isFull ? (
+                                                        <Badge variant="failed">Full</Badge>
+                                                    ) : (
+                                                        <Button size="sm" variant="outline"
+                                                            onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id }))}
+                                                            loading={pending} disabled={!canJoin}>
+                                                            Request to Join
+                                                        </Button>
+                                                    )
+                                                ) : (
+                                                    isFull ? <Badge variant="failed">Full</Badge> : <Badge variant="pending">{approvedCount === 0 ? 'Vacant' : 'Open'}</Badge>
+                                                )}
                                             </div>
 
-                                            {hasPendingJoin ? (
-                                                <Badge variant="pending">Request Pending</Badge>
-                                            ) : hasIncomingInvite ? (
-                                                <Badge variant="pending">Invited</Badge>
-                                            ) : !studentMemberTeam && !studentLedTeam && canRegister ? (
-                                                isFull ? (
-                                                    <Badge variant="failed">Full</Badge>
-                                                ) : (
-                                                    <Button size="sm" variant="outline"
-                                                        onClick={() => wrap(() => joinTeamAction({ team_id: team.id, event_id: event.id }))}
-                                                        loading={pending} disabled={!canJoin}>
-                                                        Request to Join
-                                                    </Button>
-                                                )
-                                            ) : (
-                                                isFull ? <Badge variant="failed">Full</Badge> : <Badge variant="pending">{approvedCount === 0 ? 'Vacant' : 'Open'}</Badge>
+                                            {approvedCount > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                                                    {approvedMembers.map((m: any) => (
+                                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>• {m.student?.name ?? m.student_id}</span>
+                                                            {team.leader_id === m.student_id && <Badge variant="winner" style={{ fontSize: '9px', padding: '1px 4px' }}>Leader</Badge>}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
                                     )
@@ -981,7 +1039,7 @@ function RegistrationAction({
 
 // ── Root export ────────────────────────────────────────────────
 
-export function StudentEventActions({ event, registration, teams, winners, studentId, isDeadlinePassed }: StudentEventActionsProps) {
+export function StudentEventActions({ event, registration, registrations, teams, winners, studentId, isDeadlinePassed }: StudentEventActionsProps) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <RegistrationAction
@@ -989,6 +1047,7 @@ export function StudentEventActions({ event, registration, teams, winners, stude
                 participantType={event.participant_type}
                 teamSize={event.team_size}
                 existingReg={registration}
+                registrations={registrations}
                 teams={teams}
                 studentId={studentId}
                 isDeadlinePassed={isDeadlinePassed}

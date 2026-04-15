@@ -445,6 +445,8 @@ function UsersContent() {
             {/* Edit User Modal */}
             <EditUserModal 
                 user={editingUser}
+                departments={allowedDepts}
+                deptProgrammes={DEPT_PROGRAMMES}
                 open={!!editingUser}
                 onClose={() => setEditingUser(null)}
                 onSuccess={() => {

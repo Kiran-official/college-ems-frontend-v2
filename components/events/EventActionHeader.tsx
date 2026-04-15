@@ -59,9 +59,10 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
                     )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     {canManage && event.status === 'draft' && (
                         <Button 
+                            className="w-full sm:w-auto"
                             size="sm" 
                             variant="primary" 
                             onClick={() => {
@@ -77,6 +78,7 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
 
                     {canManage && event.status === 'open' && (
                         <Button 
+                            className="w-full sm:w-auto"
                             size="sm" 
                             variant="outline" 
                             onClick={() => {
@@ -92,6 +94,7 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
 
                     {canManage && event.status === 'closed' && !event.results_published && (
                         <Button 
+                            className="w-full sm:w-auto"
                             size="sm" 
                             variant="primary" 
                             onClick={() => {
@@ -112,6 +115,7 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
 
                     {canManage && event.status === 'closed' && event.results_published && (
                         <Button 
+                            className="w-full sm:w-auto"
                             size="sm" 
                             variant="primary" 
                             onClick={() => {
@@ -126,8 +130,9 @@ export function EventActionHeader({ event, registrations, isFIC = false, userRol
                     )}
 
                     {canManage && event.status === 'completed' && (
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                             <Button 
+                                className="w-full sm:w-auto"
                                 size="sm" 
                                 variant="outline" 
                                 onClick={() => handleAction(async () => {

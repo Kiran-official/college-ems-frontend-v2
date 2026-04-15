@@ -33,7 +33,8 @@ export default async function TeacherEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
-    const isFIC = profile?.role === 'teacher' && (event.faculty_in_charge?.some(f => f.teacher_id === user.id) || false)
+    const isCreator = event.created_by === user.id
+    const isFIC = profile?.role === 'teacher' && ((event.faculty_in_charge?.some(f => f.teacher_id === user.id) || false) || isCreator)
 
     // Archived events check (strict check for non-admins)
     if (!event.is_active && profile?.role !== 'admin') {
