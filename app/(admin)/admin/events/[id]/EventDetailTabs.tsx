@@ -27,7 +27,7 @@ interface EventDetailTabsProps {
     certStats: { pending: number; processing: number; generated: number; failed: number }
     templates: CertificateTemplate[]
     isFIC?: boolean
-    userRole?: string
+    userRole: "admin" | "teacher" | "student"
 }
 
 export function EventDetailTabs({ event, registrations, teams, winners, certificates, certStats, templates, isFIC, userRole }: EventDetailTabsProps) {
