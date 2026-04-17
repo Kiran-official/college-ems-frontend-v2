@@ -93,7 +93,7 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
             {/* Tab content */}
             <div style={{ marginTop: 24 }}>
                 {tab === 'registrations' && (
-                    <RegistrationsPanel event={event} registrations={registrations} teams={teams} />
+                    <RegistrationsPanel event={event} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'teams' && (
                     <TeamsPanel event={event} teams={teams} registrations={registrations} isFIC={isFIC} userRole={userRole} />
@@ -105,13 +105,13 @@ export function EventDetailTabs({ event, registrations, teams, winners, certific
                     <AttendancePanel event={event} registrations={registrations} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'winners' && (
-                    <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} />
+                    <WinnersPanel event={event} winners={winners} registrations={registrations} teams={teams} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'certificates' && (
-                    <CertificatesPanel certificates={certificates} stats={certStats} templates={templates} eventId={event.id} createTemplatePath="/admin/templates/create" winners={winners} />
+                    <CertificatesPanel certificates={certificates} stats={certStats} templates={templates} eventId={event.id} createTemplatePath="/admin/templates/create" winners={winners} isFIC={isFIC} userRole={userRole} />
                 )}
                 {tab === 'announcements' && (
-                    <NotificationPanel event={event} />
+                    <NotificationPanel event={event} isFIC={isFIC} userRole={userRole} />
                 )}
             </div>
         </div>

@@ -101,7 +101,9 @@ export function CertificatesPanel({
                         )}
                         <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>Participation Template</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{hasParticipation ? 'Ready to use • Attached' : 'Missing design'}</div>
+                            <div style={{ fontSize: '0.75rem', color: hasParticipation ? 'var(--text-secondary)' : 'var(--warning)' }}>
+                                {hasParticipation ? 'Ready to use • Attached' : (canManage ? 'Action required • Design template' : 'Missing design')}
+                            </div>
                         </div>
                     </div>
                     {canManage && (
@@ -138,8 +140,8 @@ export function CertificatesPanel({
                         )}
                         <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>Winner Template</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                {hasWinner ? 'Ready to use • Attached' : (winners.length > 0 ? 'Missing design' : 'Not required')}
+                            <div style={{ fontSize: '0.75rem', color: (hasWinner || winners.length === 0) ? 'var(--text-secondary)' : 'var(--warning)' }}>
+                                {hasWinner ? 'Ready to use • Attached' : (winners.length > 0 ? (canManage ? 'Action required • Design template' : 'Missing design') : 'Not required')}
                             </div>
                         </div>
                     </div>
