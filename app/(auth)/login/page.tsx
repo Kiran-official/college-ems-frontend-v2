@@ -5,9 +5,9 @@ import LoginClient from './LoginClient'
 
 export default async function LoginPage() {
     const supabase = await createSSRClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (session) {
+    if (user) {
         redirect('/dashboard')
     }
 

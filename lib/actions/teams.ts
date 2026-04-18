@@ -14,7 +14,8 @@ export async function createTeam(eventId: string, name: string): Promise<{ succe
         const { data: team, error } = await admin.from('teams').insert({
             event_id: eventId,
             team_name: name.trim(),
-            created_by: user.id
+            created_by: user.id,
+            leader_id: user.id
         }).select().single()
 
         if (error) return { success: false, error: error.message }
@@ -36,10 +37,14 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; er
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const admin = createAdminClient()
+        
+        // Check if admin or teacher
+        const { data: profile } = await admin.from('users').select('role').eq('id', user.id).single()
+        const isAdmin = profile?.role === 'admin' || profile?.role === 'teacher'
 
         // Check if team has participants
         const { count } = await admin.from('team_members').select('*', { count: 'exact', head: true }).eq('team_id', teamId).eq('status', 'approved')
-        if (count && count > 0) {
+        if (!isAdmin && count && count > 0) {
             return { success: false, error: 'Remove members first' }
         }
 

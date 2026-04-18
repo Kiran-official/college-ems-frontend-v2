@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  icons: {
+    icon: '/assets/icon-192x192.png',
+    apple: '/assets/icon-192x192.png',
+  },
 }
 
 export const viewport: Viewport = {

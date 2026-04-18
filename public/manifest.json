@@ -2,15 +2,10 @@
   "name": "SICM EMS — Event Management System",
   "short_name": "SICM EMS",
   "description": "Seshadripuram Institute of Commerce and Management — Event Management System",
-  "id": "/",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
+  "background_color": "#000000",
   "theme_color": "#000000",
-  "prefer_related_applications": false,
-  "categories": ["education"],
   "icons": [
     {
       "src": "/assets/icon-192x192.png",

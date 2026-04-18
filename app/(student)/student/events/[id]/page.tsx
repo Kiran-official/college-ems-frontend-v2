@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getEventById } from '@/lib/queries/events'
-import { getStudentRegistrationForEvent, getTeamsByEvent } from '@/lib/queries/registrations'
+import { getStudentRegistrationForEvent, getTeamsByEvent, getRegistrationsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
@@ -17,13 +17,14 @@ export default async function StudentEventDetailPage({ params }: Props) {
     if (!user) redirect('/login')
 
     const event = await getEventById(id)
-    if (!event) notFound()
+    if (!event || !event.is_active) notFound()
 
     // Get registration status
     const registration = await getStudentRegistrationForEvent(user.id, id)
 
     // Get teams and winners for display
     const teams = await getTeamsByEvent(id)
+    const registrations = await getRegistrationsByEvent(id)
     const winners = event.results_published ? await getWinnersByEvent(id) : []
 
     const isDeadlinePassed = new Date() >= new Date(event.registration_deadline)
@@ -36,16 +37,22 @@ export default async function StudentEventDetailPage({ params }: Props) {
             </div>
 
             <div className="page-header">
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                    <Badge variant={event.status}>{event.status}</Badge>
-                    {event.department && <Badge variant="info">{event.department.name}</Badge>}
+                <div className="page-header__title-group">
+                    {event.forum && (
+                        <div style={{ marginBottom: 12 }}>
+                            <Badge variant="info">{event.forum}</Badge>
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                        <h1 className="page-title" style={{ marginBottom: 0 }}>{event.title}</h1>
+                        <Badge variant={event.status} style={{ padding: '6px 16px', fontSize: '0.875rem' }}>{event.status}</Badge>
+                    </div>
+                    {event.description && (
+                        <p className="page-sub" style={{ maxWidth: 800, marginTop: 12 }}>
+                            {event.description}
+                        </p>
+                    )}
                 </div>
-                <h1 className="page-title">{event.title}</h1>
-                {event.description && (
-                    <p className="page-sub" style={{ maxWidth: 800 }}>
-                        {event.description}
-                    </p>
-                )}
             </div>
 
             {/* Event info card */}
@@ -60,7 +67,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
                     {event.status === 'open' && (
                         <div className="bento-item__content">
                             <div className="stat-card__label" style={{ marginBottom: 8 }}>Registration Deadline</div>
-                            <div className="stat-card__value" style={{ fontSize: '1.25rem', color: isDeadlinePassed ? 'var(--error)' : 'var(--warning)' }}>
+                            <div className="stat-card__value" style={{ fontSize: '1.25rem', color: isDeadlinePassed ? 'var(--error)' : 'var(--text-primary)' }}>
                                 {format(new Date(event.registration_deadline), 'dd MMM yyyy, hh:mm a')}
                             </div>
                         </div>
@@ -75,6 +82,14 @@ export default async function StudentEventDetailPage({ params }: Props) {
                             )}
                         </div>
                     </div>
+                    {event.is_paid && event.registration_fee && (
+                        <div className="bento-item__content">
+                            <div className="stat-card__label" style={{ marginBottom: 8 }}>Registration Fee</div>
+                            <div className="stat-card__value" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                                ₹{event.registration_fee.toFixed(2)}
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="stat-card__glow" />
             </div>
@@ -87,6 +102,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
                 <StudentEventActions
                     event={event}
                     registration={registration}
+                    registrations={registrations}
                     teams={teams}
                     winners={winners}
                     studentId={user.id}

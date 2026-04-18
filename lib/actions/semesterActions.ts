@@ -17,8 +17,13 @@ export async function incrementSemesterAction(): Promise<{ success: boolean; err
 
             if (students) {
                 for (const s of students) {
+                    const nextSem = (s.semester ?? 1) + 1
+                    // If semester > 6, they are no longer active students
                     await admin.from('users')
-                        .update({ semester: (s.semester ?? 1) + 1 })
+                        .update({ 
+                            semester: nextSem,
+                            is_active: nextSem <= 6
+                        })
                         .eq('id', s.id)
                 }
             }
@@ -36,11 +41,12 @@ export async function decrementSemesterAction(): Promise<{ success: boolean; err
         const { data: students } = await admin.from('users')
             .select('id, semester')
             .eq('role', 'student')
-            .eq('is_active', true)
 
         if (students) {
             for (const s of students) {
                 const newSem = Math.max(1, (s.semester ?? 1) - 1)
+                // When decrementing, we might want to reactive users who were just deactivated at 7? 
+                // Let's keep it simple: just decrement the value.
                 await admin.from('users')
                     .update({ semester: newSem })
                     .eq('id', s.id)

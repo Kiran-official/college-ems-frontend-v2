@@ -82,11 +82,11 @@ export default function LoginClient() {
             <div className="login-content-wrap">
                 {/* Left brand panel */}
                 <div className="login-brand">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src="/assets/logo.png"
                         alt="SICM Logo"
                         className="login-logo"
+                        style={{ borderRadius: '50%', background: 'white', objectFit: 'contain' }}
                     />
                     <div className="login-college">Seshadripuram Institute of<br />Commerce and Management</div>
                     <div className="login-system">Event Management System</div>

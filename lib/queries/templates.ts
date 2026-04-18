@@ -41,3 +41,19 @@ export async function getTemplateById(id: string): Promise<CertificateTemplate |
         .single()
     return data
 }
+
+export async function getGlobalTemplates(): Promise<CertificateTemplate[]> {
+    const supabase = await createSSRClient()
+    const { data } = await supabase
+        .from('certificate_templates')
+        .select(`
+            *,
+            event:events(id, title),
+            creator:users!certificate_templates_created_by_fkey(id, name, email)
+        `)
+        .eq('is_global', true)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+    return data ?? []
+}
+

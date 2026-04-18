@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/queries/users'
 import { getTemplatesByCreator } from '@/lib/queries/templates'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { FileText, Plus, LayoutTemplate, Star, ArrowRight } from 'lucide-react'
+import { FileText, Plus, LayoutTemplate, Star, ArrowRight, Globe } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default async function TeacherTemplatesPage() {
@@ -48,7 +48,7 @@ export default async function TeacherTemplatesPage() {
                                 color: 'inherit',
                                 position: 'relative',
                                 borderRadius: 'var(--r-xl)',
-                                padding: '2px', // for gradient border
+                                padding: '2px',
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
                                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                                 cursor: 'pointer',
@@ -57,7 +57,6 @@ export default async function TeacherTemplatesPage() {
                         >
                             <div className="glass" style={{ height: '100%', padding: 24, borderRadius: 'calc(var(--r-xl) - 2px)', background: 'var(--bg-card)', border: 'none', display: 'flex', flexDirection: 'column', transition: 'background 0.3s ease' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-
                                     <div style={{ width: 40, height: 40, borderRadius: 'var(--r-lg)', background: t.certificate_type === 'winner' ? 'rgba(245, 166, 35, 0.1)' : 'rgba(0, 201, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${t.certificate_type === 'winner' ? 'rgba(245, 166, 35, 0.2)' : 'rgba(0, 201, 255, 0.2)'}` }}>
                                         {t.certificate_type === 'winner' ? <Star size={18} color="#F5A623" /> : <FileText size={18} color="#00C9FF" />}
                                     </div>

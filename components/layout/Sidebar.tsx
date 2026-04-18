@@ -30,7 +30,7 @@ const NAV = {
     ],
     teacher: [
         { label: 'Dashboard', href: '/teacher', icon: 'LayoutDashboard' },
-        { label: 'My Events', href: '/teacher/events', icon: 'Calendar' },
+        { label: 'All Events', href: '/teacher/events', icon: 'Calendar' },
         { label: 'Templates', href: '/teacher/templates', icon: 'FileText' },
         { label: 'Certificates', href: '/teacher/certificates', icon: 'Award' },
     ],
@@ -95,6 +95,8 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
 
     const navItems = NAV[role]
 
+    const isExpanded = open || mobileOpen
+
     return (
         <>
             <MobileHeader onMenuClick={() => setMobileOpen(true)} />
@@ -116,7 +118,7 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
                         alt="SICM Logo"
                         className="sidebar__logo"
                     />
-                    {open && (
+                    {isExpanded && (
                         <div>
                             <div className="sidebar__brand-name">SICM EMS</div>
                             <div className="sidebar__portal-label">{LABELS[role]}</div>
@@ -136,7 +138,7 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
                                 onClick={() => setMobileOpen(false)}
                             >
                                 <Icon className="sidebar__link-icon" size={18} />
-                                {open && <span>{item.label}</span>}
+                                {isExpanded && <span>{item.label}</span>}
                             </Link>
                         )
                     })}
@@ -144,7 +146,7 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
 
                 {/* Footer */}
                 <div className="sidebar__footer">
-                    {open && (
+                    {isExpanded && (
                         <div className="sidebar__user">
                             <div className="sidebar__avatar">{initials}</div>
                             <div style={{ overflow: 'hidden' }}>
@@ -153,14 +155,16 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
                             </div>
                         </div>
                     )}
-                    <ThemeToggle collapsed={!open} />
+                    <ThemeToggle collapsed={!isExpanded} />
                     <button className="sidebar__action sidebar__action--danger" onClick={logout}>
                         <LogOut size={18} />
-                        {open && <span>Sign Out</span>}
+                        {isExpanded && <span>Sign Out</span>}
                     </button>
-                    <button className="sidebar__toggle" onClick={toggle} aria-label="Toggle sidebar">
-                        {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-                    </button>
+                    {!mobileOpen && (
+                        <button className="sidebar__toggle" onClick={toggle} aria-label="Toggle sidebar">
+                            {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+                        </button>
+                    )}
                 </div>
             </aside>
         </>

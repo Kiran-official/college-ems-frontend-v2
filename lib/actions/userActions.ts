@@ -11,6 +11,7 @@ export async function createUserAction(data: {
     role: 'admin' | 'teacher' | 'student'
     department_id?: string
     programme?: string
+    semester?: number
     student_type?: 'internal' | 'external'
 }): Promise<{ success: boolean; error?: string }> {
     try {
@@ -50,7 +51,8 @@ export async function createUserAction(data: {
             phone_number: data.phone_number || null,
             role: data.role,
             department_id: data.department_id || null,
-            programme: data.programme || null,
+            programme: data.programme ? data.programme.trim().toUpperCase() : null,
+            semester: data.role === 'student' ? (data.semester ?? 1) : null,
             student_type: data.role === 'student' ? (data.student_type ?? 'internal') : null,
             must_change_password: true,
             is_active: true,
@@ -129,7 +131,7 @@ export async function bulkCreateUsersAction(
                 phone_number: u.phone_number || null,
                 role: role,
                 department_id: departmentId || null,
-                programme: role === 'student' ? (u.programme || null) : null,
+                programme: role === 'student' ? (u.programme?.trim().toUpperCase() || null) : null,
                 semester: role === 'student' ? (isNaN(semesterVal) ? 1 : semesterVal) : null,
                 student_type: role === 'student' ? 'internal' : null,
                 must_change_password: true,
@@ -235,12 +237,17 @@ export async function searchStudentsForInviteAction(
         if (!query.trim() || query.trim().length < 2) return []
 
         const admin = createAdminClient()
-        const { data, error } = await admin
+        let queryBuilder = admin
             .from('users')
             .select('id, name, email, programme, semester')
             .eq('role', 'student')
             .eq('is_active', true)
-            .neq('id', excludeId)
+
+        if (excludeId && excludeId.trim()) {
+            queryBuilder = queryBuilder.neq('id', excludeId)
+        }
+
+        const { data, error } = await queryBuilder
             .or(`name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`)
             .order('name')
             .limit(8)
@@ -264,6 +271,9 @@ export type UpdateUserInput = {
     student_type?: 'internal' | 'external' | null;
     active?: boolean;
     password?: string;
+    department_id?: string;
+    programme?: string;
+    semester?: number;
 }
 
 export async function updateUserCredentials(
@@ -300,6 +310,9 @@ export async function updateUserCredentials(
         if (fields.phone_number !== undefined) dbUpdate.phone_number = fields.phone_number || null;
         if (fields.student_type !== undefined) dbUpdate.student_type = fields.student_type;
         if (fields.active !== undefined) dbUpdate.is_active = fields.active;
+        if (fields.department_id !== undefined) dbUpdate.department_id = fields.department_id || null;
+        if (fields.programme !== undefined) dbUpdate.programme = fields.programme || null;
+        if (fields.semester !== undefined) dbUpdate.semester = fields.semester || null;
 
         if (Object.keys(dbUpdate).length > 0) {
             const { error } = await admin.from('users').update(dbUpdate).eq('id', userId)

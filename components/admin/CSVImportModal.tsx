@@ -1,37 +1,71 @@
 'use client'
 
-import { useState, useTransition, useCallback } from 'react'
+import { useState, useTransition, useCallback, useEffect } from 'react'
 import Papa from 'papaparse'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { bulkCreateUsersAction } from '@/lib/actions/userActions'
+import { createClient } from '@/lib/supabase/client'
 import { Download, Upload, CheckCircle2, Trash2 } from 'lucide-react'
 
-const VALID_DEPTS = ['Commerce', 'Computer Science']
-const VALID_PROGS = ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA', 'BCA', 'BCA(AI&ML)']
+const DEPT_PROGRAMMES: Record<string, string[]> = {
+    'Commerce': ['BCOM', 'BCOM(A&F)', 'BCOM(BDA)', 'BCOM(CA)', 'BBA'],
+    'Computer Science': ['BCA', 'BCA(AI&ML)'],
+}
 
 /** Returns a map of field → error message for a single row */
-function validateRowFields(row: Record<string, string>, role: 'student' | 'teacher') {
+function validateRowFields(
+    row: Record<string, string>,
+    role: 'student' | 'teacher',
+    availableDepts: string[]
+) {
     const fieldErrors: Record<string, string> = {}
-    if (!row.name?.trim()) fieldErrors.name = 'Name required'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((row.email ?? '').trim())) fieldErrors.email = 'Invalid email'
 
-    const dept = row.department?.trim().toLowerCase()
-    if (!VALID_DEPTS.some(d => d.toLowerCase() === dept)) {
+    // Name: Min 2 chars, letters/dots/spaces only
+    const name = row.name?.trim() ?? ''
+    if (!name || name.length < 2) {
+        fieldErrors.name = 'Min 2 characters'
+    } else if (!/^[A-Za-z\s.]+$/.test(name)) {
+        fieldErrors.name = 'Only letters, spaces, dots'
+    }
+
+    // Email
+    const email = (row.email ?? '').trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        fieldErrors.email = 'Invalid email'
+    }
+
+    // Phone: Exactly 10 digits
+    const phone = row.phone_number?.trim() ?? ''
+    if (!phone || !/^\d{10}$/.test(phone)) {
+        fieldErrors.phone_number = 'Exactly 10 digits'
+    }
+
+    // Department
+    const deptInput = row.department?.trim() ?? ''
+    const matchedDept = availableDepts.find(d => d.toLowerCase() === deptInput.toLowerCase())
+    if (!deptInput || !matchedDept) {
         fieldErrors.department = 'Invalid department'
     }
 
     if (role === 'student') {
-        const prog = row.programme?.trim().toLowerCase()
-        if (!VALID_PROGS.some(p => p.toLowerCase() === prog)) {
+        // Programme: Must match DEPT_PROGRAMMES for the chosen dept
+        const progInput = row.programme?.trim() ?? ''
+        const allowedProgs = DEPT_PROGRAMMES[matchedDept ?? ''] ?? []
+        const matchedProg = allowedProgs.find(p => p.toLowerCase() === progInput.toLowerCase())
+
+        if (!progInput || !matchedProg) {
             fieldErrors.programme = 'Invalid programme'
         }
+
+        // Semester: 1-6
         const sem = parseInt(row.semester?.trim() ?? '', 10)
-        if (isNaN(sem) || sem < 1 || sem > 8) {
-            fieldErrors.semester = 'Semester must be 1–8'
+        if (isNaN(sem) || sem < 1 || sem > 6) {
+            fieldErrors.semester = 'Semester 1–6'
         }
     }
+
     return fieldErrors
 }
 
@@ -51,32 +85,64 @@ const FIELDS_STUDENT = ['name', 'email', 'phone_number', 'department', 'programm
 const FIELDS_TEACHER = ['name', 'email', 'phone_number', 'department'] as const
 const FIELD_LABELS: Record<string, string> = {
     name: 'Name', email: 'Email', phone_number: 'Phone',
-    department: 'Dept', programme: 'Programme', semester: 'Semester',
+    department: 'Dept', programme: 'Programme', semester: 'Sem'
 }
 
 export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
     const [validated, setValidated] = useState<ValidatedRow[]>([])
+    const [departments, setDepartments] = useState<string[]>([])
+    const [dbEmails, setDbEmails] = useState<Set<string>>(new Set())
+    const [dbPhones, setDbPhones] = useState<Set<string>>(new Set())
     const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null)
     const [, startTransition] = useTransition()
 
     const fields = role === 'student' ? FIELDS_STUDENT : FIELDS_TEACHER
 
-    function revalidateAll(rows: ValidatedRow[]): ValidatedRow[] {
-        // Build email-count map for duplicate check
+    useEffect(() => {
+        const supabase = createClient()
+        // Fetch Departments
+        supabase.from('departments').select('name').eq('is_active', true).then(({ data }) => {
+            if (data) setDepartments(data.map(d => d.name))
+        })
+        // Fetch Existing Emails/Phones for duplicate check
+        supabase.from('users').select('email, phone_number').then(({ data }) => {
+            if (data) {
+                setDbEmails(new Set(data.map(u => u.email.toLowerCase())))
+                setDbPhones(new Set(data.filter(u => u.phone_number).map(u => u.phone_number!)))
+            }
+        })
+    }, [])
+
+    const revalidateAll = useCallback((rows: ValidatedRow[], currentDepts: string[]): ValidatedRow[] => {
+        // Build email/phone-count map for CSV-level duplicate check
         const emailCount = new Map<string, number>()
+        const phoneCount = new Map<string, number>()
         rows.forEach(r => {
             const e = r.row.email?.trim().toLowerCase() ?? ''
-            emailCount.set(e, (emailCount.get(e) ?? 0) + 1)
+            const p = r.row.phone_number?.trim() ?? ''
+            if (e) emailCount.set(e, (emailCount.get(e) ?? 0) + 1)
+            if (p) phoneCount.set(p, (phoneCount.get(p) ?? 0) + 1)
         })
+
         return rows.map(r => {
-            const fieldErrors = validateRowFields(r.row, role)
+            const fieldErrors = validateRowFields(r.row, role, currentDepts)
             const rowErrors: string[] = []
+            
             const email = r.row.email?.trim().toLowerCase() ?? ''
-            if (emailCount.get(email)! > 1) rowErrors.push('Duplicate email in CSV')
+            const phone = r.row.phone_number?.trim() ?? ''
+
+            // CSV Duplicates
+            if (email && emailCount.get(email)! > 1) rowErrors.push('Duplicate email across CSV rows')
+            if (phone && phoneCount.get(phone)! > 1) rowErrors.push('Duplicate phone across CSV rows')
+
+            // Database collisions
+            if (email && dbEmails.has(email)) rowErrors.push('Email already registered in system')
+            if (phone && dbPhones.has(phone)) rowErrors.push('Phone number already registered in system')
+
             return { row: r.row, fieldErrors, rowErrors }
         })
-    }
+    }, [role, dbEmails, dbPhones])
 
     function downloadSample() {
         const headers = role === 'student'
@@ -103,7 +169,7 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                 const initial: ValidatedRow[] = rows.map(row => ({
                     row, fieldErrors: {}, rowErrors: [],
                 }))
-                setValidated(revalidateAll(initial))
+                setValidated(revalidateAll(initial, departments))
                 setStep(2)
             },
         })
@@ -116,21 +182,23 @@ export function CSVImportModal({ open, onClose, role }: CSVImportModalProps) {
                 if (i !== rowIndex) return v
                 return { ...v, row: { ...v.row, [field]: value } }
             })
-            return revalidateAll(next)
+            return revalidateAll(next, departments)
         })
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [role])
+    }, [revalidateAll, departments])
 
     /** Remove a row entirely */
     function deleteRow(rowIndex: number) {
-        setValidated(prev => revalidateAll(prev.filter((_, i) => i !== rowIndex)))
+        setValidated(prev => revalidateAll(prev.filter((_, i) => i !== rowIndex), departments))
     }
 
     function confirmImport() {
         setStep(3)
         const importReady = validated
             .filter(r => Object.keys(r.fieldErrors).length === 0 && r.rowErrors.length === 0)
-            .map(r => ({ ...r.row }))
+            .map(r => ({ 
+                ...r.row, 
+                programme: r.row.programme?.trim().toUpperCase() 
+            }))
 
         startTransition(async () => {
             const res = await bulkCreateUsersAction(importReady as Parameters<typeof bulkCreateUsersAction>[0], role)

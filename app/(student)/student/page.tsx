@@ -26,8 +26,10 @@ export default async function StudentDashboard() {
             </div>
 
             <div className="page-header">
-                <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
-                <p className="page-sub">Your event participation overview</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
+                    <p className="page-sub">Your event participation overview</p>
+                </div>
             </div>
 
             <div className="bento-grid card-grid">
@@ -35,10 +37,10 @@ export default async function StudentDashboard() {
                     <StatCard label="Total Registrations" value={regCount} icon={Calendar} />
                 </div>
                 <div className="bento-item">
-                    <StatCard label="Upcoming Events" value={upcomingCount} icon={Activity} />
+                    <StatCard label="Upcoming Events" value={upcomingCount} icon={Activity} href="/student/events" />
                 </div>
                 <div className="bento-item">
-                    <StatCard label="Certificates Earned" value={certCount} icon={Award} />
+                    <StatCard label="Certificates Earned" value={certCount} icon={Award} href="/student/certificates" />
                 </div>
                 <div className="bento-item">
                     <StatCard label="Pending Results" value={pendingResults} icon={Hourglass} />

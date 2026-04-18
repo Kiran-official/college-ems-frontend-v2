@@ -15,8 +15,10 @@ export default async function AdminDashboard() {
     return (
         <div className="page">
             <div className="page-header">
-                <h1 className="page-title">System Dashboard</h1>
-                <p className="page-sub">Overview of the Event Management System</p>
+                <div className="page-header__title-group">
+                    <h1 className="page-title">System Dashboard</h1>
+                    <p className="page-sub">Overview of the Event Management System</p>
+                </div>
             </div>
 
             {/* Stat Cards */}

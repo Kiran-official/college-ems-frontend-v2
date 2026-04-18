@@ -5,16 +5,18 @@ import { Modal } from '@/components/ui/Modal'
 import { FormGroup } from '@/components/forms/FormGroup'
 import { Button } from '@/components/ui/Button'
 import { updateUserCredentials, type UpdateUserInput } from '@/lib/actions/userActions'
-import type { User } from '@/lib/types/db'
+import type { User, Department } from '@/lib/types/db'
 
 interface EditUserModalProps {
     user: User | null
+    departments?: Department[]
+    deptProgrammes?: Record<string, string[]>
     open: boolean
     onClose: () => void
     onSuccess: () => void
 }
 
-export function EditUserModal({ user, open, onClose, onSuccess }: EditUserModalProps) {
+export function EditUserModal({ user, departments, deptProgrammes, open, onClose, onSuccess }: EditUserModalProps) {
     const [formData, setFormData] = useState<UpdateUserInput>({})
     const [error, setError] = useState('')
     const [pending, startTransition] = useTransition()
@@ -28,6 +30,9 @@ export function EditUserModal({ user, open, onClose, onSuccess }: EditUserModalP
                 role: user.role as 'admin' | 'teacher' | 'student',
                 student_type: user.student_type as 'internal' | 'external' | null,
                 active: user.is_active,
+                department_id: user.department_id || '',
+                programme: user.programme || '',
+                semester: user.semester || 1,
                 password: ''
             })
             setError('')
@@ -130,16 +135,39 @@ export function EditUserModal({ user, open, onClose, onSuccess }: EditUserModalP
                 </FormGroup>
                 
                 {formData.role === 'student' && (
-                    <FormGroup label="Student Type">
-                        <select 
-                            className="form-select" 
-                            value={formData.student_type || 'internal'} 
-                            onChange={e => setFormData({ ...formData, student_type: e.target.value as 'internal' | 'external' })}
-                        >
-                            <option value="internal">Internal</option>
-                            <option value="external">External</option>
-                        </select>
-                    </FormGroup>
+                    <>
+                        <FormGroup label="Student Type">
+                            <select 
+                                className="form-select" 
+                                value={formData.student_type || 'internal'} 
+                                onChange={e => setFormData({ ...formData, student_type: e.target.value as 'internal' | 'external' })}
+                            >
+                                <option value="internal">Internal</option>
+                                <option value="external">External</option>
+                            </select>
+                        </FormGroup>
+                        {formData.student_type === 'internal' && departments && deptProgrammes && (
+                            <>
+                                <FormGroup label="Department">
+                                    <select className="form-select" value={formData.department_id || ''} onChange={e => setFormData({ ...formData, department_id: e.target.value, programme: '' })}>
+                                        <option value="">Select...</option>
+                                        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                </FormGroup>
+                                <FormGroup label="Programme">
+                                    <select className="form-select" value={formData.programme || ''} onChange={e => setFormData({ ...formData, programme: e.target.value })}>
+                                        <option value="">Select...</option>
+                                        {deptProgrammes[departments.find(d => d.id === formData.department_id)?.name ?? '']?.map(p => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                </FormGroup>
+                                <FormGroup label="Semester">
+                                    <select className="form-select" value={formData.semester || 1} onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value, 10) })}>
+                                        {[1, 2, 3, 4, 5, 6].map(s => <option key={s} value={s}>Semester {s}</option>)}
+                                    </select>
+                                </FormGroup>
+                            </>
+                        )}
+                    </>
                 )}
                 
                 <FormGroup label="Status">

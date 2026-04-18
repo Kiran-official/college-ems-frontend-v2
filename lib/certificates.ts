@@ -45,52 +45,51 @@ export async function issueEventCertificates(
         const hasParticipationTemplate = templates.some(t => t.certificate_type === 'participation')
         const hasWinnerTemplate = templates.some(t => t.certificate_type === 'winner')
 
-        // 2. Fetch existing certificates to avoid duplicates
-        const { data: existingCerts } = await admin
-            .from('certificates')
-            .select('student_id, certificate_type')
+        // 2. Fetch existing winners once to avoid N+1 queries later
+        const { data: eventWinners } = await admin
+            .from('winners')
+            .select('id, student_id, team_id, winner_type')
             .eq('event_id', eventId)
 
-        const existingMap = new Set(existingCerts?.map(c => `${c.student_id}_${c.certificate_type}`))
+        const winnerStudentIds = new Set<string>()
+        const winnerTeamIds = new Set<string>()
+
+        if (eventWinners) {
+            for (const w of eventWinners) {
+                if (w.student_id) winnerStudentIds.add(w.student_id)
+                if (w.team_id) winnerTeamIds.add(w.team_id)
+            }
+        }
 
         const allToInsert: any[] = []
 
         // 3. Prepare Winner Certificates
-        if (hasWinnerTemplate) {
-            const { data: winners } = await admin
-                .from('winners')
-                .select('student_id, team_id, winner_type')
-                .eq('event_id', eventId)
+        if (hasWinnerTemplate && eventWinners) {
+            for (const w of eventWinners) {
+                if (w.winner_type === 'student' && w.student_id) {
+                    allToInsert.push({
+                        winner_id: w.id,
+                        student_id: w.student_id,
+                        event_id: eventId,
+                        certificate_type: 'winner',
+                        status: 'pending'
+                    })
+                } else if (w.winner_type === 'team' && w.team_id) {
+                    const { data: members } = await admin
+                        .from('team_members')
+                        .select('student_id')
+                        .eq('team_id', w.team_id)
+                        .eq('status', 'approved')
 
-            if (winners) {
-                for (const w of winners) {
-                    if (w.winner_type === 'student' && w.student_id) {
-                        if (!existingMap.has(`${w.student_id}_winner`)) {
-                            allToInsert.push({
-                                student_id: w.student_id,
-                                event_id: eventId,
-                                certificate_type: 'winner',
-                                status: 'pending'
-                            })
-                        }
-                    } else if (w.winner_type === 'team' && w.team_id) {
-                        const { data: members } = await admin
-                            .from('team_members')
-                            .select('student_id')
-                            .eq('team_id', w.team_id)
-                            .eq('status', 'approved')
-
-                        members?.forEach(m => {
-                            if (!existingMap.has(`${m.student_id}_winner`)) {
-                                allToInsert.push({
-                                    student_id: m.student_id,
-                                    event_id: eventId,
-                                    certificate_type: 'winner',
-                                    status: 'pending'
-                                })
-                            }
+                    members?.forEach(m => {
+                        allToInsert.push({
+                            winner_id: w.id,
+                            student_id: m.student_id,
+                            event_id: eventId,
+                            certificate_type: 'winner',
+                            status: 'pending'
                         })
-                    }
+                    })
                 }
             }
         }
@@ -105,13 +104,9 @@ export async function issueEventCertificates(
 
             if (attendees) {
                 for (const a of attendees) {
-                    // Check if attendee already exists or is a winner
-                    const idKey = `${a.student_id}_participation`
-                    if (existingMap.has(idKey)) continue
-
-                    // SURGICAL FIX: Check if this participant is a winner
-                    const winner = await isWinner(admin, a.student_id, a.team_id || undefined)
-                    if (winner) continue
+                    // Check if attendee is a winner (skip participation if they are)
+                    if (winnerStudentIds.has(a.student_id)) continue
+                    if (a.team_id && winnerTeamIds.has(a.team_id)) continue
 
                     allToInsert.push({
                         student_id: a.student_id,
@@ -123,9 +118,16 @@ export async function issueEventCertificates(
             }
         }
 
-        // 5. Execute
+        // 5. Execute with Upsert (onConflict) to handle race conditions
+        // We rely on the UNIQUE(event_id, student_id, certificate_type) constraint
         if (allToInsert.length > 0) {
-            const { error: insertError } = await admin.from('certificates').insert(allToInsert)
+            const { error: insertError } = await admin
+                .from('certificates')
+                .upsert(allToInsert, { 
+                    onConflict: 'event_id,student_id,certificate_type',
+                    ignoreDuplicates: true // Don't overwrite if it already exists
+                })
+            
             if (insertError) return { success: false, queued: 0, error: insertError.message }
         }
 

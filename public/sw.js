@@ -1,7 +1,8 @@
-const CACHE_NAME = 'sicm-ems-v2';
+const CACHE_NAME = 'sicm-ems-v1';
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS_TO_CACHE = [
+  '/',
   OFFLINE_URL,
   '/manifest.json'
 ];
@@ -25,11 +26,9 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => {
-      // Claim all clients immediately so the new SW controls all pages
-      return self.clients.claim();
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -37,34 +36,36 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   // Skip chrome-extension or other non-http schemes
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // For navigation requests (HTML pages), use network-first strategy
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
-          const cachedResponse = await cache.match(OFFLINE_URL);
-          return cachedResponse || new Response('You are offline', {
-            status: 503,
-            headers: { 'Content-Type': 'text/html' },
-          });
-        })
-    );
+  const url = new URL(event.request.url);
+  
+  // Ignore Next.js hot module replacement and internal resources to prevent intercepting dev server streams
+  if (url.pathname.startsWith('/_next/') || url.pathname.includes('webpack-hmr')) {
     return;
   }
 
-  // For other requests, try network first, then cache
   event.respondWith(
     fetch(event.request)
-      .catch(async () => {
+      .catch(async (error) => {
+        // Handle React/Next.js aborted navigation fetches gracefully instead of throwing timeouts
+        if (error.name === 'AbortError') {
+          return new Response(null, { status: 499, statusText: 'Client Closed Request' });
+        }
+
         const cache = await caches.open(CACHE_NAME);
         const cachedResponse = await cache.match(event.request);
-
+        
         if (cachedResponse) {
           return cachedResponse;
+        }
+
+        // Check if the user is explicitly requesting an HTML page
+        const isHTMLRequest = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+
+        // If it's an HTML navigation request and we're offline, show the offline page
+        if (isHTMLRequest) {
+          return cache.match(OFFLINE_URL);
         }
 
         return new Response('Network error occurred', {
@@ -76,20 +77,39 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push Received.');
+  
   if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body,
-      icon: '/assets/icon-192x192.png',
-      badge: '/assets/icon-192x192.png',
-      data: {
-        url: data.url || '/'
-      }
-    };
+    try {
+      const data = event.data.json();
+      console.log('[Service Worker] Push Data:', data);
 
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
+      const options = {
+        body: data.body,
+        icon: '/assets/icon-192x192.png',
+        badge: '/assets/icon-192x192.png',
+        data: {
+          url: data.url || '/'
+        }
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title, options)
+          .then(() => console.log('[Service Worker] Notification Shown.'))
+          .catch(err => console.error('[Service Worker] Failed to show notification:', err))
+      );
+    } catch (e) {
+      console.error('[Service Worker] Push event data was not JSON:', e);
+      // Optional: show a fallback notification if data isn't JSON
+      event.waitUntil(
+        self.registration.showNotification('SICM EMS', {
+          body: event.data.text(),
+          icon: '/assets/icon-192x192.png',
+        })
+      );
+    }
+  } else {
+    console.warn('[Service Worker] Push event received but no data found.');
   }
 });
 

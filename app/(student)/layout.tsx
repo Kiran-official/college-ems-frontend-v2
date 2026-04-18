@@ -5,9 +5,9 @@ import Sidebar from '@/components/layout/Sidebar'
 import { NotificationPermission } from '@/components/pwa/NotificationPermission'
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-    const session = await requireSession()
+    const user = await requireSession()
     const { data: profile } = await (await createSSRClient())
-        .from('users').select('name, email, role').eq('id', session.user.id).single() as {
+        .from('users').select('name, email, role').eq('id', user.id).single() as {
             data: { name: string; email: string; role: string } | null
         }
     if (!profile || profile.role !== 'student') {

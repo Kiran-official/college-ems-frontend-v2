@@ -4,13 +4,29 @@
 
 export type UserRole = 'admin' | 'teacher' | 'student'
 export type StudentType = 'internal' | 'external'
-export type EventStatus = 'draft' | 'open' | 'closed' | 'completed'
+export type EventStatus = 'draft' | 'open' | 'closed' | 'completed' | 'cancelled' | 'archived'
 export type EventVisibility = 'public_all' | 'internal_only' | 'external_only'
 export type ParticipantType = 'single' | 'multiple'
 export type AttendanceStatus = 'registered' | 'attended' | 'absent'
 export type CertificateType = 'participation' | 'winner'
 export type CertificateStatus = 'pending' | 'processing' | 'generated' | 'failed'
 export type WinnerType = 'student' | 'team'
+export type PaymentStatus = 'not_required' | 'pending' | 'submitted' | 'verified' | 'rejected' | 'refund_requested' | 'refunded'
+
+// Forums / Cells that organize events
+export const EVENT_FORUMS = [
+    'PURVI',
+    'LAKSHYA',
+    'Statutory Cell',
+    'NCC',
+    'NSS',
+    'Rangers and Rovers',
+    'YRC',
+    'Sports Department',
+    'Binary Brains',
+    'Other',
+] as const
+export type EventForum = (typeof EVENT_FORUMS)[number]
 
 // ── Core Entities ──────────────────────────────────────────────
 
@@ -54,8 +70,13 @@ export interface Event {
     results_published: boolean
     created_by: string
     department_id?: string
+    forum?: EventForum | null
     created_at: string
     updated_at?: string
+    // Payment fields
+    is_paid: boolean
+    registration_fee?: number | null
+    upi_qr_url?: string | null
     // Joined fields
     department?: Department
     creator?: User
@@ -80,6 +101,13 @@ export interface IndividualRegistration {
     team_id?: string
     attendance_status: AttendanceStatus
     registered_at: string
+    // Payment fields
+    payment_status: PaymentStatus
+    payment_proof_url?: string | null
+    payment_submitted_at?: string | null
+    verified_at?: string | null
+    verified_by?: string | null
+    rejection_reason?: string | null
     // Joined fields
     student?: User
     event?: Event
@@ -91,7 +119,15 @@ export interface Team {
     event_id: string
     team_name: string
     created_by: string
+    leader_id: string
     created_at: string
+    // Payment fields
+    payment_status: PaymentStatus
+    payment_proof_url?: string | null
+    payment_submitted_at?: string | null
+    verified_at?: string | null
+    verified_by?: string | null
+    rejection_reason?: string | null
     // Joined fields
     members?: TeamMember[]
     creator?: User
@@ -129,7 +165,8 @@ export interface Winner {
 
 export interface CertificateTemplate {
     id: string
-    event_id: string
+    event_id?: string | null
+    is_global: boolean
     template_name: string
     certificate_type: CertificateType
     layout_json: TemplateLayout
@@ -154,12 +191,14 @@ export interface TemplateField {
     y: number           // percentage 0-100
     width: number       // percentage 0-100
     fontSize: number
+    lineHeight?: number // multiplier, default 1.2
+    letterSpacing?: number // in px, default 0
     fontFamily: string
     color: string
     bold: boolean
     italic: boolean
     align: 'left' | 'center' | 'right'
-    customText?: string // only for field_type = 'custom'
+    customText?: string // used when field_type === 'custom'
 }
 
 export interface Certificate {
@@ -170,6 +209,8 @@ export interface Certificate {
     certificate_type: CertificateType
     status: CertificateStatus
     file_path?: string
+    storage_path?: string
+    verification_id?: string
     error_message?: string
     retry_count: number
     last_retried_at?: string

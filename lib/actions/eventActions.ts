@@ -13,10 +13,14 @@ export async function createEventAction(data: {
     event_date: string
     registration_deadline: string
     department_id?: string
+    forum?: string
     visibility: 'public_all' | 'internal_only' | 'external_only'
     participant_type: 'single' | 'multiple'
     team_size?: number
     faculty_ids: string[]
+    is_paid?: boolean
+    registration_fee?: number
+    upi_qr_url?: string
 }): Promise<{ success: boolean; event_id?: string; error?: string }> {
     try {
         const ssr = await createSSRClient()
@@ -37,6 +41,7 @@ export async function createEventAction(data: {
             event_date: data.event_date,
             registration_deadline: data.registration_deadline,
             department_id: data.department_id || null,
+            forum: data.forum || null,
             visibility: data.visibility,
             participant_type: data.participant_type,
             team_size: data.participant_type === 'multiple' ? data.team_size : null,
@@ -44,6 +49,9 @@ export async function createEventAction(data: {
             is_active: true,
             results_published: false,
             created_by: user.id,
+            is_paid: data.is_paid ?? false,
+            registration_fee: data.is_paid ? (data.registration_fee ?? null) : null,
+            upi_qr_url: data.is_paid ? (data.upi_qr_url ?? null) : null,
         }).select('id').single()
 
         if (eventError || !event) return { success: false, error: eventError?.message ?? 'Failed to create event' }
@@ -83,6 +91,7 @@ export async function updateEventAction(
         event_date?: string
         registration_deadline?: string
         department_id?: string
+        forum?: string | null
         visibility?: 'public_all' | 'internal_only' | 'external_only'
     }
 ): Promise<{ success: boolean; error?: string }> {
@@ -282,13 +291,29 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({ is_active: false }).eq('id', eventId)
+        
+        // 1. Get current status to save it
+        const { data: event } = await admin.from('events').select('status').eq('id', eventId).single()
+        if (!event) return { success: false, error: 'Event not found' }
+
+        // 2. Perform archiving
+        const { error } = await admin
+            .from('events')
+            .update({ 
+                is_active: false, 
+                status: 'archived', 
+                previous_status: event.status 
+            })
+            .eq('id', eventId)
+        
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
+        revalidatePath('/student/events')
         return { success: true }
-    } catch {
-        return { success: false, error: 'An unexpected error occurred' }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'An unexpected error occurred' }
     }
 }
 
@@ -301,13 +326,30 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
 
         const admin = createAdminClient()
-        const { error } = await admin.from('events').update({ is_active: true }).eq('id', eventId)
+
+        // 1. Get previous status
+        const { data: event } = await admin.from('events').select('previous_status').eq('id', eventId).single()
+        if (!event) return { success: false, error: 'Event not found' }
+        
+        const targetStatus = event.previous_status || 'draft'
+
+        // 2. Perform restoration
+        const { error } = await admin
+            .from('events')
+            .update({ 
+                is_active: true, 
+                status: targetStatus 
+            })
+            .eq('id', eventId)
+        
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/events')
+        revalidatePath('/teacher/events')
+        revalidatePath('/student/events')
         return { success: true }
-    } catch {
-        return { success: false, error: 'An unexpected error occurred' }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'An unexpected error occurred' }
     }
 }
 
@@ -394,6 +436,52 @@ export async function addParticipantAfterCloseAction(data: {
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function addFacultyInChargeAction(eventId: string, teacherId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
+        if (!profile) return { success: false, error: 'User profile not found' }
+
+        const admin = createAdminClient()
+
+        let isManageable = false
+        if (profile.role === 'admin') {
+            isManageable = true
+        } else if (profile.role === 'teacher') {
+            const { data: fic } = await admin.from('faculty_in_charge').select('id').eq('event_id', eventId).eq('teacher_id', user.id).maybeSingle()
+            if (fic) isManageable = true
+        }
+
+        if (!isManageable) return { success: false, error: 'Not authorised to assign faculty to this event' }
+        
+        // Prevent duplicate insertion constraint error
+        const { data: existing } = await admin.from('faculty_in_charge')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('teacher_id', teacherId)
+            .maybeSingle()
+
+        if (existing) {
+             return { success: false, error: 'Teacher is already assigned to this event' }
+        }
+
+        const { error } = await admin.from('faculty_in_charge').insert({
+            event_id: eventId,
+            teacher_id: teacherId
+        })
+        if (error) return { success: false, error: error.message }
+
+        revalidatePath(`/admin/events/${eventId}`)
+        revalidatePath(`/teacher/events/${eventId}`)
+        return { success: true }
+    } catch (e: any) {
+        return { success: false, error: e.message || 'An unexpected error occurred' }
     }
 }
 

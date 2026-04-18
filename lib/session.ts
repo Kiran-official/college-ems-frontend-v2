@@ -8,9 +8,9 @@ export async function requireSession(redirectTo = "/login") {
   // determining if a user is logged in and getting their basic info.
   const { data: { session } } = await supabase.auth.getSession();
   
-  if (!session) {
+  if (!session?.user) {
     redirect(redirectTo);
   }
   
-  return session;
+  return session.user;
 }

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { TemplateLayout } from '@/lib/types/db'
 import { issueEventCertificates } from '@/lib/certificates'
+import { processPendingCertificates } from '@/lib/processing'
 
 export async function retryCertificateAction(
     certificateId: string
@@ -20,11 +21,13 @@ export async function retryCertificateAction(
             .update({
                 status: 'pending',
                 error_message: null,
+                file_path: null,
+                storage_path: null,
+                generated_at: null,
                 retry_count: 0,
                 last_retried_at: new Date().toISOString(),
             })
             .eq('id', certificateId)
-            .eq('status', 'failed')
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/certificates')
@@ -42,7 +45,9 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
         if (!user) return { success: false, error: 'Not authenticated' }
 
         const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
+            return { success: false, error: 'Not authorised' }
+        }
 
         const admin = createAdminClient()
         const { data: failed } = await admin
@@ -57,6 +62,9 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
             .update({
                 status: 'pending',
                 error_message: null,
+                file_path: null,
+                storage_path: null,
+                generated_at: null,
                 retry_count: 0,
                 last_retried_at: new Date().toISOString(),
             })
@@ -73,41 +81,22 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
 export async function triggerCertificateProcessingAction(): Promise<{ success: boolean; error?: string }> {
     try {
         const ssr = await createSSRClient()
-        const { data: { session } } = await ssr.auth.getSession()
-        if (!session) return { success: false, error: 'Not authenticated' }
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
 
-        // Build the absolute URL for the internal API route
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        // Derive Next.js app origin from SUPABASE_URL host or default to localhost
-        // We call our own /api/process-certificates route with the service key as a secret header
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-
-        const res = await fetch(`${appUrl}/api/process-certificates`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-internal-secret': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            },
-            // Supabase URL used only to keep TypeScript happy about the variable usage
-            body: JSON.stringify({ source: supabaseUrl }),
-        })
-
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}))
-            const msg = (body as { error?: string }).error || `HTTP ${res.status}`
-            console.error('[triggerCertificateProcessingAction] API error:', msg)
-            return { success: false, error: msg }
-        }
+        // Directly call the processing logic instead of using fetch
+        await processPendingCertificates()
 
         return { success: true }
     } catch (e) {
         console.error('[triggerCertificateProcessingAction] crash:', e)
-        return { success: false, error: 'Failed to trigger certificate processing' }
+        return { success: false, error: e instanceof Error ? e.message : 'Failed to trigger certificate processing' }
     }
 }
 
 export async function createTemplateAction(data: {
-    event_id: string
+    event_id?: string
+    is_global?: boolean
     template_name: string
     certificate_type: 'participation' | 'winner'
     layout_json: TemplateLayout
@@ -139,9 +128,12 @@ export async function updateTemplateAction(
     templateId: string,
     data: {
         template_name?: string
+        event_id?: string
+        is_global?: boolean
         layout_json?: TemplateLayout
         background_image_url?: string
         is_active?: boolean
+        certificate_type?: 'participation' | 'winner'
     }
 ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -156,6 +148,92 @@ export async function updateTemplateAction(
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
         return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function deleteTemplateAction(
+    templateId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+
+        // Check if any certificates have been generated with this template
+        const { data: template } = await admin
+            .from('certificate_templates')
+            .select('event_id')
+            .eq('id', templateId)
+            .single()
+
+        if (template?.event_id) {
+            const { count } = await admin
+                .from('certificates')
+                .select('*', { count: 'exact', head: true })
+                .eq('event_id', template.event_id)
+
+            if (count && count > 0) {
+                // Soft-delete: keep the template data for existing certificates
+                const { error } = await admin
+                    .from('certificate_templates')
+                    .update({ is_active: false })
+                    .eq('id', templateId)
+                if (error) return { success: false, error: error.message }
+            } else {
+                // Hard delete if no certificates reference this event
+                const { error } = await admin
+                    .from('certificate_templates')
+                    .delete()
+                    .eq('id', templateId)
+                if (error) return { success: false, error: error.message }
+            }
+        } else {
+            // Global template or no event — hard delete
+            const { error } = await admin
+                .from('certificate_templates')
+                .delete()
+                .eq('id', templateId)
+            if (error) return { success: false, error: error.message }
+        }
+
+        revalidatePath('/admin/templates')
+        revalidatePath('/teacher/templates')
+        return { success: true }
+    } catch {
+        return { success: false, error: 'An unexpected error occurred' }
+    }
+}
+
+export async function cloneTemplateAction(sourceTemplateId: string, targetEventId: string, targetType?: 'participation' | 'winner'): Promise<{ success: boolean; template_id?: string; error?: string }> {
+    try {
+        const ssr = await createSSRClient()
+        const { data: { user } } = await ssr.auth.getUser()
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const admin = createAdminClient()
+        const { data: source, error: fetchErr } = await admin.from('certificate_templates').select('*').eq('id', sourceTemplateId).single()
+        if (fetchErr || !source) return { success: false, error: 'Source template not found' }
+
+        const { data: cloned, error: insertErr } = await admin.from('certificate_templates').insert({
+            event_id: targetEventId,
+            is_global: false,
+            template_name: `${source.template_name} (Clone)`,
+            certificate_type: targetType || source.certificate_type,
+            layout_json: source.layout_json,
+            background_image_url: source.background_image_url,
+            is_active: true,
+            created_by: user.id
+        }).select('id').single()
+
+        if (insertErr || !cloned) return { success: false, error: insertErr?.message || 'Failed to clone' }
+
+        revalidatePath('/admin/templates')
+        revalidatePath('/teacher/templates')
+        return { success: true, template_id: cloned.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
     }
