@@ -29,18 +29,18 @@ export async function middleware(request: NextRequest) {
     // 1. Public routes
     if (isPublic) {
         if (user && (pathname === '/login' || pathname === '/register')) {
-            // Check app_metadata (admin-controlled) for role
+            // Check app_metadata (admin-controlled) for role and status
             const role = user.app_metadata?.role;
-            if (role) {
+            const isActive = user.app_metadata?.is_active;
+
+            // ONLY redirect away from auth pages if the user is active
+            // If isActive is undefined, we don't redirect (wait for session refresh or forced login)
+            if (role && isActive === true) {
                 return NextResponse.redirect(new URL(`/${role}`, request.url));
             }
-            // Fallback: fetch from DB only if role not in JWT
-            try {
-                const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
-                if (profile) return NextResponse.redirect(new URL(`/${profile.role}`, request.url));
-            } catch {
-                return response;
-            }
+            // If they are logged in but we don't have certain metadata, 
+            // we stay on the login page or let them sign out.
+            return response;
         }
         return response;
     }
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
     // Fast Path: Role and Status exist in JWT app_metadata
     if (role !== undefined && isActive !== undefined) {
         // 1. Block inactive users
-        if (!isActive) {
+        if (isActive === false) {
             const url = new URL('/login', request.url);
             url.searchParams.set('error', 'inactive');
             return NextResponse.redirect(url);
