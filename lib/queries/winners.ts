@@ -17,13 +17,19 @@ export async function getWinnersByEvent(eventId: string): Promise<Winner[]> {
 
 export async function getStudentPendingResults(studentId: string): Promise<number> {
     const supabase = await createSSRClient()
-    // Events where student is registered, event completed but results not published
-    const { data } = await supabase
+    // Using raw inner join filtering instead of pulling payload sequence to JS.
+    // Count exact returns just the numeric result.
+    const { count, error } = await supabase
         .from('individual_registrations')
-        .select('event:events!inner(status, results_published)')
+        .select('event:events!inner(status, results_published)', { count: 'exact', head: true })
         .eq('student_id', studentId)
-    return data?.filter(r => {
-        const event = r.event as unknown as { status: string; results_published: boolean }
-        return event?.status === 'completed' && !event?.results_published
-    }).length ?? 0
+        .eq('events.status', 'completed')
+        .eq('events.results_published', false)
+
+    if (error) {
+        console.error("Error fetching pending results count:", error);
+        return 0;
+    }
+    
+    return count ?? 0
 }

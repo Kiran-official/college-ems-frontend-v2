@@ -39,6 +39,7 @@ export async function updateAttendanceAction(data: {
         const admin = createAdminClient()
         const { error } = await admin
             .from('individual_registrations')
+            // @ts-ignore
             .update({ attendance_status: data.status })
             .eq('id', data.registration_id)
         if (error) return { success: false, error: error.message }
@@ -69,6 +70,7 @@ export async function bulkUpdateAttendanceAction(data: {
         const admin = createAdminClient()
         const { error } = await admin
             .from('individual_registrations')
+            // @ts-ignore
             .update({ attendance_status: data.status })
             .eq('event_id', data.event_id)
 

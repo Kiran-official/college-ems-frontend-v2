@@ -6,7 +6,7 @@ import type { Database } from '@/lib/types/db'
 // SSR client — uses anon key + cookie session — for Server Components and Server Actions (reads)
 export async function createSSRClient() {
     const cookieStore = await cookies()
-    return createServerClient(
+    return createServerClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {

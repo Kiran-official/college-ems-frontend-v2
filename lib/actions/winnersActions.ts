@@ -20,8 +20,8 @@ export async function declareWinnerAction(data: {
 
         // Check if results are already published or event is not closed
         const { data: event } = await admin.from('events').select('results_published, status').eq('id', data.event_id).single()
-        if (event?.results_published) return { success: false, error: 'Cannot change winners after results are published' }
-        if (event?.status !== 'closed') return { success: false, error: 'Winners can only be declared after the event is closed' }
+        if ((event as any)?.results_published) return { success: false, error: 'Cannot change winners after results are published' }
+        if ((event as any)?.status !== 'closed') return { success: false, error: 'Winners can only be declared after the event is closed' }
 
         const insertData: Record<string, unknown> = {
             event_id: data.event_id,
@@ -37,7 +37,7 @@ export async function declareWinnerAction(data: {
             insertData.team_id = data.winner_id
         }
 
-        const { error } = await admin.from('winners').insert(insertData)
+        const { error } = await admin.from('winners').insert(insertData as any)
         if (error) return { success: false, error: error.message }
 
         revalidatePath(`/admin/events/${data.event_id}`)
@@ -62,8 +62,8 @@ export async function removeWinnerAction(winnerId: string, eventId: string): Pro
 
         // Check if results are already published or event is not closed
         const { data: event } = await admin.from('events').select('results_published, status').eq('id', eventId).single()
-        if (event?.results_published) return { success: false, error: 'Cannot change winners after results are published' }
-        if (event?.status !== 'closed') return { success: false, error: 'Winners can only be declared after the event is closed' }
+        if ((event as any)?.results_published) return { success: false, error: 'Cannot change winners after results are published' }
+        if ((event as any)?.status !== 'closed') return { success: false, error: 'Winners can only be declared after the event is closed' }
 
         const { error } = await admin.from('winners').delete().eq('id', winnerId)
         if (error) return { success: false, error: error.message }

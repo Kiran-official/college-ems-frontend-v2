@@ -1,6 +1,6 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { autoClosePastEventsAction } from '@/lib/actions/eventActions';
+import { unstable_cache } from 'next/cache'
 import type { Event } from '@/lib/types/db'
 
 const EVENT_SELECT = `
@@ -71,40 +71,73 @@ export async function getTeacherEvents(teacherId: string): Promise<Event[]> {
 }
 
 // Student-facing queries
-export async function getUpcomingEvents(): Promise<Event[]> {
-    // Auto-close events whose registration deadline has passed
-    await autoClosePastEventsAction();
-    const supabase = await createSSRClient();
-    const { data } = await supabase
-        .from('events')
-        .select(EVENT_SELECT)
-        .eq('status', 'open')
-        .eq('is_active', true)
-        .order('event_date', { ascending: true });
-    return data ?? [];
-}
 
-export async function getCompletedEvents(): Promise<Event[]> {
-    const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('events')
-        .select(EVENT_SELECT)
-        .eq('status', 'completed')
-        .eq('is_active', true)
-        .order('event_date', { ascending: false })
-    return data ?? []
-}
+// Cache for 60 seconds. Removed mutating autoClosePastEventsAction().
+// Also dynamically filters out closed events based on registration_deadline in the query itself.
+export const getUpcomingEvents = unstable_cache(
+    async (): Promise<Event[]> => {
+        const supabase = await createSSRClient();
+        const now = new Date().toISOString();
+        const { data } = await supabase
+            .from('events')
+            .select(EVENT_SELECT)
+            .eq('status', 'open')
+            .eq('is_active', true)
+            .gte('registration_deadline', now)
+            .order('event_date', { ascending: true });
+        return data ?? [];
+    },
+    ['upcoming-events'],
+    { revalidate: 60, tags: ['events'] }
+);
 
-export async function getClosedEvents(): Promise<Event[]> {
-    const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('events')
-        .select(EVENT_SELECT)
-        .eq('status', 'closed')
-        .eq('is_active', true)
-        .order('event_date', { ascending: false })
-    return data ?? []
-}
+export const getCompletedEvents = unstable_cache(
+    async (): Promise<Event[]> => {
+        const supabase = await createSSRClient()
+        const { data } = await supabase
+            .from('events')
+            .select(EVENT_SELECT)
+            .eq('status', 'completed')
+            .eq('is_active', true)
+            .order('event_date', { ascending: false })
+        return data ?? []
+    },
+    ['completed-events'],
+    { revalidate: 60, tags: ['events'] }
+);
+
+export const getClosedEvents = unstable_cache(
+    async (): Promise<Event[]> => {
+        const supabase = await createSSRClient()
+        const now = new Date().toISOString();
+        const { data } = await supabase
+            .from('events')
+            .select(EVENT_SELECT)
+            .eq('is_active', true)
+            // Get events that are explicitly closed OR their deadline has passed
+            .or(`status.eq.closed,and(status.eq.open,registration_deadline.lt.${now})`)
+            .order('event_date', { ascending: false })
+        return data ?? []
+    },
+    ['closed-events'],
+    { revalidate: 60, tags: ['events'] }
+);
+
+export const getUpcomingEventsCount = unstable_cache(
+    async (): Promise<number> => {
+        const supabase = await createSSRClient()
+        const now = new Date().toISOString();
+        const { count } = await supabase
+            .from('events')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'open')
+            .eq('is_active', true)
+            .gte('registration_deadline', now)
+        return count ?? 0
+    },
+    ['upcoming-events-count'],
+    { revalidate: 60, tags: ['events'] }
+);
 
 export async function getEventStats() {
     const supabase = await createSSRClient()
@@ -155,14 +188,4 @@ export async function getTeacherEventStats(teacherId: string) {
         activeEvents: activeEvents ?? 0,
         completedEvents: completedEvents ?? 0,
     }
-}
-
-export async function getUpcomingEventsCount(): Promise<number> {
-    const supabase = await createSSRClient()
-    const { count } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'open')
-        .eq('is_active', true)
-    return count ?? 0
 }

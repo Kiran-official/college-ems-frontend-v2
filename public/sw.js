@@ -1,8 +1,7 @@
-const CACHE_NAME = 'sicm-ems-v1';
+const CACHE_NAME = 'sicm-ems-v2';
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS_TO_CACHE = [
-  '/',
   OFFLINE_URL,
   '/manifest.json'
 ];
@@ -26,9 +25,11 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      // Claim all clients immediately so the new SW controls all pages
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -36,21 +37,34 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   // Skip chrome-extension or other non-http schemes
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
+  // For navigation requests (HTML pages), use network-first strategy
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(async () => {
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match(OFFLINE_URL);
+          return cachedResponse || new Response('You are offline', {
+            status: 503,
+            headers: { 'Content-Type': 'text/html' },
+          });
+        })
+    );
+    return;
+  }
+
+  // For other requests, try network first, then cache
   event.respondWith(
     fetch(event.request)
       .catch(async () => {
         const cache = await caches.open(CACHE_NAME);
         const cachedResponse = await cache.match(event.request);
-        
+
         if (cachedResponse) {
           return cachedResponse;
-        }
-
-        // If it's a navigation request, show the offline page
-        if (event.request.mode === 'navigate') {
-          return cache.match(OFFLINE_URL);
         }
 
         return new Response('Network error occurred', {

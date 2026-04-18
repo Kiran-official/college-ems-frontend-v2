@@ -46,34 +46,43 @@ export async function getAllCertificates(): Promise<Certificate[]> {
 
 export async function getCertificateStats() {
     const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('certificates')
-        .select('status')
+    
+    // Instead of fetching all rows and filtering in JS (O(N) data transfer),
+    // use parallel COUNT aggregate queries (O(1) data transfer).
+    const [pending, processing, generated, failed, total] = await Promise.all([
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('status', 'processing'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('status', 'generated'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }),
+    ])
 
-    const rows = data ?? []
     return {
-        pending: rows.filter(r => r.status === 'pending').length,
-        processing: rows.filter(r => r.status === 'processing').length,
-        generated: rows.filter(r => r.status === 'generated').length,
-        failed: rows.filter(r => r.status === 'failed').length,
-        total: rows.length,
+        pending: pending.count ?? 0,
+        processing: processing.count ?? 0,
+        generated: generated.count ?? 0,
+        failed: failed.count ?? 0,
+        total: total.count ?? 0,
     }
 }
 
 export async function getCertificateStatsByEvent(eventId: string) {
     const supabase = await createSSRClient()
-    const { data } = await supabase
-        .from('certificates')
-        .select('status')
-        .eq('event_id', eventId)
+    
+    const [pending, processing, generated, failed, total] = await Promise.all([
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'pending'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'processing'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'generated'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'failed'),
+        supabase.from('certificates').select('*', { count: 'exact', head: true }).eq('event_id', eventId),
+    ])
 
-    const rows = data ?? []
     return {
-        pending: rows.filter(r => r.status === 'pending').length,
-        processing: rows.filter(r => r.status === 'processing').length,
-        generated: rows.filter(r => r.status === 'generated').length,
-        failed: rows.filter(r => r.status === 'failed').length,
-        total: rows.length,
+        pending: pending.count ?? 0,
+        processing: processing.count ?? 0,
+        generated: generated.count ?? 0,
+        failed: failed.count ?? 0,
+        total: total.count ?? 0,
     }
 }
 

@@ -67,6 +67,7 @@ export async function createEventAction(data: {
 
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
+        revalidateTag('events')
         return { success: true, event_id: event.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -120,6 +121,7 @@ export async function openEventAction(eventId: string): Promise<{ success: boole
         revalidatePath('/student/events')
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
+        revalidateTag('events') // Cache invalidation
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -139,6 +141,7 @@ export async function closeEventAction(eventId: string): Promise<{ success: bool
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
+        revalidateTag('events') // Clears unstable_cache for event lists
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -259,6 +262,7 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
+        revalidateTag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -341,6 +345,7 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
+        revalidateTag('events')
         return { success: true }
     } catch (e) {
         console.error('Error in hardDeleteEventAction:', e)

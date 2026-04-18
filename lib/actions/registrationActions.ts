@@ -4,6 +4,7 @@ import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { validateTeamCapacity } from './teams'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function registerForEventAction(data: {
     event_id: string
@@ -12,6 +13,10 @@ export async function registerForEventAction(data: {
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
+
+        // Rate limit: 15 registrations per minute per user
+        const { success: rateSuccess } = rateLimit(`register:${user.id}`, { limit: 15, window: 60000 })
+        if (!rateSuccess) return { success: false, error: 'Too many requests. Please try again later.' }
 
         const { data: event } = await ssr.from('events').select('status, registration_deadline').eq('id', data.event_id).single()
         if (!event) return { success: false, error: 'Event not found' }
@@ -84,6 +89,9 @@ export async function createTeamAction(data: {
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { success: rateSuccess } = rateLimit(`create_team:${user.id}`, { limit: 5, window: 60000 })
+        if (!rateSuccess) return { success: false, error: 'Too many team creations. Please try again later.' }
 
         const admin = createAdminClient()
 
@@ -183,6 +191,9 @@ export async function joinTeamAction(data: {
         const ssr = await createSSRClient()
         const { data: { user } } = await ssr.auth.getUser()
         if (!user) return { success: false, error: 'Not authenticated' }
+
+        const { success: rateSuccess } = rateLimit(`join_team:${user.id}`, { limit: 10, window: 60000 })
+        if (!rateSuccess) return { success: false, error: 'Too many requests. Please try again later.' }
 
         const admin = createAdminClient()
 
@@ -690,4 +701,4 @@ export async function registerParticipantAction(
         console.error('registerParticipantAction error:', error)
         return { success: false, error: 'An unexpected error occurred' }
     }
-}
+}
