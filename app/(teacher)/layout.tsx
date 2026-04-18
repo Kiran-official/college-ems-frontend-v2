@@ -6,18 +6,19 @@ import { NotificationPermission } from '@/components/pwa/NotificationPermission'
 
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
     const user = await requireSession()
-    const { data: profile } = await (await createSSRClient())
-        .from('users').select('name, email, role').eq('id', user.id).single() as {
-            data: { name: string; email: string; role: string } | null
-        }
-    if (!profile || profile.role !== 'teacher') {
-        redirect(`/${profile?.role ?? 'login'}`)
+    
+    // Use app_metadata (admin-controlled) for role verification
+    const role = user.app_metadata?.role
+    const name = user.user_metadata?.name || user.email?.split('@')[0] || 'Teacher'
+
+    if (role !== 'teacher') {
+        redirect(`/${role ?? 'login'}`)
     }
 
     return (
         <div className="portal portal--teacher">
             <div className="app-shell">
-                <Sidebar role="teacher" userName={profile.name} userEmail={profile.email} />
+                <Sidebar role="teacher" userName={name} userEmail={user.email ?? ''} />
                 <main className="app-main">{children}</main>
             </div>
             <NotificationPermission />

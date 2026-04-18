@@ -18,10 +18,6 @@ export async function middleware(request: NextRequest) {
     );
 
     // Use getSession() — reads JWT from cookie locally, NO network call.
-    // This is safe in middleware because:
-    // 1. The JWT is cryptographically signed — it can't be tampered with
-    // 2. We only use it for routing decisions, not data access
-    // 3. Actual data queries use getUser() via SSR client which validates server-side
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user ?? null;
 
@@ -33,9 +29,8 @@ export async function middleware(request: NextRequest) {
     // 1. Public routes
     if (isPublic) {
         if (user && (pathname === '/login' || pathname === '/register')) {
-            // Already logged in on auth page? Redirect to role dashboard
-            // Extract role from JWT metadata to avoid DB call
-            const role = user.user_metadata?.role || session?.user?.app_metadata?.role;
+            // Check app_metadata (admin-controlled) for role
+            const role = user.app_metadata?.role;
             if (role) {
                 return NextResponse.redirect(new URL(`/${role}`, request.url));
             }
@@ -54,18 +49,25 @@ export async function middleware(request: NextRequest) {
     if (!user) return NextResponse.redirect(new URL('/login', request.url));
 
     // 3. Role-based routing
-    // Fast path: if user is already on a role-prefixed path, we can infer correctness
-    // from the JWT rather than making a DB query
-    const role = user.user_metadata?.role || user.app_metadata?.role;
+    const role = user.app_metadata?.role;
+    const isActive = user.app_metadata?.is_active;
+    const mustChange = user.app_metadata?.must_change_password;
 
-    if (role) {
-        // Check must_change_password from metadata if available
-        const mustChange = user.user_metadata?.must_change_password;
+    // Fast Path: Role and Status exist in JWT app_metadata
+    if (role !== undefined && isActive !== undefined) {
+        // 1. Block inactive users
+        if (!isActive) {
+            const url = new URL('/login', request.url);
+            url.searchParams.set('error', 'inactive');
+            return NextResponse.redirect(url);
+        }
+
+        // 2. Force password change
         if (mustChange && pathname !== '/change-password') {
             return NextResponse.redirect(new URL('/change-password', request.url));
         }
 
-        // Role-based route protection using JWT role
+        // 3. Role-based protection
         if ((pathname.startsWith('/admin') || pathname === '/dashboard') && role !== 'admin') {
             return NextResponse.redirect(new URL(`/${role}`, request.url));
         }

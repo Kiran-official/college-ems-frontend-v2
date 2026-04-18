@@ -33,6 +33,11 @@ export async function createUserAction(data: {
             password: tempPassword,
             email_confirm: true,
             user_metadata: { display_name: data.name },
+            app_metadata: { 
+                role: data.role, 
+                is_active: true, 
+                must_change_password: true 
+            }
         })
 
         if (authError) {
@@ -142,11 +147,21 @@ export async function bulkCreateUsersAction(
             const existingAuthId = authEmailToId.get(emailLower)
 
             if (existingAuthId) {
-                // Auth user already exists — update their password and upsert the users row
-                await admin.auth.admin.updateUserById(existingAuthId, {
+                // Sync app_metadata before DB update
+                const { error: metaError } = await admin.auth.admin.updateUserById(existingAuthId, {
                     password: tempPassword,
                     user_metadata: { display_name: u.name },
+                    app_metadata: {
+                        role: role,
+                        is_active: true,
+                        must_change_password: true
+                    }
                 })
+
+                if (metaError) {
+                    errors.push(`${u.email}: Failed to sync auth metadata: ${metaError.message}`)
+                    continue
+                }
 
                 const { error: upsertError } = await admin.from('users').upsert(
                     { id: existingAuthId, ...userData },
@@ -168,6 +183,11 @@ export async function bulkCreateUsersAction(
                 password: tempPassword,
                 email_confirm: true,
                 user_metadata: { display_name: u.name },
+                app_metadata: {
+                    role: role,
+                    is_active: true,
+                    must_change_password: true
+                }
             })
 
             if (authError) {
@@ -215,8 +235,16 @@ export async function toggleUserActiveAction(
         if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
 
         const admin = createAdminClient()
+        
+        // 1. Sync app_metadata first (Ordered Sync)
+        const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+            app_metadata: { is_active: isActive }
+        })
+        if (authError) return { success: false, error: 'Auth sync failed: ' + authError.message }
+
+        // 2. Update database
         const { error } = await admin.from('users').update({ is_active: isActive }).eq('id', userId)
-        if (error) return { success: false, error: error.message }
+        if (error) return { success: false, error: 'Database update failed: ' + error.message }
 
         revalidatePath('/admin/users')
         return { success: true }
@@ -290,16 +318,22 @@ export async function updateUserCredentials(
 
         const admin = createAdminClient()
 
-        if (fields.email !== undefined) {
-            // Update auth email
-            const { error } = await admin.auth.admin.updateUserById(userId, { email: fields.email })
-            if (error) return { success: false, error: error.message }
-        }
-        
-        if (fields.password) {
-            // Update auth password
-            const { error } = await admin.auth.admin.updateUserById(userId, { password: fields.password })
-            if (error) return { success: false, error: error.message }
+        // Build forced app_metadata sync object
+        const metaUpdate: Record<string, any> = {}
+        if (fields.role !== undefined) metaUpdate.role = fields.role;
+        if (fields.active !== undefined) metaUpdate.is_active = fields.active;
+        // (Note: we don't have must_change_password in the fields input here usually, 
+        // but if we did we'd sync it too)
+
+        const authUpdate: any = {}
+        if (fields.email !== undefined) authUpdate.email = fields.email;
+        if (fields.password) authUpdate.password = fields.password;
+        if (Object.keys(metaUpdate).length > 0) authUpdate.app_metadata = metaUpdate;
+
+        if (Object.keys(authUpdate).length > 0) {
+            // Ordered Sync: Auth first
+            const { error } = await admin.auth.admin.updateUserById(userId, authUpdate)
+            if (error) return { success: false, error: 'Auth sync failed: ' + error.message }
         }
 
         // Update public.users
