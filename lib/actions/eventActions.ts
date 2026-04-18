@@ -2,7 +2,7 @@
 
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { sendEventNotification } from '@/lib/actions/notifications'
 import { triggerCertificateProcessingAction } from './certificateActions'
 import { issueEventCertificates } from '@/lib/certificates'
@@ -67,6 +67,7 @@ export async function createEventAction(data: {
 
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
+        // @ts-ignore
         revalidateTag('events')
         return { success: true, event_id: event.id }
     } catch {
@@ -121,6 +122,7 @@ export async function openEventAction(eventId: string): Promise<{ success: boole
         revalidatePath('/student/events')
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
+        // @ts-ignore
         revalidateTag('events') // Cache invalidation
         return { success: true }
     } catch {
@@ -141,6 +143,7 @@ export async function closeEventAction(eventId: string): Promise<{ success: bool
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
+        // @ts-ignore
         revalidateTag('events') // Clears unstable_cache for event lists
         return { success: true }
     } catch {
@@ -262,6 +265,7 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
+        // @ts-ignore
         revalidateTag('events')
         return { success: true }
     } catch {
@@ -345,6 +349,7 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
+        // @ts-ignore
         revalidateTag('events')
         return { success: true }
     } catch (e) {

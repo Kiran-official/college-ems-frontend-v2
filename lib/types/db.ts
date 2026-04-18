@@ -186,7 +186,7 @@ export interface Certificate {
 // Insert/Update = Record so `.insert()`/`.update()` accept any column payload.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRow = any
+type AnyRow = Record<string, any>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyInsert = Record<string, any>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
