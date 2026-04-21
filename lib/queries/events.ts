@@ -76,7 +76,7 @@ export async function getTeacherEvents(teacherId: string): Promise<Event[]> {
 // Also dynamically filters out closed events based on registration_deadline in the query itself.
 export const getUpcomingEvents = unstable_cache(
     async (): Promise<Event[]> => {
-        const supabase = await createSSRClient();
+        const supabase = createAdminClient();
         const now = new Date().toISOString();
         const { data } = await supabase
             .from('events')
@@ -93,7 +93,7 @@ export const getUpcomingEvents = unstable_cache(
 
 export const getCompletedEvents = unstable_cache(
     async (): Promise<Event[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('events')
             .select(EVENT_SELECT)
@@ -108,7 +108,7 @@ export const getCompletedEvents = unstable_cache(
 
 export const getClosedEvents = unstable_cache(
     async (): Promise<Event[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const now = new Date().toISOString();
         const { data } = await supabase
             .from('events')
@@ -125,7 +125,7 @@ export const getClosedEvents = unstable_cache(
 
 export const getUpcomingEventsCount = unstable_cache(
     async (): Promise<number> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const now = new Date().toISOString();
         const { count } = await supabase
             .from('events')

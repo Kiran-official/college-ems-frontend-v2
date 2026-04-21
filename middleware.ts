@@ -17,9 +17,8 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // Use getSession() — reads JWT from cookie locally, NO network call.
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user ?? null;
+    // Use getUser() — authenticates the JWT by contacting the Supabase Auth server.
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { pathname } = request.nextUrl;
 
