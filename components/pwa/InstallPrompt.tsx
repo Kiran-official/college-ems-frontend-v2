@@ -12,6 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 type BrowserType = 'chrome' | 'samsung' | 'firefox' | 'safari' | 'other';
 
 function detectBrowser(): BrowserType {
+  if (typeof window === 'undefined') return 'other';
   const ua = navigator.userAgent.toLowerCase();
   if (ua.includes('samsungbrowser')) return 'samsung';
   if (ua.includes('firefox')) return 'firefox';
@@ -20,14 +21,17 @@ function detectBrowser(): BrowserType {
   return 'other';
 }
 
+
 function isAndroid(): boolean {
   return /android/i.test(navigator.userAgent);
 }
 
 function isIOS(): boolean {
+  if (typeof window === 'undefined') return false;
   return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
+
 
 function isStandalone(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches ||
@@ -45,74 +49,82 @@ export function InstallPrompt() {
 
   // Handle browser install events
   useEffect(() => {
-    // Don't show if already installed as standalone
-    if (isStandalone()) return;
+    // Check if we can actually install
+    const canInstall = 'BeforeInstallPromptEvent' in window || isIOS();
+    if (!canInstall || isStandalone()) return;
 
     const dismissed = localStorage.getItem('pwa_install_dismissed');
-    const installed = localStorage.getItem('pwa_installed');
-    if (dismissed || installed) return;
+    if (dismissed) return;
 
     setBrowser(detectBrowser());
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setIsVisible(true);
+      
+      // Only show if user has visited more than once
+      const visits = Number(localStorage.getItem('pwa_visit_count') || 0);
+      if (visits > 1) {
+        setIsVisible(true);
+      }
     };
 
     const handleAppInstalled = () => {
       setIsVisible(false);
       setDeferredPrompt(null);
       localStorage.setItem('pwa_installed', 'true');
-      console.log('PWA was installed');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // For browsers that don't fire beforeinstallprompt (Samsung Internet, Firefox, etc.),
-    // show the manual install prompt after a delay
+    // Update visit count
+    const visits = Number(localStorage.getItem('pwa_visit_count') || 0) + 1;
+    localStorage.setItem('pwa_visit_count', visits.toString());
+
+    // Fallback for iOS/unsupported browsers: show manual prompt after delay on second visit
     const fallbackTimer = setTimeout(() => {
-      if (!deferredPrompt && (isAndroid() || isIOS())) {
-        setIsVisible(true);
+      if (!deferredPrompt && (isAndroid() || isIOS()) && visits > 1) {
+        const alreadyDismissed = localStorage.getItem('pwa_install_dismissed');
+        if (!alreadyDismissed) {
+          setIsVisible(true);
+        }
       }
-    }, 3000);
+    }, 5000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       clearTimeout(fallbackTimer);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); 
 
-  // Handle visibility based on route and state
+  // Route-based visibility refinement
   useEffect(() => {
-    // Determine if we're currently running AS an installed standalone app
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone === true);
-    
-    if (isStandalone) {
-      setIsVisible(false); // Never show if they are already inside the PWA!
+    if (isStandalone()) {
+      setIsVisible(false);
+      return;
+    }
+
+    const dismissed = localStorage.getItem('pwa_install_dismissed');
+    if (dismissed) {
+      setIsVisible(false);
       return;
     }
 
     const isLoginPage = pathname === '/login' || pathname === '/';
+    const visits = Number(localStorage.getItem('pwa_visit_count') || 0);
     
-    if (isLoginPage) {
-      // If we are in the regular browser, always show the prompt on the login page as a fallback
+    if (isLoginPage && visits > 1) {
       setIsVisible(true);
-      setIsDismissed(false);
-    } else {
-      // On other pages, only show if we received the browser prompt AND user hasn't dismissed it
-      const dismissed = localStorage.getItem('pwa_install_dismissed');
-      // If they installed it in the past but opened the browser, we won't show it except on login
-      if (!dismissed && deferredPrompt) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
+    } else if (!isLoginPage && !deferredPrompt) {
+      // Don't show on subpages unless we have a native prompt
+      setIsVisible(false);
     }
   }, [pathname, deferredPrompt]);
+
+
+
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {

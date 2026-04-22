@@ -28,6 +28,12 @@ export function ServiceWorkerRegistration() {
               });
             }
           });
+
+          // Handle controller change (automatic reload on new version)
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          });
+
         } catch (error) {
           console.error('SW registration failed:', error);
         }
