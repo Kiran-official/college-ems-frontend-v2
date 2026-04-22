@@ -29,7 +29,7 @@ export async function incrementSemesterAction(): Promise<{ success: boolean; err
             }
         }
         revalidatePath('/admin/users')
-        revalidateTag('users')
+        revalidateTag('users', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -54,7 +54,7 @@ export async function decrementSemesterAction(): Promise<{ success: boolean; err
             }
         }
         revalidatePath('/admin/users')
-        revalidateTag('users')
+        revalidateTag('users', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

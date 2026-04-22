@@ -76,7 +76,7 @@ export async function createEventAction(data: {
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         // @ts-ignore
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true, event_id: event.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -107,7 +107,7 @@ export async function updateEventAction(
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath(`/student/events/${eventId}`)
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -133,7 +133,7 @@ export async function openEventAction(eventId: string): Promise<{ success: boole
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         // @ts-ignore
-        revalidateTag('events') // Cache invalidation
+        revalidateTag('events', 'max') // Cache invalidation
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -154,7 +154,7 @@ export async function closeEventAction(eventId: string): Promise<{ success: bool
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
         // @ts-ignore
-        revalidateTag('events') // Clears unstable_cache for event lists
+        revalidateTag('events', 'max') // Clears unstable_cache for event lists
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -241,8 +241,8 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         revalidatePath('/admin')
         revalidatePath('/teacher')
         revalidatePath('/student')
-        revalidateTag('events')
-        revalidateTag('certificates')
+        revalidateTag('events', 'max')
+        revalidateTag('certificates', 'max')
 
         return { success: true }
     } catch (e) {
@@ -278,7 +278,7 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath('/student/events')
         // @ts-ignore
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -314,7 +314,7 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }
@@ -351,7 +351,7 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }
@@ -397,7 +397,7 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
         // @ts-ignore
-        revalidateTag('events')
+        revalidateTag('events', 'max')
         return { success: true }
     } catch (e) {
         console.error('Error in hardDeleteEventAction:', e)

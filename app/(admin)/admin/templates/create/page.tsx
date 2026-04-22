@@ -1,12 +1,7 @@
-import dynamic from 'next/dynamic'
+import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
 import { TemplatePickerScreen } from '@/components/templates/TemplatePickerScreen'
 import { getActiveEvents } from '@/lib/queries/events'
 import { getAllTemplates } from '@/lib/queries/templates'
-
-const TemplateBuilder = dynamic(() => import('@/components/templates/TemplateBuilder').then(mod => mod.TemplateBuilder), {
-  ssr: false,
-  loading: () => <div className="h-[600px] w-full bg-white/5 animate-pulse rounded-xl" />
-})
 
 interface Props {
     searchParams: Promise<{ mode?: string; eventId?: string; type?: string }>

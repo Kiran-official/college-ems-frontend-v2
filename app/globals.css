@@ -4866,7 +4866,7 @@ input[type="radio"]:focus-visible {
   z-index: 9200;
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Drag Handle (Mobile only) */

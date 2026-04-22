@@ -69,7 +69,7 @@ export async function createUserAction(data: {
         }
 
         revalidatePath('/admin/users')
-        revalidateTag('users')
+        revalidateTag('users', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -220,7 +220,7 @@ export async function bulkCreateUsersAction(
     }
 
     revalidatePath('/admin/users')
-    revalidateTag('users')
+    revalidateTag('users', 'max')
     return { created, skipped, errors }
 }
 
@@ -249,7 +249,7 @@ export async function toggleUserActiveAction(
         if (error) return { success: false, error: 'Database update failed: ' + error.message }
 
         revalidatePath('/admin/users')
-        revalidateTag('users')
+        revalidateTag('users', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -357,7 +357,7 @@ export async function updateUserCredentials(
         }
 
         revalidatePath('/admin/users')
-        revalidateTag('users')
+        revalidateTag('users', 'max')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

@@ -184,7 +184,11 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
 
     const handleFieldPointerDown = useCallback((fieldId: string, e: React.MouseEvent | React.TouchEvent) => {
         if (viewMode !== 'design') return
-        e.stopPropagation()
+        
+        // Don't stop propagation if multiple touches (could be a pinch start)
+        if (!('touches' in e) || e.touches.length === 1) {
+            e.stopPropagation()
+        }
         const isMulti = e.shiftKey || e.metaKey || e.ctrlKey // e might not have these for touch, but we check if present
 
         let nextSelected = new Set(selectedFieldIds)
@@ -297,7 +301,9 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
     }, [])
 
     const handleCanvasPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-        if (e.target !== canvasRef.current) return
+        // Allow pinch gestures (2 touches) even if target is an element inside the canvas
+        const isPinch = 'touches' in e && e.touches.length === 2;
+        if (e.target !== canvasRef.current && !isPinch) return
         
         let clientX = 0, clientY = 0
         if ('touches' in e) {
@@ -317,6 +323,7 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
 
         // Init marquee selection
         setSelectedFieldIds(new Set())
+        if (!canvasRef.current) return;
         const rect = canvasRef.current.getBoundingClientRect()
         const startX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
         const startY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
