@@ -2,7 +2,6 @@ const CACHE_NAME = 'sicm-ems-v1';
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS_TO_CACHE = [
-  '/',
   OFFLINE_URL,
   '/manifest.json'
 ];
@@ -46,19 +45,33 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    fetch(event.request)
-      .catch(async (error) => {
-        // Handle React/Next.js aborted navigation fetches gracefully instead of throwing timeouts
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+
+      // STALE-WHILE-REVALIDATE for Assets
+      if (url.pathname.startsWith('/assets/')) {
+        const cachedResponse = await cache.match(event.request);
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      }
+
+      // NETWORK-FIRST (with Offline Fallback) for everything else
+      try {
+        const networkResponse = await fetch(event.request);
+        // Optional: Cache successful page navigations for offline if needed
+        // but for now we keep it clean.
+        return networkResponse;
+      } catch (error) {
+        // Handle React/Next.js aborted navigation fetches gracefully
         if (error.name === 'AbortError') {
           return new Response(null, { status: 499, statusText: 'Client Closed Request' });
         }
 
-        const cache = await caches.open(CACHE_NAME);
         const cachedResponse = await cache.match(event.request);
-        
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+        if (cachedResponse) return cachedResponse;
 
         // Check if the user is explicitly requesting an HTML page
         const isHTMLRequest = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
@@ -72,7 +85,8 @@ self.addEventListener('fetch', (event) => {
           status: 408,
           headers: { 'Content-Type': 'text/plain' },
         });
-      })
+      }
+    })()
   );
 });
 

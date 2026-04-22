@@ -1,24 +1,28 @@
 import { redirect } from 'next/navigation'
-import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
+import dynamic from 'next/dynamic'
 import { TemplatePickerScreen } from '@/components/templates/TemplatePickerScreen'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getTeacherEvents, getEventsByCreator } from '@/lib/queries/events'
 import { getAllTemplates } from '@/lib/queries/templates'
+
+const TemplateBuilder = dynamic(() => import('@/components/templates/TemplateBuilder').then(mod => mod.TemplateBuilder), {
+  ssr: false,
+  loading: () => <div className="h-[600px] w-full bg-white/5 animate-pulse rounded-xl" />
+})
 
 interface Props {
     searchParams: Promise<{ mode?: string; eventId?: string; type?: string }>
 }
 
 export default async function TeacherCreateTemplatePage({ searchParams }: Props) {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
-
+    const session = await requireSession()
     const params = await searchParams
 
-    // Merge created + fic events
-    const [created, fic] = await Promise.all([
-        getEventsByCreator(user.id),
-        getTeacherEvents(user.id),
+    // Merge created + fic events IN PARALLEL
+    const [created, fic, existingTemplates] = await Promise.all([
+        getEventsByCreator(session.id),
+        getTeacherEvents(session.id),
+        getAllTemplates()
     ])
     const eventMap = new Map<string, typeof created[0]>()
     for (const e of [...created, ...fic]) eventMap.set(e.id, e)
@@ -28,9 +32,6 @@ export default async function TeacherCreateTemplatePage({ searchParams }: Props)
     if (params.mode === 'scratch') {
         return <TemplateBuilder events={events} basePath="/teacher/templates" />
     }
-
-    // Otherwise show the picker screen
-    const existingTemplates = await getAllTemplates()
 
     const initialEventId = params.eventId || ''
     const initialType = (params.type === 'winner' ? 'winner' : 'participation') as 'participation' | 'winner'

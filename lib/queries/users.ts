@@ -1,4 +1,6 @@
 import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { unstable_cache } from 'next/cache'
 import type { User, UserRole } from '@/lib/types/db'
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -8,30 +10,30 @@ export async function getCurrentUser(): Promise<User | null> {
 
     const { data } = await supabase
         .from('users')
-        .select('*, department:departments(*)')
+        .select('id, name, email, role, phone_number, department_id, programme, semester, student_type, is_active, must_change_password, created_at, department:departments(name)')
         .eq('id', user.id)
         .single()
-    return data
+    return data as unknown as User
 }
 
 export async function getUserById(id: string): Promise<User | null> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
-        .select('*, department:departments(*)')
+        .select('id, name, email, role, phone_number, department_id, programme, semester, student_type, is_active, must_change_password, created_at, department:departments(name)')
         .eq('id', id)
         .single()
-    return data
+    return data as unknown as User
 }
 
 export async function getUsersByRole(role: UserRole): Promise<User[]> {
     const supabase = await createSSRClient()
     const { data } = await supabase
         .from('users')
-        .select('*, department:departments(*)')
+        .select('id, name, email, role, department_id, programme, semester, is_active, must_change_password, created_at, department:departments(name)')
         .eq('role', role)
         .order('name')
-    return data ?? []
+    return (data as unknown as User[]) ?? []
 }
 
 export async function getTeachers(): Promise<User[]> {
@@ -73,22 +75,26 @@ export async function searchStudents(query: string): Promise<(Pick<User, 'id' | 
     return data ?? []
 }
 
-export async function getUserStats() {
-    const supabase = await createSSRClient()
-    const { count: totalUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-    const { count: totalStudents } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'student')
-    const { count: totalTeachers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'teacher')
-    return {
-        totalUsers: totalUsers ?? 0,
-        totalStudents: totalStudents ?? 0,
-        totalTeachers: totalTeachers ?? 0,
-    }
-}
+export const getUserStats = unstable_cache(
+    async () => {
+        const supabase = createAdminClient()
+        const { count: totalUsers } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+        const { count: totalStudents } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student')
+        const { count: totalTeachers } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'teacher')
+        return {
+            totalUsers: totalUsers ?? 0,
+            totalStudents: totalStudents ?? 0,
+            totalTeachers: totalTeachers ?? 0,
+        }
+    },
+    ['user-stats'],
+    { revalidate: 60, tags: ['users'] }
+)

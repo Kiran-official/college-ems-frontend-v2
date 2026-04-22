@@ -107,6 +107,7 @@ export async function updateEventAction(
         revalidatePath(`/admin/events/${eventId}`)
         revalidatePath(`/teacher/events/${eventId}`)
         revalidatePath(`/student/events/${eventId}`)
+        revalidateTag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -240,6 +241,8 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         revalidatePath('/admin')
         revalidatePath('/teacher')
         revalidatePath('/student')
+        revalidateTag('events')
+        revalidateTag('certificates')
 
         return { success: true }
     } catch (e) {
@@ -311,6 +314,7 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
+        revalidateTag('events')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }
@@ -347,6 +351,7 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         revalidatePath('/admin/events')
         revalidatePath('/teacher/events')
         revalidatePath('/student/events')
+        revalidateTag('events')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }

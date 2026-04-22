@@ -2,7 +2,7 @@
 
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export async function createUserAction(data: {
     name: string
@@ -69,6 +69,7 @@ export async function createUserAction(data: {
         }
 
         revalidatePath('/admin/users')
+        revalidateTag('users')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -219,6 +220,7 @@ export async function bulkCreateUsersAction(
     }
 
     revalidatePath('/admin/users')
+    revalidateTag('users')
     return { created, skipped, errors }
 }
 
@@ -247,6 +249,7 @@ export async function toggleUserActiveAction(
         if (error) return { success: false, error: 'Database update failed: ' + error.message }
 
         revalidatePath('/admin/users')
+        revalidateTag('users')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -354,6 +357,7 @@ export async function updateUserCredentials(
         }
 
         revalidatePath('/admin/users')
+        revalidateTag('users')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

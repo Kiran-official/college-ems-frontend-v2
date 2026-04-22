@@ -614,7 +614,7 @@ export function TemplateBuilder({ events, template, basePath }: TemplateBuilderP
                         className="cb-canvas"
                         style={{
                             transform: `scale(${zoom / 100})`,
-                            backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
+                            backgroundImage: bgUrl ? `url('${bgUrl}')` : undefined,
                             backgroundSize: bgUrl ? 'cover' : undefined,
                             backgroundPosition: 'center',
                         }}

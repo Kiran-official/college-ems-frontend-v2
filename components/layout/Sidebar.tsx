@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { MobileHeader } from './MobileHeader'
+import Image from 'next/image'
 
 interface SidebarProps {
     role: 'admin' | 'teacher' | 'student'
@@ -112,11 +113,13 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
 
                 {/* Header */}
                 <div className="sidebar__header">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                         src="/assets/logo.png"
                         alt="SICM Logo"
+                        width={40}
+                        height={40}
                         className="sidebar__logo"
+                        priority
                     />
                     {isExpanded && (
                         <div>

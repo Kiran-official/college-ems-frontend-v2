@@ -1,20 +1,20 @@
 import { Calendar, Activity, CheckCircle2, Award } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { getTeacherEventStats } from '@/lib/queries/events'
-import { getCurrentUser } from '@/lib/queries/users'
-import { redirect } from 'next/navigation'
+import { requireSession } from '@/lib/session'
 
 export default async function TeacherDashboard() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
-
-    const stats = await getTeacherEventStats(user.id)
+    const session = await requireSession()
+    
+    // FETCH DATA IN PARALLEL
+    const stats = await getTeacherEventStats(session.id)
+    const name = session.user_metadata?.name || session.email?.split('@')[0] || 'Teacher'
 
     return (
         <div className="page">
             <div className="page-header">
                 <div className="page-header__title-group">
-                    <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
+                    <h1 className="page-title">Welcome, {name.split(' ')[0]}</h1>
                     <p className="page-sub">Your event management overview</p>
                 </div>
             </div>

@@ -1,21 +1,21 @@
 import { redirect } from 'next/navigation'
 import { Calendar, Award, Hourglass, Activity } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getStudentRegistrationCount } from '@/lib/queries/registrations'
 import { getUpcomingEventsCount } from '@/lib/queries/events'
 import { getStudentCertificateCount } from '@/lib/queries/certificates'
 import { getStudentPendingResults } from '@/lib/queries/winners'
 
 export default async function StudentDashboard() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
+    const name = session.user_metadata?.name || session.email?.split('@')[0] || 'Student'
 
     const [regCount, upcomingCount, certCount, pendingResults] = await Promise.all([
-        getStudentRegistrationCount(user.id),
+        getStudentRegistrationCount(session.id),
         getUpcomingEventsCount(),
-        getStudentCertificateCount(user.id),
-        getStudentPendingResults(user.id),
+        getStudentCertificateCount(session.id),
+        getStudentPendingResults(session.id),
     ])
 
     return (
@@ -27,7 +27,7 @@ export default async function StudentDashboard() {
 
             <div className="page-header">
                 <div className="page-header__title-group">
-                    <h1 className="page-title">Welcome, {user.name.split(' ')[0]}</h1>
+                    <h1 className="page-title">Welcome, {name.split(' ')[0]}</h1>
                     <p className="page-sub">Your event participation overview</p>
                 </div>
             </div>

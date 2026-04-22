@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export async function incrementSemesterAction(): Promise<{ success: boolean; error?: string }> {
     try {
@@ -29,6 +29,7 @@ export async function incrementSemesterAction(): Promise<{ success: boolean; err
             }
         }
         revalidatePath('/admin/users')
+        revalidateTag('users')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -53,6 +54,7 @@ export async function decrementSemesterAction(): Promise<{ success: boolean; err
             }
         }
         revalidatePath('/admin/users')
+        revalidateTag('users')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

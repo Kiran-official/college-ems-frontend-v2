@@ -1,5 +1,6 @@
 import type { ReactNode, ElementType } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface StatCardProps {
     label: string
@@ -18,7 +19,14 @@ export function StatCard({ label, value, icon: Icon, imageIcon, href }: StatCard
             </div>
             <div className="stat-card__icon">
                 {imageIcon ? (
-                    <img src={imageIcon} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <Image 
+                        src={imageIcon} 
+                        alt={label} 
+                        fill 
+                        priority
+                        sizes="(max-width: 768px) 32px, 48px"
+                        style={{ objectFit: 'cover' }} 
+                    />
                 ) : Icon ? (
                     <Icon size={24} />
                 ) : null}

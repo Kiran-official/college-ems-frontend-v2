@@ -2,7 +2,7 @@
 
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TemplateLayout } from '@/lib/types/db'
 import { issueEventCertificates } from '@/lib/certificates'
 import { processPendingCertificates } from '@/lib/processing'
@@ -32,6 +32,7 @@ export async function retryCertificateAction(
 
         revalidatePath('/admin/certificates')
         revalidatePath('/teacher/certificates')
+        revalidateTag('certificates')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -72,6 +73,7 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
         if (error) return { success: false, error: error.message }
 
         revalidatePath('/admin/certificates')
+        revalidateTag('certificates')
         return { success: true, count: failed.length }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -118,6 +120,8 @@ export async function createTemplateAction(data: {
 
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
+        revalidateTag('certificates')
+        revalidateTag('events')
         return { success: true, template_id: template.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -147,6 +151,8 @@ export async function updateTemplateAction(
 
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
+        revalidateTag('certificates')
+        revalidateTag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -202,6 +208,8 @@ export async function deleteTemplateAction(
 
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
+        revalidateTag('certificates')
+        revalidateTag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -233,6 +241,8 @@ export async function cloneTemplateAction(sourceTemplateId: string, targetEventI
 
         revalidatePath('/admin/templates')
         revalidatePath('/teacher/templates')
+        revalidateTag('certificates')
+        revalidateTag('events')
         return { success: true, template_id: cloned.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
