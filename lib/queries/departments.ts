@@ -1,11 +1,12 @@
 import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Department } from '@/lib/types/db'
 
 import { unstable_cache } from 'next/cache'
 
 export const getDepartments = unstable_cache(
     async (): Promise<Department[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('departments')
             .select('id, name, is_active, created_at')

@@ -1,4 +1,4 @@
-import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
+import { TemplateBuilderWrapper } from '@/components/templates/TemplateBuilderWrapper'
 import { TemplatePickerScreen } from '@/components/templates/TemplatePickerScreen'
 import { getActiveEvents } from '@/lib/queries/events'
 import { getAllTemplates } from '@/lib/queries/templates'
@@ -13,7 +13,7 @@ export default async function AdminCreateTemplatePage({ searchParams }: Props) {
 
     // If mode=scratch, go directly to builder
     if (params.mode === 'scratch') {
-        return <TemplateBuilder events={events} basePath="/admin/templates" />
+        return <TemplateBuilderWrapper events={events} basePath="/admin/templates" />
     }
 
     // Otherwise show the picker screen

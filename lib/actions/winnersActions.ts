@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+const revalidate = { path: revalidatePath as any }
 
 export async function declareWinnerAction(data: {
     event_id: string
@@ -40,12 +41,12 @@ export async function declareWinnerAction(data: {
         const { error } = await admin.from('winners').insert(insertData as any)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
-        revalidatePath(`/student/events/${data.event_id}`)
-        revalidatePath('/admin')
-        revalidatePath('/teacher')
-        revalidatePath('/student')
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
+        revalidate.path('/admin')
+        revalidate.path('/teacher')
+        revalidate.path('/student')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -68,12 +69,12 @@ export async function removeWinnerAction(winnerId: string, eventId: string): Pro
         const { error } = await admin.from('winners').delete().eq('id', winnerId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath(`/student/events/${eventId}`)
-        revalidatePath('/admin')
-        revalidatePath('/teacher')
-        revalidatePath('/student')
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path(`/student/events/${eventId}`)
+        revalidate.path('/admin')
+        revalidate.path('/teacher')
+        revalidate.path('/student')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

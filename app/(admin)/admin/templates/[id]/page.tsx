@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
+import { TemplateBuilderWrapper } from '@/components/templates/TemplateBuilderWrapper'
 import { getTemplateById } from '@/lib/queries/templates'
 import { getActiveEvents } from '@/lib/queries/events'
 
@@ -15,5 +15,5 @@ export default async function AdminTemplateDetailPage({ params }: Props) {
     ])
     if (!template) notFound()
 
-    return <TemplateBuilder events={events} template={template} basePath="/admin/templates" />
+    return <TemplateBuilderWrapper events={events} template={template} basePath="/admin/templates" />
 }

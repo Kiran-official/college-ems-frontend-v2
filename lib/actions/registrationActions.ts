@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+const revalidate = { path: revalidatePath as any }
 import { validateTeamCapacity } from './teams'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -39,7 +40,7 @@ export async function registerForEventAction(data: {
         })
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -74,9 +75,9 @@ export async function cancelRegistrationAction(
         const { error } = await admin.from('individual_registrations').delete().eq('id', registrationId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${reg.event_id}`)
-        revalidatePath(`/admin/events/${reg.event_id}`)
-        revalidatePath(`/teacher/events/${reg.event_id}`)
+        revalidate.path(`/student/events/${reg.event_id}`)
+        revalidate.path(`/admin/events/${reg.event_id}`)
+        revalidate.path(`/teacher/events/${reg.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -108,9 +109,9 @@ export async function deleteRegistrationAction(
         const { error } = await admin.from('individual_registrations').delete().eq('id', registrationId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${reg.event_id}`)
-        revalidatePath(`/teacher/events/${reg.event_id}`)
-        revalidatePath(`/student/events/${reg.event_id}`)
+        revalidate.path(`/admin/events/${reg.event_id}`)
+        revalidate.path(`/teacher/events/${reg.event_id}`)
+        revalidate.path(`/student/events/${reg.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -225,7 +226,7 @@ export async function createTeamAction(data: {
             )
         }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true, team_id: team.id }
     } catch (e) {
         console.error('createTeamAction error:', e)
@@ -263,7 +264,7 @@ export async function editTeamAction(data: {
         const { error } = await admin.from('teams').update({ team_name: data.new_name.trim() }).eq('id', data.team_id)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -306,7 +307,7 @@ export async function joinTeamAction(data: {
         })
         if (tmError) return { success: false, error: tmError.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -363,7 +364,7 @@ export async function sendInviteAction(data: {
         })
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -432,7 +433,7 @@ export async function acceptInviteAction(data: {
             })
         }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -456,7 +457,7 @@ export async function declineInviteAction(data: {
 
         await admin.from('team_members').delete().eq('id', data.team_member_id)
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -513,7 +514,7 @@ export async function approveJoinRequestAction(data: {
             })
         }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -540,7 +541,7 @@ export async function rejectJoinRequestAction(data: {
 
         await admin.from('team_members').delete().eq('id', data.team_member_id)
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -570,9 +571,9 @@ export async function removeMemberAction(data: {
         await admin.from('team_members').delete().eq('id', data.team_member_id)
         await admin.from('individual_registrations').update({ team_id: null }).eq('student_id', tm.student_id).eq('team_id', tm.team_id)
 
-        revalidatePath(`/student/events/${data.event_id}`)
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -603,7 +604,7 @@ export async function deleteTeamAction(data: {
         const { error } = await admin.from('teams').delete().eq('id', data.team_id)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -628,7 +629,7 @@ export async function leaveTeamAction(data: {
         await admin.from('team_members').delete().eq('team_id', data.team_id).eq('student_id', user.id)
         await admin.from('individual_registrations').delete().eq('team_id', data.team_id).eq('student_id', user.id).eq('event_id', data.event_id)
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -665,7 +666,7 @@ export async function registerParticipantAction(
         }
 
         const { data: event } = await admin.from('events')
-            .select('status, registration_deadline, visibility, participant_type, team_size')
+            .select('status, registration_deadline, visibility, participant_type, team_size, is_paid')
             .eq('id', input.eventId)
             .single()
 
@@ -711,8 +712,7 @@ export async function registerParticipantAction(
             }
         }
 
-        const { data: evData } = await admin.from('events').select('is_paid').eq('id', input.eventId).single()
-        const isPaid = evData?.is_paid ?? false
+        const isPaid = (event as any)?.is_paid ?? false
 
         let finalTeamId: string | null = null
         let isVerified = false
@@ -825,9 +825,9 @@ export async function registerParticipantAction(
             return { success: false, error: regError.message }
         }
 
-        revalidatePath(`/admin/events/${input.eventId}`)
-        revalidatePath(`/teacher/events/${input.eventId}`)
-        revalidatePath(`/events/${input.eventId}`)
+        revalidate.path(`/admin/events/${input.eventId}`)
+        revalidate.path(`/teacher/events/${input.eventId}`)
+        revalidate.path(`/events/${input.eventId}`)
 
         return { success: true, teamId: finalTeamId }
     } catch (error) {
@@ -898,9 +898,9 @@ export async function uploadPaymentProofAction(data: {
             if (updateError) return { success: false, error: updateError.message }
         }
 
-        revalidatePath(`/student/events/${data.event_id}`)
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
         return { success: true }
     } catch (e) {
         console.error('uploadPaymentProofAction error:', e)
@@ -944,9 +944,9 @@ export async function verifyPaymentAction(data: {
              return { success: false, error: 'No target specified' }
         }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -990,9 +990,9 @@ export async function rejectPaymentAction(data: {
             if (error) return { success: false, error: error.message }
         }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -1026,7 +1026,7 @@ export async function requestRefundAction(data: {
             if (error) return { success: false, error: error.message }
         }
 
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -1062,9 +1062,9 @@ export async function processRefundAction(data: {
             if (error) return { success: false, error: error.message }
         }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -1123,9 +1123,9 @@ export async function transferLeadershipAction(data: {
         const { error } = await admin.from('teams').update({ leader_id: data.new_leader_id }).eq('id', data.team_id)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/student/events/${data.event_id}`)
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

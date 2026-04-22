@@ -9,15 +9,17 @@ export default async function StudentLayout({ children }: { children: React.Reac
     
     // Use app_metadata (admin-controlled) for role verification
     let role = user.app_metadata?.role
-    let name = user.user_metadata?.name || user.email?.split('@')[0] || 'Student'
+    let name = user.user_metadata?.display_name || user.user_metadata?.name
 
     // Transition Fallback: If metadata is missing (old session), check DB once
-    if (!role) {
+    if (!role || !name) {
         const { data } = await (await createSSRClient())
             .from('users').select('role, name').eq('id', user.id).single()
-        role = data?.role
+        role = role || data?.role
         if (data?.name) name = data.name
     }
+
+    name = name || user.email?.split('@')[0] || 'Student'
 
     if (role !== 'student') {
         redirect(`/${role ?? 'login'}`)

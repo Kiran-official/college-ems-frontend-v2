@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+const revalidate = { path: revalidatePath as any }
 
 export async function updateAttendanceAction(data: {
     registration_id: string
@@ -44,8 +45,8 @@ export async function updateAttendanceAction(data: {
             .eq('id', data.registration_id)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${reg.event_id}`)
-        revalidatePath(`/teacher/events/${reg.event_id}`)
+        revalidate.path(`/admin/events/${reg.event_id}`)
+        revalidate.path(`/teacher/events/${reg.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -76,8 +77,8 @@ export async function bulkUpdateAttendanceAction(data: {
 
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

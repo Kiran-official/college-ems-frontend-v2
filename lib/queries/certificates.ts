@@ -20,7 +20,7 @@ export async function getCertificatesByEvent(eventId: string): Promise<Certifica
 
 export const getCertificatesByStudent = unstable_cache(
     async (studentId: string): Promise<Certificate[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('certificates')
             .select(`
@@ -39,7 +39,7 @@ export const getCertificatesByStudent = unstable_cache(
 
 export const getAllCertificates = unstable_cache(
     async (): Promise<Certificate[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('certificates')
             .select(`
@@ -100,15 +100,19 @@ export async function getCertificateStatsByEvent(eventId: string) {
     }
 }
 
-export async function getStudentCertificateCount(studentId: string): Promise<number> {
-    const supabase = await createSSRClient()
-    const { count } = await supabase
-        .from('certificates')
-        .select('*', { count: 'exact', head: true })
-        .eq('student_id', studentId)
-        .eq('status', 'generated')
-    return count ?? 0
-}
+export const getStudentCertificateCount = unstable_cache(
+    async (studentId: string): Promise<number> => {
+        const supabase = createAdminClient()
+        const { count } = await supabase
+            .from('certificates')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', studentId)
+            .eq('status', 'generated')
+        return count ?? 0
+    },
+    ['student-cert-count'],
+    { revalidate: 60, tags: ['certificates'] }
+)
 
 export async function getTemplatesByEvent(eventId: string): Promise<any[]> {
     const supabase = await createSSRClient()

@@ -9,7 +9,13 @@ import { getStudentPendingResults } from '@/lib/queries/winners'
 
 export default async function StudentDashboard() {
     const session = await requireSession()
-    const name = session.user_metadata?.name || session.email?.split('@')[0] || 'Student'
+    let name = session.user_metadata?.display_name || session.user_metadata?.name
+    if (!name) {
+        const { createSSRClient } = await import('@/lib/supabase/server')
+        const { data } = await (await createSSRClient()).from('users').select('name').eq('id', session.id).single()
+        if (data?.name) name = data.name
+    }
+    name = name || session.email?.split('@')[0] || 'Student'
 
     const [regCount, upcomingCount, certCount, pendingResults] = await Promise.all([
         getStudentRegistrationCount(session.id),

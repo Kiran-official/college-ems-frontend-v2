@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+const revalidate = { path: revalidatePath as any }
 
 export async function createTeam(eventId: string, name: string): Promise<{ success: boolean; team?: any; error?: string }> {
     try {
@@ -20,9 +21,9 @@ export async function createTeam(eventId: string, name: string): Promise<{ succe
 
         if (error) return { success: false, error: error.message }
         
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath(`/events/${eventId}`)
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path(`/events/${eventId}`)
         
         return { success: true, team }
     } catch (err: any) {
@@ -59,9 +60,9 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; er
         if (error) return { success: false, error: error.message }
 
         if (team) {
-            revalidatePath(`/admin/events/${team.event_id}`)
-            revalidatePath(`/teacher/events/${team.event_id}`)
-            revalidatePath(`/events/${team.event_id}`)
+            revalidate.path(`/admin/events/${team.event_id}`)
+            revalidate.path(`/teacher/events/${team.event_id}`)
+            revalidate.path(`/events/${team.event_id}`)
         }
 
         return { success: true }

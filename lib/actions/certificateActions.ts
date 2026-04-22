@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
+const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import type { TemplateLayout } from '@/lib/types/db'
 import { issueEventCertificates } from '@/lib/certificates'
 import { processPendingCertificates } from '@/lib/processing'
@@ -30,9 +31,9 @@ export async function retryCertificateAction(
             .eq('id', certificateId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/certificates')
-        revalidatePath('/teacher/certificates')
-        revalidateTag('certificates', 'max')
+        revalidate.path('/admin/certificates')
+        revalidate.path('/teacher/certificates')
+        revalidate.tag('certificates')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -72,8 +73,8 @@ export async function retryAllFailedCertificatesAction(): Promise<{ success: boo
             .eq('status', 'failed')
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/certificates')
-        revalidateTag('certificates', 'max')
+        revalidate.path('/admin/certificates')
+        revalidate.tag('certificates')
         return { success: true, count: failed.length }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -118,10 +119,10 @@ export async function createTemplateAction(data: {
 
         if (error || !template) return { success: false, error: error?.message ?? 'Failed to create template' }
 
-        revalidatePath('/admin/templates')
-        revalidatePath('/teacher/templates')
-        revalidateTag('certificates', 'max')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/templates')
+        revalidate.path('/teacher/templates')
+        revalidate.tag('certificates')
+        revalidate.tag('events')
         return { success: true, template_id: template.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -149,10 +150,10 @@ export async function updateTemplateAction(
         const { error } = await admin.from('certificate_templates').update(data).eq('id', templateId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/templates')
-        revalidatePath('/teacher/templates')
-        revalidateTag('certificates', 'max')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/templates')
+        revalidate.path('/teacher/templates')
+        revalidate.tag('certificates')
+        revalidate.tag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -206,10 +207,10 @@ export async function deleteTemplateAction(
             if (error) return { success: false, error: error.message }
         }
 
-        revalidatePath('/admin/templates')
-        revalidatePath('/teacher/templates')
-        revalidateTag('certificates', 'max')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/templates')
+        revalidate.path('/teacher/templates')
+        revalidate.tag('certificates')
+        revalidate.tag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -239,10 +240,10 @@ export async function cloneTemplateAction(sourceTemplateId: string, targetEventI
 
         if (insertErr || !cloned) return { success: false, error: insertErr?.message || 'Failed to clone' }
 
-        revalidatePath('/admin/templates')
-        revalidatePath('/teacher/templates')
-        revalidateTag('certificates', 'max')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/templates')
+        revalidate.path('/teacher/templates')
+        revalidate.tag('certificates')
+        revalidate.tag('events')
         return { success: true, template_id: cloned.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }

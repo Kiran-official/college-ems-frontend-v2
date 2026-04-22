@@ -8,7 +8,13 @@ export default async function TeacherDashboard() {
     
     // FETCH DATA IN PARALLEL
     const stats = await getTeacherEventStats(session.id)
-    const name = session.user_metadata?.name || session.email?.split('@')[0] || 'Teacher'
+    let name = session.user_metadata?.display_name || session.user_metadata?.name
+    if (!name) {
+        const { createSSRClient } = await import('@/lib/supabase/server')
+        const { data } = await (await createSSRClient()).from('users').select('name').eq('id', session.id).single()
+        if (data?.name) name = data.name
+    }
+    name = name || session.email?.split('@')[0] || 'Teacher'
 
     return (
         <div className="page">

@@ -78,17 +78,19 @@ export async function searchStudents(query: string): Promise<(Pick<User, 'id' | 
 export const getUserStats = unstable_cache(
     async () => {
         const supabase = createAdminClient()
-        const { count: totalUsers } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-        const { count: totalStudents } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student')
-        const { count: totalTeachers } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'teacher')
+        const [{ count: totalUsers }, { count: totalStudents }, { count: totalTeachers }] = await Promise.all([
+            supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true }),
+            supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'student'),
+            supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'teacher'),
+        ])
         return {
             totalUsers: totalUsers ?? 0,
             totalStudents: totalStudents ?? 0,

@@ -18,7 +18,7 @@ const EVENT_DETAIL_SELECT = `
 
 export const getAllEvents = unstable_cache(
     async (): Promise<Event[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('events')
             .select(EVENT_LIST_SELECT)
@@ -31,7 +31,7 @@ export const getAllEvents = unstable_cache(
 
 export const getActiveEvents = unstable_cache(
     async (): Promise<Event[]> => {
-        const supabase = await createSSRClient()
+        const supabase = createAdminClient()
         const { data } = await supabase
             .from('events')
             .select(EVENT_LIST_SELECT)
@@ -156,14 +156,16 @@ export const getUpcomingEventsCount = unstable_cache(
 export const getEventStats = unstable_cache(
     async () => {
         const supabase = createAdminClient()
-        const { count: totalEvents } = await supabase
-            .from('events')
-            .select('*', { count: 'exact', head: true })
-        const { count: activeEvents } = await supabase
-            .from('events')
-            .select('*', { count: 'exact', head: true })
-            .in('status', ['open', 'closed'])
-            .eq('is_active', true)
+        const [{ count: totalEvents }, { count: activeEvents }] = await Promise.all([
+            supabase
+                .from('events')
+                .select('*', { count: 'exact', head: true }),
+            supabase
+                .from('events')
+                .select('*', { count: 'exact', head: true })
+                .in('status', ['open', 'closed'])
+                .eq('is_active', true),
+        ])
 
         return {
             totalEvents: totalEvents ?? 0,
@@ -183,23 +185,25 @@ export async function getTeacherEventStats(teacherId: string) {
     const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
     if (eventIds.length === 0) return { myEvents: 0, activeEvents: 0, completedEvents: 0 }
 
-    const { count: myEvents } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .in('id', eventIds)
-        .eq('is_active', true)
-    const { count: activeEvents } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .in('id', eventIds)
-        .in('status', ['open', 'closed'])
-        .eq('is_active', true)
-    const { count: completedEvents } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .in('id', eventIds)
-        .eq('status', 'completed')
-        .eq('is_active', true)
+    const [{ count: myEvents }, { count: activeEvents }, { count: completedEvents }] = await Promise.all([
+        supabase
+            .from('events')
+            .select('*', { count: 'exact', head: true })
+            .in('id', eventIds)
+            .eq('is_active', true),
+        supabase
+            .from('events')
+            .select('*', { count: 'exact', head: true })
+            .in('id', eventIds)
+            .in('status', ['open', 'closed'])
+            .eq('is_active', true),
+        supabase
+            .from('events')
+            .select('*', { count: 'exact', head: true })
+            .in('id', eventIds)
+            .eq('status', 'completed')
+            .eq('is_active', true),
+    ])
 
     return {
         myEvents: myEvents ?? 0,

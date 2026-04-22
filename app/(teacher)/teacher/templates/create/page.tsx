@@ -4,7 +4,7 @@ import { requireSession } from '@/lib/session'
 import { getTeacherEvents, getEventsByCreator } from '@/lib/queries/events'
 import { getAllTemplates } from '@/lib/queries/templates'
 
-import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
+import { TemplateBuilderWrapper } from '@/components/templates/TemplateBuilderWrapper'
 
 interface Props {
     searchParams: Promise<{ mode?: string; eventId?: string; type?: string }>
@@ -26,7 +26,7 @@ export default async function TeacherCreateTemplatePage({ searchParams }: Props)
 
     // If mode=scratch, go directly to builder
     if (params.mode === 'scratch') {
-        return <TemplateBuilder events={events} basePath="/teacher/templates" />
+        return <TemplateBuilderWrapper events={events} basePath="/teacher/templates" />
     }
 
     const initialEventId = params.eventId || ''

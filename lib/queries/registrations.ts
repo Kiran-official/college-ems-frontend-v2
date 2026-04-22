@@ -1,4 +1,6 @@
 import { createSSRClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { unstable_cache } from 'next/cache'
 import type { IndividualRegistration, Team } from '@/lib/types/db'
 
 export async function getRegistrationsByEvent(eventId: string): Promise<IndividualRegistration[]> {
@@ -82,11 +84,15 @@ export async function getRegistrationCount(eventId: string): Promise<number> {
     return count ?? 0
 }
 
-export async function getStudentRegistrationCount(studentId: string): Promise<number> {
-    const supabase = await createSSRClient()
-    const { count } = await supabase
-        .from('individual_registrations')
-        .select('*', { count: 'exact', head: true })
-        .eq('student_id', studentId)
-    return count ?? 0
-}
+export const getStudentRegistrationCount = unstable_cache(
+    async (studentId: string): Promise<number> => {
+        const supabase = createAdminClient()
+        const { count } = await supabase
+            .from('individual_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', studentId)
+        return count ?? 0
+    },
+    ['student-reg-count'],
+    { revalidate: 60, tags: ['registrations'] }
+)

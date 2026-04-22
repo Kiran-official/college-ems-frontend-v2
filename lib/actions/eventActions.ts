@@ -3,6 +3,7 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
+const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import { sendEventNotification } from '@/lib/actions/notifications'
 import { triggerCertificateProcessingAction } from './certificateActions'
 import { issueEventCertificates } from '@/lib/certificates'
@@ -73,10 +74,9 @@ export async function createEventAction(data: {
             }
         }
 
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        // @ts-ignore
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.tag('events')
         return { success: true, event_id: event.id }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -104,10 +104,10 @@ export async function updateEventAction(
         const { error } = await admin.from('events').update(data).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath(`/student/events/${eventId}`)
-        revalidateTag('events', 'max')
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path(`/student/events/${eventId}`)
+        revalidate.tag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -127,13 +127,12 @@ export async function openEventAction(eventId: string): Promise<{ success: boole
         // Trigger PWA Push Notifications
         sendEventNotification(eventId).catch(e => console.error('Push trigger failed:', e))
 
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath('/student/events')
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        // @ts-ignore
-        revalidateTag('events', 'max') // Cache invalidation
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path('/student/events')
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.tag('events') // Cache invalidation
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -150,11 +149,10 @@ export async function closeEventAction(eventId: string): Promise<{ success: bool
         const { error } = await admin.from('events').update({ status: 'closed' }).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath('/student/events')
-        // @ts-ignore
-        revalidateTag('events', 'max') // Clears unstable_cache for event lists
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path('/student/events')
+        revalidate.tag('events') // Clears unstable_cache for event lists
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -232,17 +230,17 @@ export async function publishResultsAction(eventId: string): Promise<{ success: 
         }
 
         // Revalidate everywhere
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath(`/student/events/${eventId}`)
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        revalidatePath('/student/events')
-        revalidatePath('/admin')
-        revalidatePath('/teacher')
-        revalidatePath('/student')
-        revalidateTag('events', 'max')
-        revalidateTag('certificates', 'max')
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path(`/student/events/${eventId}`)
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.path('/student/events')
+        revalidate.path('/admin')
+        revalidate.path('/teacher')
+        revalidate.path('/student')
+        revalidate.tag('events')
+        revalidate.tag('certificates')
 
         return { success: true }
     } catch (e) {
@@ -274,11 +272,10 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
         const { error } = await admin.from('events').update({ status: 'completed' }).eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${eventId}`)
-        revalidatePath(`/teacher/events/${eventId}`)
-        revalidatePath('/student/events')
-        // @ts-ignore
-        revalidateTag('events', 'max')
+        revalidate.path(`/admin/events/${eventId}`)
+        revalidate.path(`/teacher/events/${eventId}`)
+        revalidate.path('/student/events')
+        revalidate.tag('events')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -311,10 +308,10 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
         
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        revalidatePath('/student/events')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.path('/student/events')
+        revalidate.tag('events')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }
@@ -348,10 +345,10 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
         
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        revalidatePath('/student/events')
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.path('/student/events')
+        revalidate.tag('events')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'An unexpected error occurred' }
@@ -393,11 +390,10 @@ export async function hardDeleteEventAction(eventId: string): Promise<{ success:
         const { error } = await admin.from('events').delete().eq('id', eventId)
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/admin/events')
-        revalidatePath('/teacher/events')
-        revalidatePath('/student/events')
-        // @ts-ignore
-        revalidateTag('events', 'max')
+        revalidate.path('/admin/events')
+        revalidate.path('/teacher/events')
+        revalidate.path('/student/events')
+        revalidate.tag('events')
         return { success: true }
     } catch (e) {
         console.error('Error in hardDeleteEventAction:', e)
@@ -435,9 +431,9 @@ export async function addParticipantAfterCloseAction(data: {
         })
         if (error) return { success: false, error: error.message }
 
-        revalidatePath(`/admin/events/${data.event_id}`)
-        revalidatePath(`/teacher/events/${data.event_id}`)
-        revalidatePath(`/student/events/${data.event_id}`)
+        revalidate.path(`/admin/events/${data.event_id}`)
+        revalidate.path(`/teacher/events/${data.event_id}`)
+        revalidate.path(`/student/events/${data.event_id}`)
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -504,9 +500,9 @@ export async function autoClosePastEventsAction(): Promise<{ success: boolean; c
             .select('id');
         if (error) return { success: false, error: error.message };
         // Revalidate paths for affected events list pages
-        revalidatePath('/student/events');
-        revalidatePath('/admin/events');
-        revalidatePath('/teacher/events');
+        revalidate.path('/student/events');
+        revalidate.path('/admin/events');
+        revalidate.path('/teacher/events');
         return { success: true, closedCount: updated?.length };
     } catch (e) {
         return { success: false, error: (e as Error).message };

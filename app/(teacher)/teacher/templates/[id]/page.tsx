@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { TemplateBuilder } from '@/components/templates/TemplateBuilder'
+import { TemplateBuilderWrapper } from '@/components/templates/TemplateBuilderWrapper'
 import { getTemplateById } from '@/lib/queries/templates'
 import { getCurrentUser } from '@/lib/queries/users'
 import { getTeacherEvents, getEventsByCreator } from '@/lib/queries/events'
@@ -24,5 +24,5 @@ export default async function TeacherTemplateDetailPage({ params }: Props) {
     for (const e of [...created, ...fic]) eventMap.set(e.id, e)
     const events = Array.from(eventMap.values())
 
-    return <TemplateBuilder events={events} template={template} basePath="/teacher/templates" />
+    return <TemplateBuilderWrapper events={events} template={template} basePath="/teacher/templates" />
 }

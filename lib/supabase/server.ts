@@ -1,5 +1,4 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 // SSR client — uses anon key + cookie session — for Server Components and Server Actions (reads)
