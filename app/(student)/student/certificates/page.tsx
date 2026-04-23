@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getCertificatesByStudent } from '@/lib/queries/certificates'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -7,10 +6,9 @@ import { Award } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default async function StudentCertificatesPage() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
 
-    const certificates = await getCertificatesByStudent(user.id)
+    const certificates = await getCertificatesByStudent(session.id)
 
     return (
         <div className="page">

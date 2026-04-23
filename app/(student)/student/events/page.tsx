@@ -1,24 +1,31 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getUpcomingEvents, getClosedEvents, getCompletedEvents } from '@/lib/queries/events'
 import { getRegistrationsByStudent } from '@/lib/queries/registrations'
 import { StudentEventsList } from '@/components/student/StudentEventsList'
 
 export default async function StudentEventsPage() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
+
+    // Fetch student_type from app_metadata or lightweight DB query
+    let studentType = session.app_metadata?.student_type
+    if (!studentType) {
+        const { createSSRClient } = await import('@/lib/supabase/server')
+        const { data } = await (await createSSRClient()).from('users').select('student_type').eq('id', session.id).single()
+        studentType = data?.student_type
+    }
 
     const [upcoming, closed, completed, myRegs] = await Promise.all([
         getUpcomingEvents(),
         getClosedEvents(),
         getCompletedEvents(),
-        getRegistrationsByStudent(user.id),
+        getRegistrationsByStudent(session.id),
     ])
 
     const registeredIds = new Set(myRegs.map(r => r.event_id))
 
     // Filter by visibility
-    const isExternal = user.student_type === 'external'
+    const isExternal = studentType === 'external'
     function isVisible(event: typeof upcoming[0]) {
         if (event.visibility === 'public_all') return true
         if (event.visibility === 'internal_only' && !isExternal) return true

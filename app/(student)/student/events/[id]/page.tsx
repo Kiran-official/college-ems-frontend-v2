@@ -1,5 +1,5 @@
-import { notFound, redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { notFound } from 'next/navigation'
+import { requireSession } from '@/lib/session'
 import { getEventById } from '@/lib/queries/events'
 import { getStudentRegistrationForEvent, getTeamsByEvent, getRegistrationsByEvent } from '@/lib/queries/registrations'
 import { getWinnersByEvent } from '@/lib/queries/winners'
@@ -13,19 +13,18 @@ interface Props {
 
 export default async function StudentEventDetailPage({ params }: Props) {
     const { id } = await params
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
 
     const event = await getEventById(id)
     if (!event || !event.is_active) notFound()
 
-    // Get registration status
-    const registration = await getStudentRegistrationForEvent(user.id, id)
-
-    // Get teams and winners for display
-    const teams = await getTeamsByEvent(id)
-    const registrations = await getRegistrationsByEvent(id)
-    const winners = event.results_published ? await getWinnersByEvent(id) : []
+    // Parallel fetch all data that depends on event/user
+    const [registration, teams, registrations, winners] = await Promise.all([
+        getStudentRegistrationForEvent(session.id, id),
+        getTeamsByEvent(id),
+        getRegistrationsByEvent(id),
+        event.results_published ? getWinnersByEvent(id) : Promise.resolve([]),
+    ])
 
     const isDeadlinePassed = new Date() >= new Date(event.registration_deadline)
 
@@ -105,7 +104,7 @@ export default async function StudentEventDetailPage({ params }: Props) {
                     registrations={registrations}
                     teams={teams}
                     winners={winners}
-                    studentId={user.id}
+                    studentId={session.id}
                     isDeadlinePassed={isDeadlinePassed}
                 />
             </section>

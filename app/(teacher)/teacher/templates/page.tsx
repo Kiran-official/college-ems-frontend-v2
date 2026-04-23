@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getTemplatesByCreator } from '@/lib/queries/templates'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -8,10 +7,9 @@ import { FileText, Plus, LayoutTemplate, Star, ArrowRight, Globe } from 'lucide-
 import { format } from 'date-fns'
 
 export default async function TeacherTemplatesPage() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
 
-    const templates = await getTemplatesByCreator(user.id)
+    const templates = await getTemplatesByCreator(session.id)
 
     return (
         <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>

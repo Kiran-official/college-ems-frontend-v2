@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Award } from 'lucide-react'
@@ -7,15 +6,14 @@ import { format } from 'date-fns'
 import { createSSRClient } from '@/lib/supabase/server'
 
 export default async function TeacherCertificatesPage() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    const session = await requireSession()
 
     // Get events this teacher is assigned to
     const supabase = await createSSRClient()
     const { data: ficRows } = await supabase
         .from('faculty_in_charge')
         .select('event_id')
-        .eq('teacher_id', user.id)
+        .eq('teacher_id', session.id)
     const eventIds = [...new Set(ficRows?.map(r => r.event_id) ?? [])]
 
     let certificates: any[] = []

@@ -1,16 +1,14 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/queries/users'
+import { requireSession } from '@/lib/session'
 import { getActiveEvents } from '@/lib/queries/events'
 import { Plus } from 'lucide-react'
 import { TeacherEventsList } from '@/components/teacher/TeacherEventsList'
 
 export default async function TeacherEventsPage() {
-    const user = await getCurrentUser()
-    if (!user) redirect('/login')
-
-    // Get ALL active events
-    const events = await getActiveEvents()
+    const [session, events] = await Promise.all([
+        requireSession(),
+        getActiveEvents(),
+    ])
 
     return (
         <div className="page">
@@ -24,7 +22,7 @@ export default async function TeacherEventsPage() {
                 </Link>
             </div>
 
-            <TeacherEventsList initialEvents={events} currentUserId={user.id} />
+            <TeacherEventsList initialEvents={events} currentUserId={session.id} />
         </div>
     )
 }

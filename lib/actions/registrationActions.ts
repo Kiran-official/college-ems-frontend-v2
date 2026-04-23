@@ -2,8 +2,8 @@
 
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
-const revalidate = { path: revalidatePath as any }
+import { revalidatePath, revalidateTag } from 'next/cache'
+const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import { validateTeamCapacity } from './teams'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -41,6 +41,7 @@ export async function registerForEventAction(data: {
         if (error) return { success: false, error: error.message }
 
         revalidate.path(`/student/events/${data.event_id}`)
+        revalidate.tag('registrations')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -78,6 +79,7 @@ export async function cancelRegistrationAction(
         revalidate.path(`/student/events/${reg.event_id}`)
         revalidate.path(`/admin/events/${reg.event_id}`)
         revalidate.path(`/teacher/events/${reg.event_id}`)
+        revalidate.tag('registrations')
         return { success: true }
     } catch {
         return { success: false, error: 'An unexpected error occurred' }
@@ -828,6 +830,7 @@ export async function registerParticipantAction(
         revalidate.path(`/admin/events/${input.eventId}`)
         revalidate.path(`/teacher/events/${input.eventId}`)
         revalidate.path(`/events/${input.eventId}`)
+        revalidate.tag('registrations')
 
         return { success: true, teamId: finalTeamId }
     } catch (error) {
