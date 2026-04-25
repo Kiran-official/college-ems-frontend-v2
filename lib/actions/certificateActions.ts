@@ -7,6 +7,7 @@ const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import type { TemplateLayout } from '@/lib/types/db'
 import { issueEventCertificates } from '@/lib/certificates'
 import { processPendingCertificates } from '@/lib/processing'
+import { requireRole } from '@/lib/requireRole'
 
 export async function retryCertificateAction(
     certificateId: string
@@ -42,14 +43,7 @@ export async function retryCertificateAction(
 
 export async function retryAllFailedCertificatesAction(): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
-            return { success: false, error: 'Not authorised' }
-        }
+        await requireRole(['admin', 'teacher'])
 
         const admin = createAdminClient()
         const { data: failed } = await admin

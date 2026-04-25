@@ -6,6 +6,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import { validateTeamCapacity } from './teams'
 import { rateLimit } from '@/lib/rate-limit'
+import { requireRole } from '@/lib/requireRole'
 
 export async function registerForEventAction(data: {
     event_id: string
@@ -90,14 +91,7 @@ export async function deleteRegistrationAction(
     registrationId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || !['admin', 'teacher'].includes(profile.role)) {
-            return { success: false, error: 'Not authorised to delete registrations' }
-        }
+        await requireRole(['admin', 'teacher'])
 
         const admin = createAdminClient()
         const { data: reg } = await admin.from('individual_registrations').select('event_id, team_id, student_id').eq('id', registrationId).single()
@@ -659,8 +653,9 @@ export async function registerParticipantAction(
         const admin = createAdminClient()
 
         if (input.isManual) {
-            const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-            if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
+            try {
+                await requireRole(['admin', 'teacher'])
+            } catch {
                 return { success: false, error: 'Not authorised to manually register participants' }
             }
         } else if (user.id !== input.userId) {

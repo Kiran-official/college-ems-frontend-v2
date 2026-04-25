@@ -1,9 +1,10 @@
 import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import type { User, UserRole } from '@/lib/types/db'
 
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<User | null> {
     const supabase = await createSSRClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
@@ -14,7 +15,7 @@ export async function getCurrentUser(): Promise<User | null> {
         .eq('id', user.id)
         .single()
     return data as unknown as User
-}
+})
 
 export async function getUserById(id: string): Promise<User | null> {
     const supabase = await createSSRClient()

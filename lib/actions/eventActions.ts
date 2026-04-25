@@ -7,6 +7,7 @@ const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
 import { sendEventNotification } from '@/lib/actions/notifications'
 import { triggerCertificateProcessingAction } from './certificateActions'
 import { issueEventCertificates } from '@/lib/certificates'
+import { requireRole } from '@/lib/requireRole'
 
 export async function createEventAction(data: {
     title: string
@@ -24,14 +25,7 @@ export async function createEventAction(data: {
     upi_qr_url?: string
 }): Promise<{ success: boolean; event_id?: string; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || !['admin', 'teacher'].includes(profile.role)) {
-            return { success: false, error: 'Not authorised' }
-        }
+        const { userId, role } = await requireRole(['admin', 'teacher'])
 
         const admin = createAdminClient()
 
@@ -49,7 +43,7 @@ export async function createEventAction(data: {
             status: 'draft',
             is_active: true,
             results_published: false,
-            created_by: user.id,
+            created_by: userId,
             is_paid: data.is_paid ?? false,
             registration_fee: data.is_paid ? (data.registration_fee ?? null) : null,
             upi_qr_url: data.is_paid ? (data.upi_qr_url ?? null) : null,
@@ -60,7 +54,7 @@ export async function createEventAction(data: {
         // Add faculty in charge at event level
         const facultyIds = data.faculty_ids.length > 0
             ? data.faculty_ids
-            : (profile.role === 'teacher' ? [user.id] : [])
+            : (role === 'teacher' ? [userId] : [])
 
         if (facultyIds.length > 0) {
             const ficRows = facultyIds.map(tid => ({
@@ -284,11 +278,7 @@ export async function completeEventAction(eventId: string): Promise<{ success: b
 
 export async function archiveEventAction(eventId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
         
@@ -320,11 +310,7 @@ export async function archiveEventAction(eventId: string): Promise<{ success: bo
 
 export async function restoreEventAction(eventId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
 
@@ -357,14 +343,7 @@ export async function restoreEventAction(eventId: string): Promise<{ success: bo
 
 export async function hardDeleteEventAction(eventId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') {
-            return { success: false, error: 'Not authorised' }
-        }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
 

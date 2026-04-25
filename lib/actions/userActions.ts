@@ -4,6 +4,7 @@ import { createSSRClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
 const revalidate = { path: revalidatePath as any, tag: revalidateTag as any }
+import { requireRole } from '@/lib/requireRole'
 
 export async function createUserAction(data: {
     name: string
@@ -16,13 +17,7 @@ export async function createUserAction(data: {
     student_type?: 'internal' | 'external'
 }): Promise<{ success: boolean; error?: string }> {
     try {
-        // Auth check
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
 
@@ -90,13 +85,11 @@ export async function bulkCreateUsersAction(
     }>,
     role: 'teacher' | 'student' = 'student'
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
-    // Auth check
-    const ssr = await createSSRClient()
-    const { data: { user } } = await ssr.auth.getUser()
-    if (!user) return { created: 0, skipped: 0, errors: ['Not authenticated'] }
-
-    const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-    if (!profile || profile.role !== 'admin') return { created: 0, skipped: 0, errors: ['Not authorised'] }
+    try {
+        await requireRole(['admin'])
+    } catch {
+        return { created: 0, skipped: 0, errors: ['Not authenticated or not authorised'] }
+    }
 
     const admin = createAdminClient()
 
@@ -230,12 +223,7 @@ export async function toggleUserActiveAction(
     isActive: boolean
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
         
@@ -313,12 +301,7 @@ export async function updateUserCredentials(
     fields: UpdateUserInput
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const ssr = await createSSRClient()
-        const { data: { user } } = await ssr.auth.getUser()
-        if (!user) return { success: false, error: 'Not authenticated' }
-
-        const { data: profile } = await ssr.from('users').select('role').eq('id', user.id).single()
-        if (!profile || profile.role !== 'admin') return { success: false, error: 'Not authorised' }
+        await requireRole(['admin'])
 
         const admin = createAdminClient()
 

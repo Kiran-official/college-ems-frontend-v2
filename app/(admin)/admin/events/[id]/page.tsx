@@ -22,8 +22,8 @@ export default async function AdminEventDetailPage({ params }: Props) {
     const event = await getEventById(id)
     if (!event) notFound()
 
-    const currentUser = await getCurrentUser()
-    const [registrations, teams, winners, certificates, certStats, templates, activeTeachers] = await Promise.all([
+    const [currentUser, registrations, teams, winners, certificates, certStats, templates, activeTeachers] = await Promise.all([
+        getCurrentUser(),
         getRegistrationsByEvent(id),
         getTeamsByEvent(id),
         getWinnersByEvent(id),
