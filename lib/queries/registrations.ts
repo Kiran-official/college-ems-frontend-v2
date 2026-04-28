@@ -9,7 +9,7 @@ export async function getRegistrationsByEvent(eventId: string): Promise<Individu
         .from('individual_registrations')
         .select(`
             id, student_id, event_id, team_id, registered_at, attendance_status, payment_status,
-            student:users!individual_registrations_student_id_fkey(id, name, email, programme, semester, department:departments(name)),
+            student:users!individual_registrations_student_id_fkey(id, name, email, phone_number, programme, semester, department:departments(name)),
             team:teams(id, team_name, members:team_members(student:users!team_members_student_id_fkey(id, name, programme, semester)))
         `)
         .eq('event_id', eventId)
@@ -63,10 +63,10 @@ export async function getTeamsByEvent(eventId: string): Promise<Team[]> {
     const { data } = await supabase
         .from('teams')
         .select(`
-            id, team_name, created_by, leader_id, event_id, payment_status, referral_code, created_at,
+            id, team_name, created_by, leader_id, event_id, payment_status, created_at,
             members:team_members(
-                id, role,
-                student:users!team_members_student_id_fkey(id, name, email, programme, semester)
+                id,
+                student:users!team_members_student_id_fkey(id, name, email, phone_number, programme, semester)
             ),
             creator:users!teams_created_by_fkey(id, name)
         `)

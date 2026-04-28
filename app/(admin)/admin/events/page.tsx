@@ -1,10 +1,26 @@
 import Link from 'next/link'
-import { getAllEvents } from '@/lib/queries/events'
+import { getPaginatedEvents } from '@/lib/queries/events'
 import { Plus } from 'lucide-react'
 import { AdminEventsList } from '@/components/admin/AdminEventsList'
 
-export default async function AdminEventsPage() {
-    const events = await getAllEvents()
+export default async function AdminEventsPage({
+    searchParams
+}: {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+    const params = await searchParams
+    const page = Number(params?.page) || 1
+    const search = params?.search as string || ''
+    const status = params?.status as string || 'all'
+
+    const { data: events, count } = await getPaginatedEvents({
+        page,
+        limit: 20,
+        search,
+        status,
+    })
+
+    const totalPages = Math.ceil(count / 20)
 
     return (
         <div className="page">
@@ -20,7 +36,13 @@ export default async function AdminEventsPage() {
                 </div>
             </div>
 
-            <AdminEventsList initialEvents={events} />
+            <AdminEventsList 
+                initialEvents={events}
+                currentPage={page}
+                totalPages={totalPages}
+                currentSearch={search}
+                currentStatus={status}
+            />
         </div>
     )
 }

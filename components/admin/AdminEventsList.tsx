@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { SearchInput } from '@/components/forms/SearchInput'
@@ -8,37 +9,47 @@ import { format } from 'date-fns'
 import { Settings, Archive, ChevronDown } from 'lucide-react'
 import { ArchiveRestoreButtons } from '@/app/(admin)/admin/events/ArchiveRestoreButtons'
 import { DeleteEventButton } from '@/app/(admin)/admin/events/DeleteEventButton'
+import { Pagination } from '@/components/ui/Pagination'
 import type { Event } from '@/lib/types/db'
 
 interface AdminEventsListProps {
     initialEvents: Event[]
+    currentPage: number
+    totalPages: number
+    currentSearch: string
+    currentStatus: string
 }
 
-export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
-    const [searchQuery, setSearchQuery] = useState('')
-    const [statusFilter, setStatusFilter] = useState<string>('all')
+export function AdminEventsList({ initialEvents, currentPage, totalPages, currentSearch, currentStatus }: AdminEventsListProps) {
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
-    const filtered = initialEvents.filter(e => {
-        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const [searchQuery, setSearchQuery] = useState(currentSearch)
 
-        let matchesStatus = statusFilter === 'all' || e.status === statusFilter
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== currentSearch) {
+                const params = new URLSearchParams(searchParams.toString())
+                if (searchQuery) params.set('search', searchQuery)
+                else params.delete('search')
+                params.set('page', '1')
+                router.push(`${pathname}?${params.toString()}`)
+            }
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [searchQuery, currentSearch, pathname, router, searchParams])
 
-        // Smart derived statuses
-        if (statusFilter === 'processing') {
-            matchesStatus = e.status === 'closed' && !e.results_published
-        } else if (statusFilter === 'published') {
-            matchesStatus = e.status === 'closed' && e.results_published
-        }
+    const handleStatusChange = (newStatus: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (newStatus !== 'all') params.set('status', newStatus)
+        else params.delete('status')
+        params.set('page', '1')
+        router.push(`${pathname}?${params.toString()}`)
+    }
 
-        return matchesSearch && matchesStatus
-    })
-
-    const STATUS_ORDER: Record<string, number> = { open: 0, draft: 1, closed: 2, completed: 3 }
-
-    const activeEvents = filtered
-        .filter(e => e.is_active)
-        .sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99))
-    const archivedEvents = filtered.filter(e => !e.is_active)
+    const activeEvents = initialEvents.filter(e => e.is_active)
+    const archivedEvents = initialEvents.filter(e => !e.is_active)
 
     const renderTable = (events: Event[]) => (
         <>
@@ -142,8 +153,8 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
                 <div style={{ position: "relative", flexShrink: 0 }}>
                     <select
                         className="form-input"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        value={currentStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
                         style={{
                             appearance: "none",
                             WebkitAppearance: "none",
@@ -198,6 +209,8 @@ export function AdminEventsList({ initialEvents }: AdminEventsListProps) {
                     </div>
                 </details>
             )}
+
+            <Pagination currentPage={currentPage} totalPages={totalPages} />
         </div>
     )
 }

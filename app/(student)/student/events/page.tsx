@@ -1,10 +1,15 @@
 import { redirect } from 'next/navigation'
 import { requireSession } from '@/lib/session'
-import { getUpcomingEvents, getClosedEvents, getCompletedEvents } from '@/lib/queries/events'
+import { getPaginatedStudentEvents } from '@/lib/queries/events'
 import { getRegistrationsByStudent } from '@/lib/queries/registrations'
 import { StudentEventsList } from '@/components/student/StudentEventsList'
 
-export default async function StudentEventsPage() {
+export default async function StudentEventsPage({
+    searchParams
+}: {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+    const params = await searchParams
     const session = await requireSession()
 
     // Fetch student_type from app_metadata or lightweight DB query
@@ -15,27 +20,26 @@ export default async function StudentEventsPage() {
         studentType = data?.student_type
     }
 
-    const [upcoming, closed, completed, myRegs] = await Promise.all([
-        getUpcomingEvents(),
-        getClosedEvents(),
-        getCompletedEvents(),
-        getRegistrationsByStudent(session.id),
+    const isExternal = studentType === 'external'
+
+    const page = Number(params?.page) || 1
+    const search = params?.search as string || ''
+    const tab = (params?.tab as 'upcoming' | 'closed' | 'completed') || 'upcoming'
+
+    const [{ data: events, count }, myRegs] = await Promise.all([
+        getPaginatedStudentEvents({
+            tab,
+            page,
+            limit: 20,
+            search,
+            studentId: session.id,
+            isExternal
+        }),
+        getRegistrationsByStudent(session.id)
     ])
 
+    const totalPages = Math.ceil(count / 20)
     const registeredIds = new Set(myRegs.map(r => r.event_id))
-
-    // Filter by visibility
-    const isExternal = studentType === 'external'
-    function isVisible(event: typeof upcoming[0]) {
-        if (event.visibility === 'public_all') return true
-        if (event.visibility === 'internal_only' && !isExternal) return true
-        if (event.visibility === 'external_only' && isExternal) return true
-        return false
-    }
-
-    const visibleUpcoming = upcoming.filter(isVisible)
-    const visibleClosed = closed.filter(isVisible)
-    const visibleCompleted = completed.filter(isVisible)
 
     return (
         <div className="page">
@@ -52,10 +56,12 @@ export default async function StudentEventsPage() {
             </div>
 
             <StudentEventsList 
-                upcoming={visibleUpcoming} 
-                closed={visibleClosed} 
-                completed={visibleCompleted} 
+                events={events} 
                 registeredIds={registeredIds} 
+                currentTab={tab}
+                currentPage={page}
+                totalPages={totalPages}
+                currentSearch={search}
             />
         </div>
     )

@@ -223,33 +223,6 @@ export interface Certificate {
 }
 
 // ── Database type for Supabase client ──────────────────────────
-// Row = any so `.select()` results can be cast to our typed interfaces.
-// Insert/Update = Record so `.insert()`/`.update()` accept any column payload.
+import type { Database as GeneratedDatabase } from './supabase'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRow = Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyInsert = Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyUpdate = Record<string, any>
-
-export type Database = {
-    public: {
-        Tables: {
-            users: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            departments: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            events: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            faculty_in_charge: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            individual_registrations: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            teams: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            team_members: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            winners: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            certificate_templates: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-            certificates: { Row: AnyRow; Insert: AnyInsert; Update: AnyUpdate }
-        }
-        Functions: {
-            close_event: { Args: { p_event_id: string }; Returns: void }
-        }
-    }
-}
-
+export type Database = GeneratedDatabase

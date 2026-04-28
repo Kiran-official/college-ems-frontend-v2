@@ -6,7 +6,8 @@ import type { Event } from '@/lib/types/db'
 const EVENT_LIST_SELECT = `
     id, title, event_date, registration_deadline, status, is_active, forum, visibility, participant_type, team_size,
     results_published, created_by, created_at, is_paid,
-    department:departments(id, name)
+    department:departments(id, name),
+    faculty_in_charge:faculty_in_charge!faculty_in_charge_event_id_fkey(teacher_id, teacher:users!fic_teacher_fkey(id, name))
 `
 
 const EVENT_DETAIL_SELECT = `
@@ -210,4 +211,99 @@ export async function getTeacherEventStats(teacherId: string) {
         activeEvents: activeEvents ?? 0,
         completedEvents: completedEvents ?? 0,
     }
+}
+
+export async function getPaginatedEvents({
+    page, limit, search, status, activeOnly, teacherIdOnly
+}: {
+    page: number
+    limit: number
+    search?: string
+    status?: string
+    activeOnly?: boolean
+    teacherIdOnly?: string
+}): Promise<{ data: Event[], count: number }> {
+    const supabase = createAdminClient()
+    
+    let query = supabase.from('events').select(EVENT_LIST_SELECT, { count: 'exact' })
+    
+    if (activeOnly) {
+        query = query.eq('is_active', true)
+    }
+    
+    if (status && status !== 'all') {
+        if (status === 'processing') {
+            query = query.eq('status', 'closed').eq('results_published', false)
+        } else if (status === 'published') {
+            query = query.eq('status', 'closed').eq('results_published', true)
+        } else {
+            query = query.eq('status', status)
+        }
+    }
+    
+    if (search) {
+        query = query.ilike('title', `%${search}%`)
+    }
+    
+    if (teacherIdOnly) {
+        const { data: ficRows } = await supabase.from('faculty_in_charge').select('event_id').eq('teacher_id', teacherIdOnly)
+        const eventIds = ficRows?.map(r => r.event_id) ?? []
+        
+        if (eventIds.length > 0) {
+            query = query.or(`created_by.eq.${teacherIdOnly},id.in.(${eventIds.join(',')})`)
+        } else {
+            query = query.eq('created_by', teacherIdOnly)
+        }
+    }
+    
+    query = query.order('is_active', { ascending: false }).order('created_at', { ascending: false })
+    
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    
+    const { data, count } = await query.range(from, to)
+    
+    return { data: (data as unknown as Event[]) ?? [], count: count ?? 0 }
+}
+
+export async function getPaginatedStudentEvents({
+    tab, page, limit, search, studentId, isExternal
+}: {
+    tab: 'upcoming' | 'closed' | 'completed'
+    page: number
+    limit: number
+    search?: string
+    studentId: string
+    isExternal: boolean
+}): Promise<{ data: Event[], count: number }> {
+    const supabase = createAdminClient()
+    const now = new Date().toISOString()
+    
+    let query = supabase.from('events').select(EVENT_LIST_SELECT, { count: 'exact' })
+        .eq('is_active', true)
+        
+    if (isExternal) {
+        query = query.in('visibility', ['public_all', 'external_only'])
+    } else {
+        query = query.in('visibility', ['public_all', 'internal_only'])
+    }
+    
+    if (search) {
+        query = query.ilike('title', `%${search}%`)
+    }
+    
+    if (tab === 'upcoming') {
+        query = query.eq('status', 'open').gte('registration_deadline', now).order('event_date', { ascending: true })
+    } else if (tab === 'closed') {
+        query = query.or(`status.eq.closed,and(status.eq.open,registration_deadline.lt.${now})`).order('event_date', { ascending: false })
+    } else if (tab === 'completed') {
+        query = query.eq('status', 'completed').order('event_date', { ascending: false })
+    }
+    
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    
+    const { data, count } = await query.range(from, to)
+    
+    return { data: (data as unknown as Event[]) ?? [], count: count ?? 0 }
 }

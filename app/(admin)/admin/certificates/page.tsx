@@ -1,15 +1,25 @@
-import { getAllCertificates, getCertificateStats } from '@/lib/queries/certificates'
+import { getPaginatedCertificates, getCertificateStats } from '@/lib/queries/certificates'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Award } from 'lucide-react'
 import { format } from 'date-fns'
 import { CertAdminActions } from './CertAdminActions'
+import { Pagination } from '@/components/ui/Pagination'
 
-export default async function AdminCertificatesPage() {
-    const [certificates, stats] = await Promise.all([
-        getAllCertificates(),
+export default async function AdminCertificatesPage({
+    searchParams
+}: {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+    const params = await searchParams
+    const page = Number(params?.page) || 1
+
+    const [{ data: certificates, count }, stats] = await Promise.all([
+        getPaginatedCertificates({ page, limit: 50 }),
         getCertificateStats(),
     ])
+
+    const totalPages = Math.ceil(count / 50)
 
     return (
         <div className="page">
@@ -76,6 +86,8 @@ export default async function AdminCertificatesPage() {
                     </div>
                 </>
             )}
+
+            <Pagination currentPage={page} totalPages={totalPages} />
         </div>
     )
 }

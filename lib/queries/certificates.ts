@@ -123,3 +123,26 @@ export async function getTemplatesByEvent(eventId: string): Promise<any[]> {
         .eq('is_active', true)
     return data ?? []
 }
+
+export async function getPaginatedCertificates({
+    page, limit
+}: {
+    page: number
+    limit: number
+}): Promise<{ data: Certificate[], count: number }> {
+    const supabase = createAdminClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    
+    const { data, count } = await supabase
+        .from('certificates')
+        .select(`
+            id, student_id, event_id, certificate_type, status, retry_count, created_at,
+            student:users!certificates_student_id_fkey(id, name, email),
+            event:events(id, title)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+        
+    return { data: (data as unknown as Certificate[]) ?? [], count: count ?? 0 }
+}

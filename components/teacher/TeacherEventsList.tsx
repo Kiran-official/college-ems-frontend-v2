@@ -1,45 +1,63 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { SearchInput } from '@/components/forms/SearchInput'
 import { Badge } from '@/components/ui/Badge'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { Eye } from 'lucide-react'
+import { Pagination } from '@/components/ui/Pagination'
 import type { Event } from '@/lib/types/db'
 
 interface TeacherEventsListProps {
     initialEvents: Event[]
     currentUserId: string
+    currentPage: number
+    totalPages: number
+    currentSearch: string
+    currentStatus: string
+    currentMyEvents: boolean
 }
 
-export function TeacherEventsList({ initialEvents, currentUserId }: TeacherEventsListProps) {
-    const [searchQuery, setSearchQuery] = useState('')
-    const [statusFilter, setStatusFilter] = useState<string>('all')
-    const [showMyEventsOnly, setShowMyEventsOnly] = useState(false)
+export function TeacherEventsList({ initialEvents, currentUserId, currentPage, totalPages, currentSearch, currentStatus, currentMyEvents }: TeacherEventsListProps) {
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
-    const filtered = initialEvents.filter(e => {
-        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
-        let matchesStatus = statusFilter === 'all' || e.status === statusFilter
+    const [searchQuery, setSearchQuery] = useState(currentSearch)
 
-        const isFIC = e.faculty_in_charge?.some((f: any) => f.teacher_id === currentUserId)
-        const isCreator = e.created_by === currentUserId
-        const isMyEvent = isFIC || isCreator
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== currentSearch) {
+                const params = new URLSearchParams(searchParams.toString())
+                if (searchQuery) params.set('search', searchQuery)
+                else params.delete('search')
+                params.set('page', '1')
+                router.push(`${pathname}?${params.toString()}`)
+            }
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [searchQuery, currentSearch, pathname, router, searchParams])
 
-        const matchesMyEvents = !showMyEventsOnly || isMyEvent
+    const handleStatusChange = (newStatus: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (newStatus !== 'all') params.set('status', newStatus)
+        else params.delete('status')
+        params.set('page', '1')
+        router.push(`${pathname}?${params.toString()}`)
+    }
 
-        // Smart derived statuses
-        if (statusFilter === 'processing') {
-            matchesStatus = e.status === 'closed' && !e.results_published
-        } else if (statusFilter === 'published') {
-            matchesStatus = e.status === 'closed' && e.results_published
-        }
-
-        return matchesSearch && matchesStatus && matchesMyEvents
-    })
+    const handleMyEventsChange = (checked: boolean) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (checked) params.set('myEvents', 'true')
+        else params.delete('myEvents')
+        params.set('page', '1')
+        router.push(`${pathname}?${params.toString()}`)
+    }
 
     const STATUS_ORDER: Record<string, number> = { open: 0, draft: 1, closed: 2, completed: 3 }
-    const sorted = filtered.sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99))
+    const sorted = initialEvents.sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99))
 
     const renderEvents = (events: Event[]) => (
         <>
@@ -138,8 +156,8 @@ export function TeacherEventsList({ initialEvents, currentUserId }: TeacherEvent
                 <div style={{ position: 'relative', minWidth: 160 }}>
                     <select
                         className="form-input"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        value={currentStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
                         style={{ paddingRight: 32 }}
                     >
                         <option value="all">All Statuses</option>
@@ -157,8 +175,8 @@ export function TeacherEventsList({ initialEvents, currentUserId }: TeacherEvent
                         type="checkbox" 
                         id="my-events-only"
                         className="form-checkbox"
-                        checked={showMyEventsOnly}
-                        onChange={(e) => setShowMyEventsOnly(e.target.checked)}
+                        checked={currentMyEvents}
+                        onChange={(e) => handleMyEventsChange(e.target.checked)}
                     />
                     <label htmlFor="my-events-only" style={{ fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
                         Show My Events Only
@@ -173,6 +191,8 @@ export function TeacherEventsList({ initialEvents, currentUserId }: TeacherEvent
             ) : (
                 renderEvents(sorted)
             )}
+
+            <Pagination currentPage={currentPage} totalPages={totalPages} />
         </div>
     )
 }

@@ -1,111 +1,95 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { SearchInput } from '@/components/forms/SearchInput'
 import { EventCard } from '@/components/events/EventCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Calendar } from 'lucide-react'
+import { Pagination } from '@/components/ui/Pagination'
 import type { Event } from '@/lib/types/db'
 
 interface StudentEventsListProps {
-    upcoming: Event[]
-    closed: Event[]
-    completed: Event[]
+    events: Event[]
     registeredIds: Set<string>
+    currentTab: 'upcoming' | 'closed' | 'completed'
+    currentPage: number
+    totalPages: number
+    currentSearch: string
 }
 
-export function StudentEventsList({ upcoming, closed, completed, registeredIds }: StudentEventsListProps) {
-    const [searchQuery, setSearchQuery] = useState('')
+export function StudentEventsList({ events, registeredIds, currentTab, currentPage, totalPages, currentSearch }: StudentEventsListProps) {
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
-    const filterFn = (e: Event) => e.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const [searchQuery, setSearchQuery] = useState(currentSearch)
 
-    const upcomingUnfiltered = upcoming.filter(filterFn)
-    const filteredClosed = closed.filter(filterFn)
-    const filteredCompleted = completed.filter(filterFn)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== currentSearch) {
+                const params = new URLSearchParams(searchParams.toString())
+                if (searchQuery) params.set('search', searchQuery)
+                else params.delete('search')
+                params.set('page', '1')
+                router.push(`${pathname}?${params.toString()}`)
+            }
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [searchQuery, currentSearch, pathname, router, searchParams])
 
-    // Separate upcoming into Open (unregistered) and Registered Open
-    const registeredOpen = upcomingUnfiltered.filter(e => registeredIds.has(e.id))
-    const filteredUpcoming = upcomingUnfiltered.filter(e => !registeredIds.has(e.id))
-
-    const hasResults = filteredUpcoming.length > 0 || registeredOpen.length > 0 || filteredClosed.length > 0 || filteredCompleted.length > 0
+    const handleTabChange = (tab: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('tab', tab)
+        params.set('page', '1')
+        router.push(`${pathname}?${params.toString()}`)
+    }
 
     return (
         <div className="student-events-list">
-            <div style={{ marginBottom: 40 }}>
+            <div style={{ marginBottom: 40, display: 'flex', flexDirection: 'column', gap: 24 }}>
                 <SearchInput 
                     value={searchQuery} 
                     onChange={setSearchQuery} 
-                    placeholder="Search all events..." 
+                    placeholder="Search events..." 
                 />
+
+                <div className="tabs-container" style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12, overflowX: 'auto' }}>
+                    <button 
+                        className={`btn ${currentTab === 'upcoming' ? 'btn--primary' : 'btn--outline'}`}
+                        onClick={() => handleTabChange('upcoming')}
+                    >
+                        Upcoming
+                    </button>
+                    <button 
+                        className={`btn ${currentTab === 'closed' ? 'btn--primary' : 'btn--outline'}`}
+                        onClick={() => handleTabChange('closed')}
+                    >
+                        Closed
+                    </button>
+                    <button 
+                        className={`btn ${currentTab === 'completed' ? 'btn--primary' : 'btn--outline'}`}
+                        onClick={() => handleTabChange('completed')}
+                    >
+                        Completed
+                    </button>
+                </div>
             </div>
 
-            {!hasResults ? (
+            {events.length === 0 ? (
                 <EmptyState 
                     icon={Calendar} 
-                    title="No matching events" 
+                    title="No events found" 
                     subtitle={searchQuery ? "Try a different search term." : "Check back later for new events."} 
                 />
             ) : (
                 <>
-                    {/* Section 1: Open for Registration (Unregistered) */}
-                    {filteredUpcoming.length > 0 && (
-                        <section style={{ marginBottom: 64 }}>
-                            <div className="section-header">
-                                <div className="status-indicator status-indicator--open" />
-                                <h2 className="section-title">Open for Registration</h2>
-                            </div>
-                            <div className="event-card-grid">
-                                {filteredUpcoming.map(e => (
-                                    <EventCard key={e.id} event={e} basePath="/student/events" />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Section 2: Registered Events (Open) */}
-                    {registeredOpen.length > 0 && (
-                        <section style={{ marginBottom: 64 }}>
-                            <div className="section-header">
-                                <div className="status-indicator status-indicator--open" style={{ background: 'var(--success)' }} />
-                                <h2 className="section-title">Registered Events</h2>
-                            </div>
-                            <div className="event-card-grid">
-                                {registeredOpen.map(e => (
-                                    <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={true} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Section 3: Ongoing / Closed */}
-                    {filteredClosed.length > 0 && (
-                        <section style={{ marginBottom: 64 }}>
-                            <div className="section-header">
-                                <div className="status-indicator status-indicator--closed" />
-                                <h2 className="section-title">Ongoing / Closed</h2>
-                            </div>
-                            <div className="event-card-grid">
-                                {filteredClosed.map(e => (
-                                    <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Section 4: Completed */}
-                    {filteredCompleted.length > 0 && (
-                        <section>
-                            <div className="section-header">
-                                <div className="status-indicator status-indicator--completed" />
-                                <h2 className="section-title">Completed</h2>
-                            </div>
-                            <div className="event-card-grid">
-                                {filteredCompleted.map(e => (
-                                    <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                    <div className="event-card-grid">
+                        {events.map(e => (
+                            <EventCard key={e.id} event={e} basePath="/student/events" isRegistered={registeredIds.has(e.id)} />
+                        ))}
+                    </div>
+                    <Pagination currentPage={currentPage} totalPages={totalPages} />
                 </>
             )}
         </div>
