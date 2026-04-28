@@ -1,0 +1,260 @@
+﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SICM EMS â€” Design System
+   Reference: Fawzi Sayed â€” Bank Card Landing Page (Behance 2024)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* PWA Standalone Mode Adjustments */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .app-shell__main {
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+  max-width: 100vw;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: env(safe-area-inset-top);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+input:not([type="radio"]):not([type="checkbox"]),
+textarea,
+select {
+  font-family: inherit;
+  width: 100%;
+  min-height: 40px;
+  font-size: 16px; /* Prevents iOS auto-zoom */
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* â”€â”€ Dark Mode (default) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+:root,
+[data-theme="dark"] {
+  --bg-void: #03020B;
+  --bg-base: #08071B;
+  --bg-surface: #0E0D2A;
+  --bg-elevated: #16143A;
+  --bg-glass: rgba(14, 13, 42, 0.82);
+  --bg-input: rgba(8, 7, 27, 0.95);
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #64748B;
+
+  --border: rgba(255, 255, 255, 0.12);
+  --border-glass: rgba(168, 85, 247, 0.3);
+
+  --shadow-card: 0 12px 40px rgba(0, 0, 5, 0.4);
+  --shadow-glass: 0 16px 60px rgba(0, 0, 5, 0.5);
+
+  /* Stat Icon Pods */
+  --stat-icon-bg: var(--accent-dim);
+  --stat-icon-border: var(--accent-glow);
+  --stat-icon-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+
+  /* Semantic - Default (Dark) */
+  --success: #10E09A;
+  --success-bg: rgba(16, 224, 154, 0.1);
+  --warning: #F5A623;
+  --warning-bg: rgba(245, 166, 35, 0.1);
+  --warning-border: rgba(245, 166, 35, 0.2);
+  --error: #FF4D6A;
+  --error-bg: rgba(255, 77, 106, 0.1);
+  --error-border: rgba(255, 77, 106, 0.2);
+  --info: #2E6FFF;
+  --info-bg: rgba(46, 111, 255, 0.1);
+  --info-border: rgba(46, 111, 255, 0.2);
+  --neutral: #94A3B8;
+  --neutral-bg: rgba(148, 163, 184, 0.1);
+}
+
+/* â”€â”€ Light Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+[data-theme="light"] {
+  --bg-void: #EDE8FF;
+  --bg-base: #F4F1FF;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #EDE8FF;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-input: #FFFFFF;
+
+  --text-primary: #0A0618;
+  --text-secondary: #3D3560;
+  --text-tertiary: #7B6FAD;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-glass: rgba(168, 85, 247, 0.2);
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  /* Semantic - Light overrides */
+  --success: #059669;
+  --success-bg: rgba(5, 150, 105, 0.15);
+  --warning: #B45309; /* Darker amber for better contrast */
+  --warning-bg: rgba(180, 83, 9, 0.15);
+  --warning-border: rgba(180, 83, 9, 0.25);
+  --error: #DC2626;
+  --error-bg: rgba(220, 38, 38, 0.15);
+  --error-border: rgba(220, 38, 38, 0.25);
+  --info: #2563EB;
+  --info-bg: rgba(37, 99, 235, 0.15);
+  --info-border: rgba(37, 99, 235, 0.25);
+  --neutral: #475569;
+  --neutral-bg: rgba(71, 85, 105, 0.15);
+
+  /* Stat Icon Pods */
+  --stat-icon-bg: rgba(255, 255, 255, 0.95);
+  --stat-icon-border: rgba(0, 0, 0, 0.05);
+  --stat-icon-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* â”€â”€ Accent Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+:root {
+  /* Primary brand: SICM Purple */
+  --accent: #A855F7;
+  --accent-glow: rgba(168, 85, 247, 0.28);
+  --accent-dim: rgba(168, 85, 247, 0.1);
+
+  /* Secondary brand: SICM Gold */
+  --gold: #D4A017;
+  --gold-glow: rgba(212, 160, 23, 0.3);
+  --gold-dim: rgba(212, 160, 23, 0.12);
+
+  /* Layout */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 68px;
+  --header-h: 60px;
+  --content-max: 1280px;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+
+  /* Glow helpers */
+  --glow: 0 0 24px var(--accent-glow);
+  --glow-sm: 0 0 12px var(--accent-glow);
+
+  /* Typography scale */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+  --fs-display: clamp(2rem, 5vw, 3.5rem);
+  /* Display */
+  --fs-h1: clamp(1.75rem, 4vw, 2.25rem);
+  --fs-h2: clamp(1.25rem, 3vw, 1.5rem);
+  --fs-h3: clamp(1.1rem, 2vw, 1.125rem);
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-label: 14px; /* Updated from 12px for mobile readability */
+  --fs-mono: 14px;
+
+  /* Performance transitions */
+  --t-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --t-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --t-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* â”€â”€ Notification Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.notification-banner {
+  position: fixed;
+  z-index: 9999;
+  top: 20px;
+  right: 20px;
+  left: auto;
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  animation: bannerSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-banner .glass {
+  overflow: visible;
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-glass);
+}
+
+@keyframes bannerSlideIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 640px) {
+  .notification-banner {
+    top: 12px;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100vw - 32px);
+    max-width: none;
+  }
+}
+
+/* â”€â”€ Portal Overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.portal--admin {
+  --accent: #A855F7;
+  --accent-glow: rgba(168, 85, 247, 0.28);
+  --accent-dim: rgba(168, 85, 247, 0.1);
+}
+
+.portal--teacher {
+  --accent: #D4A017;
+  --accent-glow: rgba(212, 160, 23, 0.30);
+  --accent-dim: rgba(212, 160, 23, 0.12);
+}
+
+.portal--student {
+  --accent: #6366F1;
+  /* Electric Indigo */
+  --accent-secondary: #F472B6;
+  /* Pulse Pink */
+  --accent-glow: rgba(99, 102, 241, 0.35);
+  --accent-dim: rgba(99, 102, 241, 0.15);
+}
+
+/* â”€â”€ Layout Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

@@ -1,7 +1,8 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { hardDeleteEventAction } from '@/lib/actions/eventActions'
 import { Trash2 } from 'lucide-react'
 
@@ -12,18 +13,14 @@ interface DeleteEventButtonProps {
 
 export function DeleteEventButton({ eventId, eventTitle }: DeleteEventButtonProps) {
     const [pending, startTransition] = useTransition()
+    const [showConfirm, setShowConfirm] = useState(false)
 
-    async function handleDelete() {
-        const confirmed = window.confirm(
-            `Are you sure you want to PERMANENTLY delete the event "${eventTitle}"?\n\nThis will also delete all registrations, categories, and related data. This action cannot be undone.`
-        )
-
-        if (!confirmed) return
-
+    function handleConfirm() {
         startTransition(async () => {
             const result = await hardDeleteEventAction(eventId)
             if (!result.success) {
                 alert(result.error ?? 'Failed to delete event')
+                setShowConfirm(false)
                 return
             }
             window.location.reload()
@@ -31,14 +28,26 @@ export function DeleteEventButton({ eventId, eventTitle }: DeleteEventButtonProp
     }
 
     return (
-        <Button
-            size="sm"
-            variant="danger"
-            onClick={handleDelete}
-            loading={pending}
-            title="Hard Delete"
-        >
-            <Trash2 size={12} /> Delete
-        </Button>
+        <>
+            <Button
+                size="sm"
+                variant="danger"
+                onClick={() => setShowConfirm(true)}
+                loading={pending}
+                title="Hard Delete"
+            >
+                <Trash2 size={12} /> Delete
+            </Button>
+            
+            <ConfirmModal
+                open={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={handleConfirm}
+                title="Permanently Delete Event"
+                description={`Are you sure you want to PERMANENTLY delete "${eventTitle}"? This will also delete all registrations, categories, and related data. This action cannot be undone.`}
+                variant="danger"
+                loading={pending}
+            />
+        </>
     )
 }

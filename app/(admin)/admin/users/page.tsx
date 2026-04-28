@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition, useEffect, Suspense } from 'react'
+import { useState, useTransition, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { FormGroup } from '@/components/forms/FormGroup'
 import { SearchInput } from '@/components/forms/SearchInput'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -13,7 +14,7 @@ import { createUserAction, toggleUserActiveAction } from '@/lib/actions/userActi
 import { incrementSemesterAction, decrementSemesterAction } from '@/lib/actions/semesterActions'
 import { createClient } from '@/lib/supabase/client'
 import { EditUserModal } from '@/components/admin/EditUserModal'
-import { Users, Plus, Upload, Power, Filter, ChevronUp, ChevronDown, Edit2 } from 'lucide-react'
+import { Users, Plus, Upload, Power, Filter, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { User, Department } from '@/lib/types/db'
 
@@ -34,12 +35,21 @@ function UsersContent() {
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
 
+    // Pagination
+    const PAGE_SIZE = 50
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
     // Filters
     const [showFilters, setShowFilters] = useState(false)
     const [filterDept, setFilterDept] = useState('')
     const [filterProgramme, setFilterProgramme] = useState('')
     const [filterSemester, setFilterSemester] = useState('')
     const [filterStudentType, setFilterStudentType] = useState('')
+
+    // Confirmation modal
+    const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; onConfirm: () => void; variant: 'danger' | 'warning' } | null>(null)
 
     // Modals
     const [showCreate, setShowCreate] = useState(false)
@@ -57,30 +67,51 @@ function UsersContent() {
     // Semester actions
     const [semesterPending, startSemester] = useTransition()
 
-    useEffect(() => {
-        loadData()
-    }, [tab])
+    // Reset page when filters change
+    useEffect(() => { setPage(1) }, [search, filterDept, filterProgramme, filterSemester, filterStudentType])
 
-    async function loadData() {
+    const loadData = useCallback(async (pg = page) => {
         setLoading(true)
         const supabase = createClient()
         const role = tab === 'admins' ? 'admin' : tab === 'teachers' ? 'teacher' : 'student'
-        const { data: usersData } = await supabase
+
+        // Build query with server-side filters
+        let query = supabase
             .from('users')
-            .select('*, department:departments(*)')
+            .select('*, department:departments(*)', { count: 'exact' })
             .eq('role', role)
+
+        if (search.trim()) {
+            query = query.or(`name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`)
+        }
+        if (filterDept) query = query.eq('department_id', filterDept)
+        if (filterProgramme) query = query.eq('programme', filterProgramme)
+        if (filterSemester) query = query.eq('semester', parseInt(filterSemester, 10))
+        if (filterStudentType) query = query.eq('student_type', filterStudentType)
+
+        const from = (pg - 1) * PAGE_SIZE
+        const to = from + PAGE_SIZE - 1
+
+        const { data: usersData, count } = await query
             .order('name')
+            .range(from, to)
+
         const { data: deptsData } = await supabase
             .from('departments')
             .select('*')
             .eq('is_active', true)
             .order('name')
+
         setUsers(usersData ?? [])
+        setTotalCount(count ?? 0)
         setDepartments(deptsData ?? [])
         setLoading(false)
-    }
+    }, [tab, search, filterDept, filterProgramme, filterSemester, filterStudentType, page])
+
+    useEffect(() => { loadData() }, [loadData])
 
     function setTab(t: Tab) {
+        setPage(1)
         router.push(`/admin/users?tab=${t}`)
     }
 
@@ -97,23 +128,8 @@ function UsersContent() {
 
     const tabRole = tab === 'admins' ? 'Admin' : tab === 'teachers' ? 'Teacher' : 'Student'
 
-    const getFilteredForRole = (role: string) => {
-        return users.filter(u => {
-            if (u.role !== role) return false
-            const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
-                u.email.toLowerCase().includes(search.toLowerCase())
-            const matchesDept = !filterDept || u.department_id === filterDept
-            const matchesProg = !filterProgramme || u.programme === filterProgramme
-            const matchesSem = !filterSemester || String(u.semester ?? 1) === filterSemester
-            const matchesType = !filterStudentType || (u.student_type ?? 'internal') === filterStudentType
-            return matchesSearch && matchesDept && matchesProg && matchesSem && matchesType
-        })
-    }
-
-    const filtered = getFilteredForRole(tabRole.toLowerCase())
-    const studentCount = getFilteredForRole('student').length
-    const teacherCount = getFilteredForRole('teacher').length
-    const adminCount = getFilteredForRole('admin').length
+    // Filtering is now server-side; users array is already filtered & paginated
+    const filtered = users
 
     function showCreateValidationError(fieldId: string, message: string) {
         setCreateError(message)
@@ -168,20 +184,39 @@ function UsersContent() {
     }
 
     const [togglePending, startToggle] = useTransition()
-    function toggleActive(userId: string, current: boolean) {
-        startToggle(async () => {
-            await toggleUserActiveAction(userId, !current)
-            loadData()
+    function requestToggleActive(user: User) {
+        setConfirmAction({
+            title: user.is_active ? 'Deactivate User' : 'Activate User',
+            description: `Are you sure you want to ${user.is_active ? 'deactivate' : 'activate'} ${user.name}?${user.is_active ? ' They will no longer be able to sign in.' : ''}`,
+            variant: user.is_active ? 'danger' : 'warning',
+            onConfirm: () => {
+                setConfirmAction(null)
+                startToggle(async () => {
+                    await toggleUserActiveAction(user.id, !user.is_active)
+                    loadData()
+                })
+            },
         })
     }
 
-    function handleSemesterChange(direction: 'up' | 'down') {
-        startSemester(async () => {
-            const result = direction === 'up'
-                ? await incrementSemesterAction()
-                : await decrementSemesterAction()
-            if (result.success) loadData()
-            else alert(result.error ?? 'Failed to update semester')
+    function requestSemesterChange(direction: 'up' | 'down') {
+        const isUp = direction === 'up'
+        setConfirmAction({
+            title: isUp ? 'Increment Semester' : 'Undo Semester Increment',
+            description: isUp
+                ? 'This will increment the semester for ALL active students. Students in semester 6 will be deactivated. This action affects every student record.'
+                : 'This will decrement the semester for ALL students. Are you sure you want to undo the last semester change?',
+            variant: 'warning',
+            onConfirm: () => {
+                setConfirmAction(null)
+                startSemester(async () => {
+                    const result = isUp
+                        ? await incrementSemesterAction()
+                        : await decrementSemesterAction()
+                    if (result.success) loadData()
+                    else alert(result.error ?? 'Failed to update semester')
+                })
+            },
         })
     }
 
@@ -203,7 +238,7 @@ function UsersContent() {
                         className={`tab-item ${tab === t ? 'tab-item--active' : ''}`}
                         onClick={() => setTab(t)}
                     >
-                        {t.charAt(0).toUpperCase() + t.slice(1)} ({t === 'students' ? studentCount : t === 'teachers' ? teacherCount : adminCount})
+                        {t.charAt(0).toUpperCase() + t.slice(1)} {tab === t && `(${totalCount})`}
                     </button>
                 ))}
             </div>
@@ -221,10 +256,10 @@ function UsersContent() {
                 <div style={{ display: 'flex', gap: 'clamp(4px, 1.5vw, 8px)', alignItems: 'center', width: '100%' }}>
                     {tab === 'students' && (
                         <>
-                            <Button variant="outline" size="sm" style={{ flex: 1, padding: '0 clamp(4px, 1vw, 12px)', minWidth: 0, gap: 'clamp(4px, 1vw, 8px)' }} onClick={() => handleSemesterChange('up')} loading={semesterPending} title="Increment semester for all students">
+                            <Button variant="outline" size="sm" style={{ flex: 1, padding: '0 clamp(4px, 1vw, 12px)', minWidth: 0, gap: 'clamp(4px, 1vw, 8px)' }} onClick={() => requestSemesterChange('up')} loading={semesterPending} title="Increment semester for all students">
                                 <ChevronUp size={14} className="shrink-0" /> <span className="truncate" style={{ fontSize: 'clamp(10px, 2.5vw, 14px)' }}>Next Sem</span>
                             </Button>
-                            <Button variant="outline" size="sm" style={{ flex: 1, padding: '0 clamp(4px, 1vw, 12px)', minWidth: 0, gap: 'clamp(4px, 1vw, 8px)' }} onClick={() => handleSemesterChange('down')} loading={semesterPending} title="Undo semester increment">
+                            <Button variant="outline" size="sm" style={{ flex: 1, padding: '0 clamp(4px, 1vw, 12px)', minWidth: 0, gap: 'clamp(4px, 1vw, 8px)' }} onClick={() => requestSemesterChange('down')} loading={semesterPending} title="Undo semester increment">
                                 <ChevronDown size={14} className="shrink-0" /> <span className="truncate" style={{ fontSize: 'clamp(10px, 2.5vw, 14px)' }}>Undo</span>
                             </Button>
                         </>
@@ -238,7 +273,7 @@ function UsersContent() {
                         <Plus size={14} className="shrink-0" /> <span className="truncate" style={{ fontSize: 'clamp(10px, 2.5vw, 14px)' }}>Add {tab.charAt(0).toUpperCase() + tab.slice(1, -1)}</span>
                     </Button>
                 </div>
-                
+
                 <div style={{ padding: '8px 4px 4px', fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontWeight: 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Showing {filtered.length} {tabRole.toLowerCase()}s</span>
                     {showFilters && <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Filters active</span>}
@@ -339,7 +374,7 @@ function UsersContent() {
                                                     <Button size="sm" variant="outline" onClick={() => setEditingUser(u)}>
                                                         <Edit2 size={12} /> <span className="hidden sm:inline">Edit</span>
                                                     </Button>
-                                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => toggleActive(u.id, u.is_active)} loading={togglePending}>
+                                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => requestToggleActive(u)} loading={togglePending}>
                                                         <Power size={12} /> <span className="hidden sm:inline">{u.is_active ? 'Deactivate' : 'Activate'}</span>
                                                     </Button>
                                                 </div>
@@ -363,7 +398,7 @@ function UsersContent() {
                                     <Button size="sm" variant="outline" onClick={() => setEditingUser(u)} style={{ height: '24px', width: '24px', padding: 0 }} title="Edit">
                                         <Edit2 size={12} />
                                     </Button>
-                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => toggleActive(u.id, u.is_active)} loading={togglePending} style={{ height: '24px', width: '24px', padding: 0 }} title={u.is_active ? 'Deactivate' : 'Activate'}>
+                                    <Button size="sm" variant={u.is_active ? 'danger' : 'outline'} onClick={() => requestToggleActive(u)} loading={togglePending} style={{ height: '24px', width: '24px', padding: 0 }} title={u.is_active ? 'Deactivate' : 'Activate'}>
                                         <Power size={12} />
                                     </Button>
                                 </div>
@@ -378,6 +413,29 @@ function UsersContent() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <button
+                                className="pagination__btn"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft size={14} /> Prev
+                            </button>
+                            <span className="pagination__info">
+                                Page {page} of {totalPages}
+                            </span>
+                            <button
+                                className="pagination__btn"
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                            >
+                                Next <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -443,7 +501,7 @@ function UsersContent() {
             />
 
             {/* Edit User Modal */}
-            <EditUserModal 
+            <EditUserModal
                 user={editingUser}
                 departments={allowedDepts}
                 deptProgrammes={DEPT_PROGRAMMES}
@@ -454,6 +512,19 @@ function UsersContent() {
                     loadData()
                 }}
             />
+
+            {/* Confirmation Modal */}
+            {confirmAction && (
+                <ConfirmModal
+                    open={!!confirmAction}
+                    onClose={() => setConfirmAction(null)}
+                    onConfirm={confirmAction.onConfirm}
+                    title={confirmAction.title}
+                    description={confirmAction.description}
+                    variant={confirmAction.variant}
+                    loading={togglePending || semesterPending}
+                />
+            )}
         </div>
     )
 }
