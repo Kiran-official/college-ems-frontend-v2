@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
@@ -10,6 +10,7 @@ import { FormGroup } from '@/components/forms/FormGroup'
 export default function LoginClient() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const emailRef = useRef<HTMLInputElement>(null)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -21,6 +22,10 @@ export default function LoginClient() {
             setError('Your account is deactivated. Contact the administrator.')
         }
     }, [searchParams])
+
+    useEffect(() => {
+        emailRef.current?.focus()
+    }, [])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -108,6 +113,7 @@ export default function LoginClient() {
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <FormGroup label="Email Address" htmlFor="email">
                                 <input
+                                    ref={emailRef}
                                     id="email"
                                     type="email"
                                     className={`form-input ${error ? 'form-input--error' : ''}`}
@@ -115,7 +121,7 @@ export default function LoginClient() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    autoFocus
+                                    suppressHydrationWarning
                                 />
                             </FormGroup>
 
@@ -129,6 +135,7 @@ export default function LoginClient() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
+                                        suppressHydrationWarning
                                     />
                                     <button
                                         type="button"

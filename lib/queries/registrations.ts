@@ -10,7 +10,7 @@ export async function getRegistrationsByEvent(eventId: string): Promise<Individu
         .select(`
             id, student_id, event_id, team_id, registered_at, attendance_status, payment_status,
             student:users!individual_registrations_student_id_fkey(id, name, email, phone_number, programme, semester, department:departments(name)),
-            team:teams(id, team_name, members:team_members(student:users!team_members_student_id_fkey(id, name, programme, semester)))
+            team:teams(id, team_name, members:team_members(status, student:users!team_members_student_id_fkey(id, name, programme, semester)))
         `)
         .eq('event_id', eventId)
         .order('registered_at', { ascending: false })
@@ -66,6 +66,7 @@ export async function getTeamsByEvent(eventId: string): Promise<Team[]> {
             id, team_name, created_by, leader_id, event_id, payment_status, created_at,
             members:team_members(
                 id,
+                status,
                 student:users!team_members_student_id_fkey(id, name, email, phone_number, programme, semester)
             ),
             creator:users!teams_created_by_fkey(id, name)

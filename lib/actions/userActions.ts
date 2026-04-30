@@ -20,6 +20,18 @@ export async function createUserAction(data: {
         await requireRole(['admin'])
 
         const admin = createAdminClient()
+        
+        // Check for existing phone number
+        if (data.phone_number?.trim()) {
+            const { data: existingPhone } = await admin.from('users')
+                .select('email')
+                .eq('phone_number', data.phone_number.trim())
+                .maybeSingle()
+            
+            if (existingPhone) {
+                return { success: false, error: `A user with this phone number already exists (${existingPhone.email})` }
+            }
+        }
 
         // Create auth user with temp password
         // Use phone number as password if provided, otherwise generate a temporary password
@@ -118,6 +130,16 @@ export async function bulkCreateUsersAction(
         try {
             const departmentId = u.department ? deptMap.get(u.department.trim().toLowerCase()) : undefined
             const emailLower = u.email.trim().toLowerCase()
+            
+            // Phone collision check
+            if (u.phone_number?.trim()) {
+                const { data: phoneMatch } = await admin.from('users').select('email').eq('phone_number', u.phone_number.trim()).maybeSingle()
+                if (phoneMatch && phoneMatch.email.toLowerCase() !== emailLower) {
+                    errors.push(`${u.email}: Phone number ${u.phone_number} already used by ${phoneMatch.email}`)
+                    skipped++
+                    continue
+                }
+            }
 
             // Use phone number as password if provided, otherwise generate a random temporary password
             const tempPassword = u.phone_number?.trim() || `SICM_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
